@@ -1,0 +1,5 @@
+*outputs*
+**pycache**
+data/
+saved_models/
+logs/
