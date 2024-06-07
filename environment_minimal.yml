@@ -1,4 +1,4 @@
-name: mlconf
+name: amulet
 channels:
   - nvidia
   - pytorch
