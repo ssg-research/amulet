@@ -1,0 +1,23 @@
+name: mlconf
+channels:
+  - nvidia
+  - pytorch
+  - conda-forge
+dependencies:
+  - captum
+  - matplotlib
+  - numpy
+  - pandas
+  - pip
+  - python
+  - pytorch
+  - torchaudio
+  - torchvision
+  - tqdm
+  - scikit-learn
+  - scipy
+  - wget
+  - opacus
+  - pip:
+      - cleverhans
+      - ucimlrepo
