@@ -31,7 +31,7 @@ Built to work with PyTorch, you can incorporate Amulet into your current ML pipe
 
 Consider setting `.poetry_venv/bin/poetry config virtualenvs.create false` to prevent poetry from creating its own venv.
 
-To create the virtual environemnt:
+To create the virtual environment:
 `python3 -m venv .venv`
 
 To activate it:
@@ -42,6 +42,52 @@ Then, to install the dependencies:
 
 **DISCLAIMER:** Installing `pytorch` with `poetry` is [still weird](https://github.com/python-poetry/poetry/blob/main/docs/repositories.md#explicit-package-sources) but should work.
 
+## Usage
+The following minimal example runs an evasion attack:
+```python
+import torch
+from pathlib import Path
+from amulet.datasets import load_cifar10
+from amulet.utils import initialize_model, train_classifier, get_accuracy
+from amulet.evasion.attacks import EvasionPGD
+
+device = 'cuda:{0}'
+batch_size = 32
+root_dir = Path('./')
+
+# Load data
+data_path = root_dir / 'data' / 'cifar10' 
+data = load_cifar10(data_path)
+train_loader = torch.utils.data.DataLoader(dataset=data.train_set, batch_size=32, shuffle=False)
+test_loader = torch.utils.data.DataLoader(dataset=data.test_set, batch_size=32, shuffle=False)
+
+# Setup model architecture
+model_architecture = 'vgg'
+model_capacity = 'm1' # ['m1', 'm2', m3', m4']
+target_model = initialize_model('vgg', 'm1', 'cifar10').to(device)
+optimizer = torch.optim.Adam(target_model.parameters(), lr=1e-3)
+criterion = torch.nn.CrossEntropyLoss()
+
+# Train model
+epochs = 2
+target_model = train_classifier(target_model, train_loader, criterion, optimizer, epochs, device)
+
+# Run Evasion 
+evasion = EvasionPGD(target_model,
+                        test_loader,
+                        device,
+                        batch_size,
+                        epsilon = 32)
+adversarial_test_loader = evasion.run_evasion()
+
+# Evaluate metrics
+test_accuracy_target = get_accuracy(target_model, test_loader, device)
+print(f'Test accuracy of target model: {test_accuracy_target}')     
+
+adv_accuracy = get_accuracy(target_model, adversarial_test_loader, device)
+print(f'Robust accuracy of target model: {adv_accuracy}')     
+```
+For more complete examples of an end-to-end pipeline, please see our [examples](https://github.com/ssg-research/amulet/tree/main/examples)
 ## Features
 
 We provide a high-level list of features below. Please refer to the Tutorial for more information.
