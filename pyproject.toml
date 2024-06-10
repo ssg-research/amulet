@@ -1,0 +1,32 @@
+[tool.poetry]
+name = "amulet"
+version = "0.1.0"
+description = ""
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.11"
+
+torch                 = {version = "^2.2.0+cu118", source = "pytorch-gpu-src"}
+torchvision           = {version = "^0.18.0+cu118", source = "pytorch-gpu-src"}
+
+[[tool.poetry.source]]
+name = "pytorch-gpu-src"
+url = "https://download.pytorch.org/whl/cu118"
+priority = "explicit"
+
+[tool.poetry.group.dev.dependencies]
+pre-commit            = "3.7.1"
+basedpyright          = "1.12.5"
+
+[tool.basedpyright]
+venvPath = "."
+venv = ".venv"
+typeCheckingMode = "standard"
+deprecateTypingAliases = true
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

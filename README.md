@@ -20,9 +20,13 @@ Built to work with PyTorch, you can incorporate Amulet into your current ML pipe
 ### Install poetry
 
 `python3 -m venv .poetry_venv`
+
 `. .poetry_venv/bin/activate` or `. .venv/bin/activate.fish`
+
 `python -m pip install --upgrade pip`
+
 `pip install poetry`
+
 `deactivate`
 
 Consider setting `.poetry_venv/bin/poetry config virtualenvs.create false` to prevent poetry from creating its own venv.
