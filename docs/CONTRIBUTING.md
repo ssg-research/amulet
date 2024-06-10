@@ -42,8 +42,8 @@ Note that the output is a [`sklearn.utils.Bunch`](https://scikit-learn.org/stabl
 }
 ```
 Please follow these steps to add a new function to load a dataset:
-1. Write a function that will download the dataset, preprocess it, and split it into train and test sets (see function template above). Example code: (`amulet/datasets/_tabular_datasets.py:load_census()`)[https://github.com/ssg-research/amulet/blob/main/amulet/datasets/_tabular_datasets.py#L21]. Please ensure the following when:
-    * **Downloading**: Ensure download location is passed as a parameter. Example code: [amulet/datasets/_tabular_datasets.py:L72-81](https://github.com/ssg-research/amulet/blob/main/amulet/datasets/_tabular_datasets.py#L72-L81).
+1. Write a function that will download the dataset, preprocess it, and split it into train and test sets (see function template above). Example code: [`amulet/datasets/_tabular_datasets.py:load_census()`](https://github.com/ssg-research/amulet/blob/main/amulet/datasets/_tabular_datasets.py#L21). Please ensure the following when:
+    * **Downloading**: Ensure download location is passed as a parameter. Example code: [`amulet/datasets/_tabular_datasets.py:L72-81`](https://github.com/ssg-research/amulet/blob/main/amulet/datasets/_tabular_datasets.py#L72-L81).
     * **Preprocessing**: Ensure the data types are correct, engineer features, etc. Example code: [`amulet/datasets/_tabular_datasets.py:L83-91`](https://github.com/ssg-research/amulet/blob/main/amulet/datasets/_tabular_datasets.py#L83-L91).
     * **Splitting**: Ensure any randomized splitting uses a random seed. Example code: [`amulet/datasets/_tabular_datasets.py:L94-99`](https://github.com/ssg-research/amulet/blob/main/amulet/datasets/_tabular_datasets.py#L94-L99).
 2. Add this function into the appropriate file: `amulet/datasets/_tabular_datasets.py` for 1-dimensional datasets and `amulet/datasets/_image_datasets.py` for 2-dimensional datasets.
@@ -55,7 +55,7 @@ Please follow these steps to add a new model architecture to Amulet:
 1. Create a file in `amulet/models/` that defines a model as a `torch.nn.Module` subclass.
 2. We recommend including a `get_hidden()` function in the model since some modules use it. This function outputs the model's hidden layer activations. Example code: [`amulet/models/vgg.py:L65-76`](https://github.com/ssg-research/amulet/blob/main/amulet/models/vgg.py#L65-L76).
 3. Import the new model into `amulet/models/__init__.py`. For example, `from model_file import model_name`.
-4. We also recommend configuring the model size and complexity via input parameters. Please see [`amulet/models/vgg.py`](https://github.com/ssg-research/amulet/blob/main/amulet/models/vgg.py) or ['amulet/models/binary_net.py'](https://github.com/ssg-research/amulet/blob/main/amulet/models/binary_net.py) for examples.
+4. We also recommend configuring the model size and complexity via input parameters. Please see [`amulet/models/vgg.py`](https://github.com/ssg-research/amulet/blob/main/amulet/models/vgg.py) or [`amulet/models/binary_net.py`](https://github.com/ssg-research/amulet/blob/main/amulet/models/binary_net.py) for examples.
 
 ## Adding a new module
 The first step is to decide which risk the new module interacts with. For details, refer to the Tutorial (link TBD). The risks currently defined by Amulet can be found in this table (link TBD). Then, decide whether the module is a metric, attack, or defense. If you have identified a new risk, you may need to add separate modules for a metric, attack and/or defense.
