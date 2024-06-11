@@ -12,7 +12,6 @@ Amulet is:
 
 Built to work with PyTorch, you can incorporate Amulet into your current ML pipeline to test how your model interacts with these state-of-the-art defenses and risks. Alternatively, you can use the example pipelines to bootstrap your pipeline.
 
-
 ## Requirements
 
 **Note:** The package requires the CUDA version to be 11.8 or above for PyTorch 2.2
@@ -31,6 +30,8 @@ Built to work with PyTorch, you can incorporate Amulet into your current ML pipe
 
 Consider setting `.poetry_venv/bin/poetry config virtualenvs.create false` to prevent poetry from creating its own venv.
 
+### Main venv
+
 To create the virtual environemnt:
 `python3 -m venv .venv`
 
@@ -41,6 +42,13 @@ Then, to install the dependencies:
 `.poetry_venv/bin/poetry install`
 
 **DISCLAIMER:** Installing `pytorch` with `poetry` is [still weird](https://github.com/python-poetry/poetry/blob/main/docs/repositories.md#explicit-package-sources) but should work.
+
+### pre-commit
+
+There're some pre-commit hooks configured for this project.
+Also, `poetry` installs `pre-commit` as a dev dependency.
+
+Run `pre-commit install` for consistent development.
 
 ## Features
 
@@ -80,4 +88,3 @@ Amulet provides attacks, defenses, and evaluation metrics for the following risk
 - Discriminatory Behavior
 
 Please check the Module Heirarchy for more details.
-
