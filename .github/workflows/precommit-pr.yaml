@@ -1,0 +1,51 @@
+# This workflow finds which files were changed, prints them,
+# and runs `pre-commit` on those files.
+
+name: Precommit PR
+
+on:
+  pull_request:
+    branches: [main, "release/*"]
+
+permissions: read-all
+
+jobs:
+  code-quality:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v3
+
+      - name: Install poetry and dependencies
+        run: |
+          python -m venv .poetry_venv
+          . .poetry_venv/bin/activate
+          python -m pip install --upgrade pip
+          pip install poetry
+          poetry config virtualenvs.create false
+          deactivate
+          python -m venv .venv
+          . .venv/bin/activate
+          echo PATH=$PATH >> $GITHUB_ENV
+          .poetry_venv/bin/poetry install
+
+      - name: Changed files
+        id: changed_files
+        uses: tj-actions/changed-files@v44
+
+      - name: List all changed files
+        env:
+          ALL_CHANGED_FILES: ${{ steps.changed_files.outputs.all_changed_files }}
+        run: |
+          for file in ${ALL_CHANGED_FILES}; do
+            echo "$file was changed"
+          done
+
+      - name: Pre-commit on changed files
+        uses: pre-commit/action@v3.0.1
+        with:
+          extra_args: --files ${{ steps.changed_files.outputs.all_changed_files }}
