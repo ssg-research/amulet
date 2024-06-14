@@ -43,6 +43,12 @@ Then, to install the dependencies:
 
 **DISCLAIMER:** Installing `pytorch` with `poetry` is [still weird](https://github.com/python-poetry/poetry/blob/main/docs/repositories.md#explicit-package-sources) but should work.
 
+### Using poetry
+
+(Inside your `.venv`);
+when you add or modify any dependencies in `pyproject.toml`, run `.poetry_venv/bin/poetry lock --no-update` to rebuild the dependency graph.
+Then run `.poetry_venv/bin/poetry install` to install the dependencies.
+
 ### pre-commit
 
 There're some pre-commit hooks configured for this project.
