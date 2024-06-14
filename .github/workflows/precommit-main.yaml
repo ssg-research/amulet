@@ -1,17 +1,19 @@
 # Same as `code-quality-pr.yaml` but triggered on commit to main branch
 # and runs on all files (instead of only the changed ones)
 
-name: Precommit Main
+name: precommit-checks
 
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main, "release/*"]
 
 permissions: read-all
 
 jobs:
   code-quality:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
       - name: Checkout
