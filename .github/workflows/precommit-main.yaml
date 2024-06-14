@@ -1,0 +1,39 @@
+# Same as `code-quality-pr.yaml` but triggered on commit to main branch
+# and runs on all files (instead of only the changed ones)
+
+name: precommit-checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main, "release/*"]
+
+permissions: read-all
+
+jobs:
+  code-quality:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v3
+
+      - name: Install poetry and dependencies
+        run: |
+          python -m venv .poetry_venv
+          . .poetry_venv/bin/activate
+          python -m pip install --upgrade pip
+          pip install poetry
+          poetry config virtualenvs.create false
+          deactivate
+          python -m venv .venv
+          . .venv/bin/activate
+          echo PATH=$PATH >> $GITHUB_ENV
+          .poetry_venv/bin/poetry install
+
+      - name: Pre-commit on changed files
+        uses: pre-commit/action@v3.0.1
