@@ -1,24 +1,28 @@
 """Implementation of Likelihood Ratio Attack (LiRA)"""
+
 import copy
-from typing import List, Tuple
+from typing import List, Tuple, Union
+from pathlib import Path
 import torch
+import torch.nn as nn
 import scipy
 import numpy as np
 from tqdm import tqdm
-
+from torch.utils.data import TensorDataset
 from .membership_inference_attack import MembershipInferenceAttack, InferenceModel
+
 
 class LiRA(MembershipInferenceAttack):
     """
-    Implementation of Likelihood Ratio Attack (LiRA) from Carlini et. al. 
+    Implementation of Likelihood Ratio Attack (LiRA) from Carlini et. al.
 
     Reference:
         Membership Inference Attacks From First Principles
         Nicholas Carlini, Steve Chien, Milad Nasr, Shuang Song, Andreas Terzis, Florian Tramer
         https://openreview.net/pdf?id=inPTplK-O6V
 
-    Code used from https://github.com/YuxinWenRick/canary-in-a-coalmine 
-    
+    Code used from https://github.com/YuxinWenRick/canary-in-a-coalmine
+
     Attributes:
         target_model: :class:~`torch.nn.Module`
             The target model to attack.
@@ -40,32 +44,33 @@ class LiRA(MembershipInferenceAttack):
         num_shadow: int
             Number of shadow models to train.
         num_aug: int
-            Number of images to augment 
+            Number of images to augment
         epochs: int
             Number of epochs used to train shadow models.
         device: str
             Device used to train model. Example: "cuda:0".
-        models_dir: str
+        models_dir: Path or str
             Directory used to store shadow models.
         experiment_id: int
             Used as a random seed.
     """
+
     def __init__(
-            self,
-            target_model: torch.nn.Module,
-            in_data: np.ndarray,
-            shadow_architecture: str,
-            shadow_capacity: str,
-            train_set: torch.utils.data.TensorDataset,
-            dataset: str,
-            pkeep: float,
-            criterion: torch.nn.Module,
-            num_shadow: int,
-            num_aug: int,
-            epochs: int,
-            device: str,
-            models_dir: str,
-            experiment_id: int
+        self,
+        target_model: nn.Module,
+        in_data: np.ndarray,
+        shadow_architecture: str,
+        shadow_capacity: str,
+        train_set: TensorDataset,
+        dataset: str,
+        pkeep: float,
+        criterion: nn.Module,
+        num_shadow: int,
+        num_aug: int,
+        epochs: int,
+        device: str,
+        models_dir: Union[Path, str],
+        experiment_id: int,
     ):
         super().__init__(
             shadow_architecture,
@@ -78,16 +83,18 @@ class LiRA(MembershipInferenceAttack):
             epochs,
             device,
             models_dir,
-            experiment_id
+            experiment_id,
         )
 
         self.target_model = target_model
         self.in_data = in_data
         self.num_aug = num_aug
 
-    # TODO: Maybe simplify this? All this function is doing is adding the same image 
+    # TODO: Maybe simplify this? All this function is doing is adding the same image
     # multiple times in a list.
-    def _generate_aug_imgs(self, num_aug: int, target_img_id: int) -> List[torch.Tensor]:
+    def _generate_aug_imgs(
+        self, num_aug: int, target_img_id: int
+    ) -> List[torch.Tensor]:
         canaries = []
         counter = num_aug
         for i in range(counter):
@@ -97,10 +104,7 @@ class LiRA(MembershipInferenceAttack):
         return canaries
 
     def _get_logits(
-            self, 
-            curr_canary: torch.Tensor,
-            model: torch.nn.Module,
-            keep_tensor=False
+        self, curr_canary: torch.Tensor, model: nn.Module, keep_tensor=False
     ) -> torch.Tensor:
         with torch.no_grad():
             logits = model(curr_canary)
@@ -111,31 +115,35 @@ class LiRA(MembershipInferenceAttack):
     def _normalize_logits(self, logits: np.ndarray) -> np.ndarray:
         logits = logits - np.max(logits, axis=-1, keepdims=True)
         logits = np.array(np.exp(logits), dtype=np.float64)
-        logits = logits / np.sum(logits,axis=-1,keepdims=True)
+        logits = logits / np.sum(logits, axis=-1, keepdims=True)
         return logits
 
-    def _get_log_logits(self, pred_logits: np.ndarray, class_labels: np.ndarray) -> np.ndarray:
+    def _get_log_logits(
+        self, pred_logits: np.ndarray, class_labels: np.ndarray
+    ) -> np.ndarray:
         pred_logits = copy.deepcopy(pred_logits)
         scores = []
         for pred_logits_i in pred_logits:
             pred_logits_i = self._normalize_logits(pred_logits_i)
-            y_true = copy.deepcopy(pred_logits_i[np.arange(len(pred_logits_i)), :, class_labels])
+            y_true = copy.deepcopy(
+                pred_logits_i[np.arange(len(pred_logits_i)), :, class_labels]
+            )
             pred_logits_i[np.arange(len(pred_logits_i)), :, class_labels] = 0
             y_wrong = np.sum(pred_logits_i, axis=2)
-            score = (np.log(y_true+1e-45) - np.log(y_wrong+1e-45))
-            scores.append(score)  
+            score = np.log(y_true + 1e-45) - np.log(y_wrong + 1e-45)
+            scores.append(score)
 
         scores = np.array(scores)
 
         return scores
 
     def _lira_online(
-            self,
-            shadow_scores, 
-            shadow_in_out_labels, 
-            target_scores, 
-            target_in_out_labels, 
-            fix_variance=False
+        self,
+        shadow_scores,
+        shadow_in_out_labels,
+        target_scores,
+        target_in_out_labels,
+        fix_variance=False,
     ) -> Tuple[np.ndarray, np.ndarray]:
         dat_in = []
         dat_out = []
@@ -144,8 +152,8 @@ class LiRA(MembershipInferenceAttack):
             dat_in.append(shadow_scores[shadow_in_out_labels[:, j], j, :])
             dat_out.append(shadow_scores[~shadow_in_out_labels[:, j], j, :])
 
-        in_size = min(map(len,dat_in))
-        out_size = min(map(len,dat_out))
+        in_size = min(map(len, dat_in))
+        out_size = min(map(len, dat_out))
 
         # in_size and out_size turn out to be 0
 
@@ -166,9 +174,9 @@ class LiRA(MembershipInferenceAttack):
         true_labels = []
 
         for ans, sc in zip(target_in_out_labels, target_scores):
-            pr_in = -scipy.stats.norm.logpdf(sc, mean_in, std_in+1e-30)
-            pr_out = -scipy.stats.norm.logpdf(sc, mean_out, std_out+1e-30)
-            score = pr_in-pr_out
+            pr_in = -scipy.stats.norm.logpdf(sc, mean_in, std_in + 1e-30)
+            pr_out = -scipy.stats.norm.logpdf(sc, mean_out, std_out + 1e-30)
+            score = pr_in - pr_out
 
             final_preds.extend(score.mean(1))
             true_labels.extend(ans)
@@ -179,18 +187,18 @@ class LiRA(MembershipInferenceAttack):
         return -final_preds, true_labels
 
     def _lira_offline(
-            self,
-            shadow_scores, 
-            shadow_in_out_labels, 
-            target_scores, 
-            target_in_out_labels, 
-            fix_variance=False
+        self,
+        shadow_scores,
+        shadow_in_out_labels,
+        target_scores,
+        target_in_out_labels,
+        fix_variance=False,
     ) -> Tuple[np.ndarray, np.ndarray]:
         dat_out = []
         for j in range(shadow_scores.shape[1]):
             dat_out.append(shadow_scores[~shadow_in_out_labels[:, j], j, :])
 
-        out_size = min(map(len,dat_out))
+        out_size = min(map(len, dat_out))
 
         dat_out = np.array([x[:out_size] for x in dat_out])
 
@@ -204,7 +212,7 @@ class LiRA(MembershipInferenceAttack):
         final_preds = []
         true_labels = []
         for ans, sc in zip(target_in_out_labels, target_scores):
-            score = scipy.stats.norm.logpdf(sc, mean_out, std_out+1e-30)
+            score = scipy.stats.norm.logpdf(sc, mean_out, std_out + 1e-30)
             final_preds.extend(score.mean(1))
             true_labels.extend(ans)
         final_preds = np.array(final_preds)
@@ -213,29 +221,28 @@ class LiRA(MembershipInferenceAttack):
 
     def run_membership_inference(self):
         """
-            Runs the membership inference attack.
+        Runs the membership inference attack.
         """
         self.prepare_shadow_models()
 
         shadow_models = []
         for shadow_id in range(self.num_shadow):
             curr_model = InferenceModel(
-                shadow_id, 
-                self.dataset, 
-                self.shadow_architecture, 
+                shadow_id,
+                self.dataset,
+                self.shadow_architecture,
                 self.shadow_capacity,
-                self.models_dir
+                self.models_dir,
             ).to(self.device)
 
             shadow_models.append(curr_model)
 
-        pred_logits = [] # N x (num of shadow + 1) x num_trials x num_class (target at -1)
-        in_out_labels = [] # N x (num of shadow + 1)
-        canary_losses = [] # N x num_trials
+        pred_logits = []  # N x (num of shadow + 1) x num_trials x num_class (target at -1)
+        in_out_labels = []  # N x (num of shadow + 1)
+        canary_losses = []  # N x num_trials
         class_labels = []  # N
 
         for target_img_id in tqdm(range(0, len(self.train_set))):
-
             target_img, target_img_class = self.train_set[target_img_id]
             target_img = target_img.unsqueeze(0).to(self.device)
 
@@ -244,7 +251,7 @@ class LiRA(MembershipInferenceAttack):
             pred_logits.append([])
 
             curr_canaries = self._generate_aug_imgs(self.num_aug, target_img_id)
-    
+
             # get logits
             curr_canaries = torch.cat(curr_canaries, dim=0).to(self.device)
 
@@ -272,11 +279,15 @@ class LiRA(MembershipInferenceAttack):
         shadow_in_out_labels = in_out_labels[:-1]
         target_in_out_labels = in_out_labels[-1:]
 
-        lira_online_preds, true_labels = self._lira_online(shadow_scores, shadow_in_out_labels, target_scores, target_in_out_labels)
-        lira_offline_preds, true_labels = self._lira_offline(shadow_scores, shadow_in_out_labels, target_scores, target_in_out_labels)
+        lira_online_preds, true_labels = self._lira_online(
+            shadow_scores, shadow_in_out_labels, target_scores, target_in_out_labels
+        )
+        lira_offline_preds, true_labels = self._lira_offline(
+            shadow_scores, shadow_in_out_labels, target_scores, target_in_out_labels
+        )
 
         return {
-            'lira_online_preds': lira_online_preds,
-            'lira_offline_preds': lira_offline_preds,
-            'true_labels': true_labels
+            "lira_online_preds": lira_online_preds,
+            "lira_offline_preds": lira_offline_preds,
+            "true_labels": true_labels,
         }

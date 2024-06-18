@@ -1,6 +1,10 @@
 """Base class for Data Reconstruction Attacks"""
-import torch 
-class DataReconstructionAttack():
+
+from typing import Tuple
+import torch
+
+
+class DataReconstructionAttack:
     """
     Base class for Data Reconstruction Attacks
     Attributes::
@@ -16,10 +20,10 @@ class DataReconstructionAttack():
     """
 
     def __init__(
-        self, 
-        target_model: torch.nn.Module, 
-        input_size: int, 
-        output_size: int, 
+        self,
+        target_model: torch.nn.Module,
+        input_size: Tuple[int, ...],
+        output_size: int,
         device: str,
     ):
         self.target_model = target_model

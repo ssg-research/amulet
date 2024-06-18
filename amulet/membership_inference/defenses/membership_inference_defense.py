@@ -1,9 +1,12 @@
 """Base class for Membership Inference defenses"""
-from typing import Optional
-import torch
 
-class MembershipInferenceDefense():
-    """   
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader
+
+
+class MembershipInferenceDefense:
+    """
     Base class for membership inference defenses.
 
     Attributes:
@@ -20,14 +23,15 @@ class MembershipInferenceDefense():
         epochs: int
             Determines number of iterations over training data.
     """
+
     def __init__(
-            self,
-            model: torch.nn.Module,
-            criterion: torch.nn.Module,
-            optimizer: torch.optim.Optimizer,
-            train_loader: torch.utils.data.DataLoader,
-            device: str,
-            epochs: Optional[int] = 5,
+        self,
+        model: nn.Module,
+        criterion: nn.Module,
+        optimizer: torch.optim.Optimizer,
+        train_loader: DataLoader,
+        device: str,
+        epochs: int = 5,
     ):
         self.model = model
         self.criterion = criterion

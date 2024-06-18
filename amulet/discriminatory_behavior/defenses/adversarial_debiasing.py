@@ -1,38 +1,43 @@
 """Adversarial Debiasing Implementation"""
+
 from typing import Optional, Tuple
 
 import torch
+import torch.nn as nn
 import numpy as np
+from torch.utils.data import DataLoader
 from sklearn import metrics
 
 from .discr_behavior_defense import DicriminatoryBehaviorDefense
 
-class Adversary(torch.nn.Module):
+
+class Adversary(nn.Module):
     def __init__(self, n_sensitive=2, n_input=2):
         super(Adversary, self).__init__()
-        self.network = torch.nn.Sequential(
-            torch.nn.Linear(n_input, 32),
-            torch.nn.ReLU(),
-            torch.nn.Linear(32, 32),
-            torch.nn.ReLU(),
-            torch.nn.Linear(32, 32),
-            torch.nn.ReLU(),
-            torch.nn.Linear(32, n_sensitive),
+        self.network = nn.Sequential(
+            nn.Linear(n_input, 32),
+            nn.ReLU(),
+            nn.Linear(32, 32),
+            nn.ReLU(),
+            nn.Linear(32, 32),
+            nn.ReLU(),
+            nn.Linear(32, n_sensitive),
         )
 
     def forward(self, x):
         return torch.sigmoid(self.network(x))
 
+
 class AdversarialDebiasing(DicriminatoryBehaviorDefense):
-    """    
-    Implementation of Adversarial Training algorithm from the method from cleverhans: 
+    """
+    Implementation of Adversarial Training algorithm from the method from cleverhans:
     https://xebia.com/blog/towards-fairness-in-ml-with-adversarial-networks/
-    
+
     Reference:
         learning to Pivot with Adversarial Networks
         Gilles Louppe, Michael Kagan, Kyle Cranmer
         Learning to Pivot with Adversarial Networks.
-    
+
     Attributes:
         model: :class:`~torch.nn.Module`
             The model on which to apply adversarial training.
@@ -51,39 +56,33 @@ class AdversarialDebiasing(DicriminatoryBehaviorDefense):
         epochs: int
             Determines number of iterations over training data.
     """
+
     def __init__(
-            self,
-            model: torch.nn.Module,
-            criterion: torch.nn.Module,
-            optimizer: torch.optim.Optimizer,
-            train_loader: torch.utils.data.DataLoader,
-            test_loader: torch.utils.data.DataLoader,
-            lambdas: torch.Tensor,
-            device: str,
-            epochs: Optional[int] = 5
+        self,
+        model: nn.Module,
+        criterion: nn.Module,
+        optimizer: torch.optim.Optimizer,
+        train_loader: DataLoader,
+        test_loader: DataLoader,
+        lambdas: torch.Tensor,
+        device: str,
+        epochs: Optional[int] = 5,
     ):
-        super().__init__(
-            model,
-            criterion,
-            optimizer,
-            train_loader,
-            test_loader,
-            device
-        )
+        super().__init__(model, criterion, optimizer, train_loader, test_loader, device)
 
         self.lambdas = lambdas.to(device)
         self.epochs = epochs
 
-        self.discmodel = Adversary().to(self.device) 
-        self.adv_criterion = torch.nn.BCELoss(reduce=False)
+        self.discmodel = Adversary().to(self.device)
+        self.adv_criterion = nn.BCELoss(reduce=False)
         self.adv_optimizer = torch.optim.Adam(self.discmodel.parameters())
         self.discmodel = self._pretrain_adversary()
 
-    def train_fair(self) -> torch.nn.Module:
+    def train_fair(self) -> nn.Module:
         print("Training Model with Adversarial Debiasing")
         self.model.train()
         for _ in range(1, 165):
-            for x, y, z in self.train_loader: # Train adversary
+            for x, y, z in self.train_loader:  # Train adversary
                 x, y, z = x.to(self.device), y.to(self.device), z.to(self.device)
                 p_y = self.model(x)
                 self.discmodel.zero_grad()
@@ -92,15 +91,18 @@ class AdversarialDebiasing(DicriminatoryBehaviorDefense):
                 loss_adv.backward()
                 self.adv_optimizer.step()
 
-            for x, y, z in self.train_loader: # train on a single batch
+            for x, y, z in self.train_loader:  # train on a single batch
                 x, y, z = x.to(self.device), y.to(self.device), z.to(self.device)
                 pass
-            p_y = self.model(x)
+            p_y = self.model(x)  # type: ignore[reportPossiblyUnboundVariable]
             p_z = self.discmodel(p_y)
             self.model.zero_grad()
             p_z = self.discmodel(p_y)
-            loss_adv = (self.adv_criterion(p_z, z) * self.lambdas).mean()
-            model_loss = self.model_criterion(p_y, y) - (self.adv_criterion(self.discmodel(p_y), z) * self.lambdas).mean()
+            loss_adv = (self.adv_criterion(p_z, z) * self.lambdas).mean()  # type: ignore[reportPossiblyUnboundVariable]
+            model_loss = (
+                self.model_criterion(p_y, y)  # type: ignore[reportPossiblyUnboundVariable]
+                - (self.adv_criterion(self.discmodel(p_y), z) * self.lambdas).mean()
+            )
             model_loss.backward()
             self.model_optimizer.step()
 
@@ -110,7 +112,7 @@ class AdversarialDebiasing(DicriminatoryBehaviorDefense):
         self.discmodel.eval()
         self.model.eval()
         Z_pred_list = []
-        Z_true_list=[]
+        Z_true_list = []
         with torch.no_grad():
             for X_batch, _, Z_batch in self.test_loader:
                 X_batch, Z_batch = X_batch.to(self.device), Z_batch.to(self.device)
@@ -119,20 +121,19 @@ class AdversarialDebiasing(DicriminatoryBehaviorDefense):
                 Z_pred_list.append(Z_test_pred.cpu().numpy())
                 Z_true_list.append(Z_batch.cpu().numpy())
 
-        race_pred=[]
-        sex_pred=[]
+        race_pred = []
+        sex_pred = []
         for i in Z_pred_list:
             for j in i:
                 race_pred.append(j[0])
                 sex_pred.append(j[1])
 
-        race_true=[]
-        sex_true=[]
+        race_true = []
+        sex_true = []
         for i in Z_true_list:
             for j in i:
                 race_true.append(j[0])
                 sex_true.append(j[1])
-
 
         race_pred = [a.squeeze().tolist() for a in race_pred]
         race_true = [a.squeeze().tolist() for a in race_true]
@@ -141,12 +142,13 @@ class AdversarialDebiasing(DicriminatoryBehaviorDefense):
 
         def searchThreshold(race_pred, race_true, sex_pred, sex_true):
             from operator import itemgetter
-            threshold=np.arange(0.0, 1.0, 0.01)
-            race_auc=[]
-            sex_auc=[]
+
+            threshold = np.arange(0.0, 1.0, 0.01)
+            race_auc = []
+            sex_auc = []
             for t in threshold:
-                race_temp=[]
-                sex_temp=[]
+                race_temp = []
+                sex_temp = []
                 for val in race_pred:
                     if val <= t:
                         race_temp.append(0)
@@ -167,8 +169,8 @@ class AdversarialDebiasing(DicriminatoryBehaviorDefense):
         sex_true = [int(a) for a in sex_true]
         race_true = [int(a) for a in race_true]
         t1, t2 = searchThreshold(race_pred, race_true, sex_pred, sex_true)
-        new_race_pred=[]
-        new_sex_pred=[]
+        new_race_pred = []
+        new_sex_pred = []
         for val in race_pred:
             if val <= t1:
                 new_race_pred.append(0)
@@ -182,8 +184,8 @@ class AdversarialDebiasing(DicriminatoryBehaviorDefense):
         race_pred = [int(a) for a in race_pred]
         sex_pred = [int(a) for a in sex_pred]
 
-        auc_race = metrics.roc_auc_score(race_true, new_race_pred)
-        auc_sex = metrics.roc_auc_score(sex_true, new_sex_pred)
+        auc_race = float(metrics.roc_auc_score(race_true, new_race_pred))
+        auc_sex = float(metrics.roc_auc_score(sex_true, new_sex_pred))
         print("AUC [race]: {}, [sex]: {}".format(auc_race, auc_sex))
         return auc_race, auc_sex
 

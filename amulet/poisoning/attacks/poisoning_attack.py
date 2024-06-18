@@ -1,8 +1,10 @@
-"""Poisoning Base Class
-"""
-import torch
+"""Poisoning Base Class"""
 
-class PoisoningAttack():
+import torch
+import torch.nn as nn
+
+
+class PoisoningAttack:
     """
     Base Class for Poisoning attacks
 
@@ -20,14 +22,15 @@ class PoisoningAttack():
         epochs: int
             Epochs used to train the poisoned model.
     """
+
     def __init__(
-            self,
-            poisoned_model: torch.nn.Module,
-            optimizer: torch.optim.Optimizer,
-            criterion: torch.nn.Module,
-            batch_size: int,
-            device: str,
-            epochs: int = 50
+        self,
+        poisoned_model: nn.Module,
+        optimizer: torch.optim.Optimizer,
+        criterion: nn.Module,
+        batch_size: int,
+        device: str,
+        epochs: int = 50,
     ):
         self.poisoned_model = poisoned_model
         self.optimizer = optimizer

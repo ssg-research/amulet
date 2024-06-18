@@ -3,16 +3,20 @@ Utilities to evaluate models.
 """
 
 import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader
 
-def get_accuracy(model: torch.nn.Module,
-                 data_loader: torch.utils.data.DataLoader,
-                 device: str,
+
+def get_accuracy(
+    model: nn.Module,
+    data_loader: DataLoader,
+    device: str,
 ) -> float:
     """
-    Calculates the classification accuracy of a model. 
+    Calculates the classification accuracy of a model.
 
     Args:
-        model: :class:`~torch.nn.Module`
+        model: :class:`~nn.Module`
             The model to evaluate.
         data_loader: :class:'~torch.utils.data.DataLoader
             Input data to the model.
@@ -35,18 +39,20 @@ def get_accuracy(model: torch.nn.Module,
 
     return 100 * correct / total
 
-def get_fidelity(model_1: torch.nn.Module,
-                 model_2: torch.nn.Module,
-                 data_loader: torch.utils.data.DataLoader,
-                 device: str
+
+def get_fidelity(
+    model_1: nn.Module,
+    model_2: nn.Module,
+    data_loader: DataLoader,
+    device: str,
 ) -> float:
     """
-    Calculates the agreement in predictions (fidelity) of two models. 
+    Calculates the agreement in predictions (fidelity) of two models.
 
     Args:
-        model: :class:`~torch.nn.Module`
+        model: :class:`~nn.Module`
             One of the models to compare.
-        model: :class:`~torch.nn.Module`
+        model: :class:`~nn.Module`
             One of the models to compare.
         data_loader: :class:'~torch.utils.data.DataLoader
             Input data to the models.

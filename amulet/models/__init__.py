@@ -7,9 +7,4 @@ from .linear_net import LinearNet
 from .binary_net import BinaryNet
 from .cnn import CNN
 
-__all__ = [
-    "VGG",
-    "LinearNet",
-    "BinaryNet",
-    "CNN"
-]
+__all__ = ["VGG", "LinearNet", "BinaryNet", "CNN"]

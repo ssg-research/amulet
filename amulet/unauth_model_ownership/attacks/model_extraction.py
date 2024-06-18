@@ -1,48 +1,52 @@
-"""Model Extraction implementation
-"""
+"""Model Extraction implementation"""
+
 import torch
 import torch.nn.functional as F
-from torch.nn import Module
+import torch.nn as nn
 from torch.utils.data import DataLoader
 from torch.optim import Optimizer
 
-class ModelExtraction():
-    """    
-    Implementation of algorithm to extract parameters of a model to 
-    obtain a "stolen" model. Code taken from: 
+
+class ModelExtraction:
+    """
+    Implementation of algorithm to extract parameters of a model to
+    obtain a "stolen" model. Code taken from:
     https://github.com/liuyugeng/ML-Doctor/blob/main/doctor/modsteal.py
 
     Reference:
         ML-Doctor: Holistic Risk Assessment of Inference Attacks Against Machine Learning Models,
-        Yugeng Liu, Rui Wen, Xinlei He, Ahmed Salem, Zhikun Zhang, Michael Backes, 
+        Yugeng Liu, Rui Wen, Xinlei He, Ahmed Salem, Zhikun Zhang, Michael Backes,
         Emiliano De Cristofaro, Mario Fritz, Yang Zhang,
         31st USENIX Security Symposium (USENIX Security 22)
         https://www.usenix.org/conference/usenixsecurity22/presentation/liu-yugeng
 
-    
+
     Attributes:
         target_model: :class:`~torch.nn.Module`
-            This model will be extracted. 
+            This model will be extracted.
         attack_model: :class:`~torch.nn.Module`
-            The model trained by extracting target_model. 
+            The model trained by extracting target_model.
+        optimizer: :class:`~torch.optim.Optimizer`
+            Optimizer for training model.
         criterion: :class:`~torch.nn.Module`
             Loss function for training model.
-        optimizer: :class:`~torch.optim.Optimizer` 
-            Optimizer for training model.
+        train_laoder: :class:`~torch.utils.data.DataLoader`
+            Dataloader for training model.
         device: str
             Device used to train model. Example: "cuda:0".
         epochs: int
             Determines number of iterations over training data.
     """
+
     def __init__(
-            self,
-            target_model: Module,
-            attack_model: Module,
-            optimizer: Optimizer,
-            criterion: Module,
-            train_loader: DataLoader,
-            device: str,
-            epochs: int = 50
+        self,
+        target_model: nn.Module,
+        attack_model: nn.Module,
+        optimizer: Optimizer,
+        criterion: nn.Module,
+        train_loader: DataLoader,
+        device: str,
+        epochs: int = 50,
     ):
         self.target_model = target_model
         self.attack_model = attack_model
@@ -52,7 +56,7 @@ class ModelExtraction():
         self.device = device
         self.epochs = epochs
 
-    def train_attack_model(self) -> Module:
+    def train_attack_model(self) -> nn.Module:
         """
         Trains attack model by extracting the target model.
 
@@ -79,20 +83,22 @@ class ModelExtraction():
                 total += y.size(0)
                 correct += predictions.eq(y).sum().item()
 
-            print(f'Train Epoch: {epoch} Loss: {loss.item():.6f} Acc: {correct/total*100:.2f}')
+            print(
+                f"Train Epoch: {epoch} Loss: {loss.item():.6f} Acc: {correct/total*100:.2f}"  # type: ignore[reportPossiblyUnboundVariable]
+            )
 
         return self.attack_model
-    
-    @staticmethod
-    def evaluate_attack(target_model: torch.nn.Module,
-                        attack_model: torch.nn.Module,
-                        data_loader: torch.utils.data.DataLoader,
-                        device: str
-    ) -> dict:
 
+    @staticmethod
+    def evaluate_attack(
+        target_model: nn.Module,
+        attack_model: nn.Module,
+        data_loader: DataLoader,
+        device: str,
+    ) -> dict:
         """
-        Compares the attack model with the target model with respect to the accuracy, 
-        fidelity (agreement) and correct fidelity (agreement on correct predictions). 
+        Compares the attack model with the target model with respect to the accuracy,
+        fidelity (agreement) and correct fidelity (agreement on correct predictions).
 
         Args:
             test_loader: :class:'~torch.utils.data.DataLoader
@@ -103,7 +109,7 @@ class ModelExtraction():
                 'target_accuracy': Accuracy of the target model.
                 'stolen_accuracy': Accuracy of the stolen (attack) model
                 'fidelity': Fidelity between target and stolen model
-                'correct_fidelity': Fidelity between target and stolen model 
+                'correct_fidelity': Fidelity between target and stolen model
                                     on correct predictions
         """
         target_model.eval()
@@ -123,14 +129,23 @@ class ModelExtraction():
                 _, stolen_model_predictions = torch.max(stolen_model_outputs.data, 1)
 
                 total += target_model_predictions.size(0)
-                fidelity += (target_model_predictions == stolen_model_predictions).sum().item()
+                fidelity += (
+                    (target_model_predictions == stolen_model_predictions).sum().item()
+                )
                 target_correct += (target_model_predictions == labels).sum().item()
                 stolen_correct += (stolen_model_predictions == labels).sum().item()
-                both_correct += ((stolen_model_predictions == labels) & (target_model_predictions == labels)).sum().item()
+                both_correct += (
+                    (
+                        (stolen_model_predictions == labels)
+                        & (target_model_predictions == labels)
+                    )
+                    .sum()
+                    .item()
+                )
 
         return {
-            'target_accuracy': (target_correct/total)*100,
-            'stolen_accuracy': (stolen_correct/total)*100,
-            'fidelity': (fidelity/total)*100,
-            'correct_fidelity': (both_correct/total)*100
+            "target_accuracy": (target_correct / total) * 100,
+            "stolen_accuracy": (stolen_correct / total) * 100,
+            "fidelity": (fidelity / total) * 100,
+            "correct_fidelity": (both_correct / total) * 100,
         }

@@ -5,18 +5,21 @@ Utilities to train and provide white-box access to models.
 from typing import Tuple
 
 import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader
 import numpy as np
 
+
 def train_classifier(
-        model: torch.nn.Module,
-        data_loader: torch.utils.data.DataLoader,
-        criterion: torch.nn.Module,
-        optimizer: torch.optim.Optimizer,
-        epochs: int,
-        device: str, 
-) -> torch.nn.Module:
+    model: nn.Module,
+    data_loader: DataLoader,
+    criterion: nn.Module,
+    optimizer: torch.optim.Optimizer,
+    epochs: int,
+    device: str,
+) -> nn.Module:
     """
-    Trains a classifier. 
+    Trains a classifier.
 
     Args:
         model: :class:`~torch.nn.Module`
@@ -25,7 +28,7 @@ def train_classifier(
             Data used to train the model.
         criterion: :class:`~torch.nn.Module`
             Loss function for training model.
-        optimizer: :class:`~torch.optim.Optimizer` 
+        optimizer: :class:`~torch.optim.Optimizer`
             Optimizer for training model.
         epochs: int
             Determines number of iterations over training data.
@@ -44,29 +47,31 @@ def train_classifier(
             x, y = tuple[0].to(device), tuple[1].to(device)
             optimizer.zero_grad()
             output = model(x)
-            _, predictions = torch.max(output,1)
+            _, predictions = torch.max(output, 1)
             loss = criterion(output, y)
             loss.backward()
             optimizer.step()
             correct += predictions.eq(y).sum().item()
             total += len(y)
 
-        print(f'Train Epoch: {epoch} Loss: {loss.item():.6f} Acc: {correct/total*100:.2f}')
+        print(
+            f"Train Epoch: {epoch} Loss: {loss.item():.6f} Acc: {correct/total*100:.2f}"  # type: ignore[reportPossiblyUnboundVariable]
+        )
 
-    print('Finished training')
+    print("Finished training")
     return model
 
-def get_intermediate_features(model: torch.nn.Module,
-                              data_loader: torch.utils.data.DataLoader,
-                              device: str
+
+def get_intermediate_features(
+    model: nn.Module, data_loader: DataLoader, device: str
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
-    Gets the intermediate layer output of a model. 
+    Gets the intermediate layer output of a model.
 
     Args:
         model: :class:`~torch.nn.Module`
             Model to get intermediate layer outputs from.
-            Assumes model has a .get_hidden() function. 
+            Assumes model has a .get_hidden() function.
             See sample models in src.models.
         data_loader: :class:'~torch.utils.data.DataLoader
             Input data to the model.
@@ -78,7 +83,7 @@ def get_intermediate_features(model: torch.nn.Module,
             The intermediate layer output of the model of type :class:`~torch.Tensor`.
 
             The labels of type :class:`~torch.Tensor`.
-            
+
             The inputs of type :class:`~torch.Tensor`.
     """
     model.eval()
@@ -94,8 +99,8 @@ def get_intermediate_features(model: torch.nn.Module,
             targets.append(y.data.cpu().numpy())
             inputs.append(x.data.cpu().numpy())
 
-    features = np.concatenate(np.array(features,dtype=object))
-    targets= np.concatenate(np.array(targets,dtype=object))
-    inputs= np.concatenate(np.array(inputs,dtype=object))
+    features = np.concatenate(np.array(features, dtype=object))
+    targets = np.concatenate(np.array(targets, dtype=object))
+    inputs = np.concatenate(np.array(inputs, dtype=object))
 
     return features, targets, inputs

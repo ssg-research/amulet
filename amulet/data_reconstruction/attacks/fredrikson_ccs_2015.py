@@ -1,5 +1,6 @@
 """Implementation of Model Inversion Attack from CCS 2015 by Fredrikson et al."""
-from typing import List
+
+from typing import List, Tuple
 import torch
 import numpy as np
 import torch.utils.data
@@ -7,11 +8,12 @@ from torch.autograd import Variable
 
 from .data_reconstruction_attack import DataReconstructionAttack
 
+
 class FredriksonCCS2015(DataReconstructionAttack):
     """
-    Implementation of data reconstruction attack from the method from ML-Doctor Library: 
+    Implementation of data reconstruction attack from the method from ML-Doctor Library:
     https://github.com/liuyugeng/ML-Doctor/blob/main/doctor/modinv.py
-    
+
     Reference:
         Model Inversion Attacks that Exploit Confidence Information and Basic Countermeasures (CCS 2015)
         Matt Fredrikson, Somesh Jha, Thomas Ristenpart
@@ -32,26 +34,26 @@ class FredriksonCCS2015(DataReconstructionAttack):
         device: str
             Device on which to load the PyTorch tensors. Example: "cuda:0".
         alpha: int
-            Number of iterations 
+            Number of iterations
         beta, gamma, lambda: float
             Hyperparameters in paper
     """
 
     def __init__(
-        self, 
-        target_model: torch.nn.Module, 
-        input_size: int, 
-        output_size: int, 
+        self,
+        target_model: torch.nn.Module,
+        input_size: Tuple[int, ...],
+        output_size: int,
         device: str,
         alpha: int,
-        beta: int = 100, 
-        gamma: float = 0.001, 
+        beta: int = 100,
+        gamma: float = 0.001,
         lamda: float = 0.003,
     ):
         super().__init__(
-            target_model, 
-            input_size, 
-            output_size, 
+            target_model,
+            input_size,
+            output_size,
             device,
         )
 
@@ -59,7 +61,7 @@ class FredriksonCCS2015(DataReconstructionAttack):
         self.beta = beta
         self.gamma = gamma
         self.lamda = lamda
-        self.target_label = 1 
+        self.target_label = 1
 
         self.target_model.to(self.device).eval()
 
@@ -69,16 +71,22 @@ class FredriksonCCS2015(DataReconstructionAttack):
     def _model_invert(self):
         current_x = []
         cost_x = []
-        current_x.append(Variable(torch.from_numpy(np.zeros(self.input_size, dtype=np.uint8))).float().to(self.device))
+        current_x.append(
+            Variable(torch.from_numpy(np.zeros(self.input_size, dtype=np.uint8)))
+            .float()
+            .to(self.device)
+        )
         for i in range(self.alpha):
             cost_x.append(self._invert_cost(current_x[i]).to(self.device))
             cost_x[i].backward()
             current_x.append((current_x[i] - self.lamda * current_x[i].grad).data)
             if self._invert_cost(current_x[i + 1]) <= self.gamma:
-                print('Target cost value achieved')
+                print("Target cost value achieved")
                 break
-            elif i >= self.beta and self._invert_cost(current_x[i + 1]) >= max(cost_x[self.beta:i + 1]):
-                print('Exceed beta')
+            elif i >= self.beta and self._invert_cost(current_x[i + 1]) >= max(
+                cost_x[self.beta : i + 1]
+            ):
+                print("Exceed beta")
                 break
 
         i = cost_x.index(min(cost_x))
@@ -87,11 +95,11 @@ class FredriksonCCS2015(DataReconstructionAttack):
     def get_reconstructed_data(self) -> List[torch.autograd.Variable]:
         """
         Outputs the reconstructed data of different classes
-        
+
         Args:
             original_dataset: :class:~`torch.utils.data.DataLoader`
                 The data used to train the target model, please make sure to set the batch size as 1.
-        
+
         Returns:
             Reconstructed data for each class
         """
@@ -100,6 +108,5 @@ class FredriksonCCS2015(DataReconstructionAttack):
             self.target_label = i
             a = self._model_invert()
             reverse_data.append(a)
-        
-        return reverse_data
 
+        return reverse_data
