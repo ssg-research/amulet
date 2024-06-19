@@ -1,7 +1,7 @@
 """Base class for Data Reconstruction Attacks"""
 
 from typing import Tuple
-import torch
+import torch.nn as nn
 
 
 class DataReconstructionAttack:
@@ -21,7 +21,7 @@ class DataReconstructionAttack:
 
     def __init__(
         self,
-        target_model: torch.nn.Module,
+        target_model: nn.Module,
         input_size: Tuple[int, ...],
         output_size: int,
         device: str,

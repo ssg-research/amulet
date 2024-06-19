@@ -18,7 +18,7 @@ class DudduCIKM2022(AttributeInferenceAttack):
 
 
     Attributes:
-        target_model: :class:`~torch.nn.Module`
+        target_model: :class:`~nn.Module`
             This model will be extracted.
         x_train_adv: :class:`~numpy.ndarray`
             input features for training adversary' attack model

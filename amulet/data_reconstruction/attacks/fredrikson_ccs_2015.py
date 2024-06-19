@@ -2,6 +2,7 @@
 
 from typing import List, Tuple
 import torch
+import torch.nn as nn
 import numpy as np
 import torch.utils.data
 from torch.autograd import Variable
@@ -41,7 +42,7 @@ class FredriksonCCS2015(DataReconstructionAttack):
 
     def __init__(
         self,
-        target_model: torch.nn.Module,
+        target_model: nn.Module,
         input_size: Tuple[int, ...],
         output_size: int,
         device: str,

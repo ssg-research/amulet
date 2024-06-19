@@ -1,6 +1,6 @@
 """Attribute Inference Attack Base class"""
 
-import torch
+import torch.nn as nn
 import numpy as np
 
 
@@ -23,7 +23,7 @@ class AttributeInferenceAttack:
 
     def __init__(
         self,
-        target_model: torch.nn.Module,
+        target_model: nn.Module,
         x_train_adv: np.ndarray,
         x_test: np.ndarray,
         z_train_adv: np.ndarray,
