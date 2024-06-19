@@ -37,6 +37,7 @@ venvPath = "."
 venv = ".venv"
 typeCheckingMode = "standard"
 deprecateTypingAliases = true
+reportDeprecated = true
 
 [build-system]
 requires = ["poetry-core"]
