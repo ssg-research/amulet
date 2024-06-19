@@ -244,11 +244,8 @@ def load_lfw(
 
         np.savez(images_path, imgs)
 
-    # Set up attribute dictionaries
-    # pylint: disable=invalid-name
     BINARY_ATTRS = {"gender": ["Female", "Male"], "smile": ["Not Smiling", "Smiling"]}
 
-    # pylint: disable=invalid-name
     MULTI_ATTRS = {
         "race": ["White", "Black"],
         # 'race': ['Asian', 'White', 'Black'], TODO: For most algorithms we require binary attributes. Need to generalize.
