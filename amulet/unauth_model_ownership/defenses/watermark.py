@@ -232,7 +232,7 @@ class ImageFolderCustomClass(Dataset):
         loader (callable, optional): A function to load an image given its path.
      Attributes:
         classes (list): List of the class names.
-        class_to_idx (dict): Dict with items (class_name, class_index).
+        class_to_idx (dict): dict with items (class_name, class_index).
         imgs (list): List of (image path, class_index) tuples
     """
 

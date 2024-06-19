@@ -1,6 +1,5 @@
 """Implementation of attribute inference algorithm"""
 
-from typing import Dict
 import torch
 import torch.nn as nn
 import numpy as np
@@ -40,7 +39,7 @@ class DudduCIKM2022(AttributeInferenceAttack):
     ):
         super().__init__(target_model, x_train_adv, x_test, z_train_adv, device)
 
-    def attack_predictions(self) -> Dict[int, Dict[str, np.ndarray]]:
+    def attack_predictions(self) -> dict[int, dict[str, np.ndarray]]:
         """
         Runs the attribute inference attack by training an attack model
         to predict the sensitive attributes of a model using the predictions

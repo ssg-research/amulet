@@ -1,7 +1,5 @@
 """Adversarial Debiasing Implementation"""
 
-from typing import Optional, Tuple
-
 import torch
 import torch.nn as nn
 import numpy as np
@@ -66,7 +64,7 @@ class AdversarialDebiasing(DicriminatoryBehaviorDefense):
         test_loader: DataLoader,
         lambdas: torch.Tensor,
         device: str,
-        epochs: Optional[int] = 5,
+        epochs: int = 5,
     ):
         super().__init__(model, criterion, optimizer, train_loader, test_loader, device)
 
@@ -108,7 +106,7 @@ class AdversarialDebiasing(DicriminatoryBehaviorDefense):
 
         return self.model
 
-    def adversary_report(self) -> Tuple[float, float]:
+    def adversary_report(self) -> tuple[float, float]:
         self.discmodel.eval()
         self.model.eval()
         Z_pred_list = []

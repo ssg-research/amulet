@@ -1,6 +1,6 @@
 """Outlier Removal implementation"""
 
-from typing import Callable, Tuple
+from typing import Callable
 
 import torch
 import torch.nn as nn
@@ -120,7 +120,7 @@ class OutlierRemoval(PoisoningDefense):
         self,
         get_hidden: Callable[
             [nn.Module, DataLoader, str],
-            Tuple[np.ndarray, np.ndarray, np.ndarray],
+            tuple[np.ndarray, np.ndarray, np.ndarray],
         ] = get_intermediate_features,
     ):
         """

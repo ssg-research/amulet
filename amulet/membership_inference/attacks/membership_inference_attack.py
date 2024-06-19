@@ -2,7 +2,6 @@
 
 import os
 import random
-from typing import Union
 from pathlib import Path
 
 import torch
@@ -52,7 +51,7 @@ class MembershipInferenceAttack:
         num_shadow: int,
         epochs: int,
         device: str,
-        models_dir: Union[Path, str],
+        models_dir: Path | str,
         experiment_id: int,
     ):
         self.shadow_architecture = shadow_architecture
@@ -164,7 +163,7 @@ class InferenceModel(nn.Module):
         dataset: str,
         shadow_architecture: str,
         shadow_capacity: str,
-        models_dir: Union[Path, str],
+        models_dir: Path | str,
     ):
         """
         Class used to load shadow models after they have been trained.

@@ -2,8 +2,6 @@
 Utilities to train and provide white-box access to models.
 """
 
-from typing import Tuple
-
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -64,7 +62,7 @@ def train_classifier(
 
 def get_intermediate_features(
     model: nn.Module, data_loader: DataLoader, device: str
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Gets the intermediate layer output of a model.
 

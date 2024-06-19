@@ -1,7 +1,5 @@
 """Dense neural network implementation"""
 
-from typing import List
-
 import torch
 import torch.nn as nn
 
@@ -18,7 +16,7 @@ class LinearNet(nn.Module):
             in the ith hidden layer.
     """
 
-    def __init__(self, hidden_layer_sizes: List[int]):
+    def __init__(self, hidden_layer_sizes: list[int]):
         super().__init__()
 
         layers = []

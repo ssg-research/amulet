@@ -1,4 +1,3 @@
-from typing import List, Tuple
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -13,8 +12,8 @@ def _figure_mse(recover_fig, original_fig):
 
 def reverse_mse(
     original_dataset: DataLoader,
-    reverse_data: List[torch.autograd.Variable],
-    input_size: Tuple[int, ...],
+    reverse_data: list[torch.autograd.Variable],
+    input_size: tuple[int, ...],
     output_size: int,
     device: str,
 ) -> float:

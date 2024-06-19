@@ -1,9 +1,8 @@
 import torch
 import numpy as np
-from torch.nn import Module
+import torch.nn as nn
 from torch.utils.data import DataLoader
 from sklearn.metrics import accuracy_score
-from typing import Tuple
 
 
 class DiscriminatoryBehavior:
@@ -24,7 +23,7 @@ class DiscriminatoryBehavior:
 
     def __init__(
         self,
-        model: Module,
+        model: nn.Module,
         test_loader: DataLoader,
         device: str,
     ):
@@ -35,7 +34,7 @@ class DiscriminatoryBehavior:
     @staticmethod
     def accuracy(
         predictions: np.ndarray, targets: np.ndarray, attributes: np.ndarray
-    ) -> Tuple[float, float]:
+    ) -> tuple[float, float]:
         output_attr_true = predictions[np.argwhere(attributes == 1)]
         output_attr_false = predictions[np.argwhere(attributes == 0)]
 

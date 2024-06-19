@@ -4,14 +4,13 @@ computer vision applications.
 """
 
 from pathlib import Path
-from typing import Union
 
 import torchvision.transforms as transforms
 from torchvision import datasets
 from sklearn.utils import Bunch
 
 
-def load_cifar10(path: Union[str, Path] = Path("./data/cifar10")) -> Bunch:
+def load_cifar10(path: str | Path = Path("./data/cifar10")) -> Bunch:
     """
     Loads the CIFAR10 dataset from PyTorch after applying standard transformations.
 
@@ -54,7 +53,7 @@ def load_cifar10(path: Union[str, Path] = Path("./data/cifar10")) -> Bunch:
     return Bunch(train_set=train_set, test_set=test_set)
 
 
-def load_fmnist(path: Union[str, Path] = Path("./data/fmnist")) -> Bunch:
+def load_fmnist(path: str | Path = Path("./data/fmnist")) -> Bunch:
     """
     Loads the FashionMNIST dataset from PyTorch after applying standard transformations.
 

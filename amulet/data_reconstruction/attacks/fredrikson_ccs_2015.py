@@ -1,6 +1,5 @@
 """Implementation of Model Inversion Attack from CCS 2015 by Fredrikson et al."""
 
-from typing import List, Tuple
 import torch
 import torch.nn as nn
 import numpy as np
@@ -43,7 +42,7 @@ class FredriksonCCS2015(DataReconstructionAttack):
     def __init__(
         self,
         target_model: nn.Module,
-        input_size: Tuple[int, ...],
+        input_size: tuple[int, ...],
         output_size: int,
         device: str,
         alpha: int,
@@ -93,7 +92,7 @@ class FredriksonCCS2015(DataReconstructionAttack):
         i = cost_x.index(min(cost_x))
         return current_x[i]
 
-    def get_reconstructed_data(self) -> List[torch.autograd.Variable]:
+    def get_reconstructed_data(self) -> list[torch.autograd.Variable]:
         """
         Outputs the reconstructed data of different classes
 

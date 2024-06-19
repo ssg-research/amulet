@@ -1,7 +1,5 @@
 """Binary classifier implementation"""
 
-from typing import List
-
 import torch
 from torch import nn
 
@@ -18,7 +16,7 @@ class BinaryNet(nn.Module):
             in the ith hidden layer
     """
 
-    def __init__(self, num_features: int, hidden_layer_sizes: List[int]):
+    def __init__(self, num_features: int, hidden_layer_sizes: list[int]):
         super().__init__()
 
         layers = []

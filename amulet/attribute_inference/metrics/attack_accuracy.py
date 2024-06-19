@@ -1,14 +1,12 @@
 """Attack accuracy for attribute inference attacks"""
 
-from typing import Dict
-
 from sklearn.metrics import roc_auc_score, balanced_accuracy_score
 import numpy as np
 
 
 def evaluate_attribute_inference(
-    z_test: np.ndarray, predictions: Dict[int, Dict[str, np.ndarray]]
-) -> Dict[int, Dict[str, float]]:
+    z_test: np.ndarray, predictions: dict[int, dict[str, np.ndarray]]
+) -> dict[int, dict[str, float]]:
     """
     Calculates the attack accuracy and AUC score
         for an attribute inference attack.

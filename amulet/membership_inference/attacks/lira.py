@@ -1,7 +1,6 @@
 """Implementation of Likelihood Ratio Attack (LiRA)"""
 
 import copy
-from typing import List, Tuple, Union
 from pathlib import Path
 import torch
 import torch.nn as nn
@@ -69,7 +68,7 @@ class LiRA(MembershipInferenceAttack):
         num_aug: int,
         epochs: int,
         device: str,
-        models_dir: Union[Path, str],
+        models_dir: Path | str,
         experiment_id: int,
     ):
         super().__init__(
@@ -94,7 +93,7 @@ class LiRA(MembershipInferenceAttack):
     # multiple times in a list.
     def _generate_aug_imgs(
         self, num_aug: int, target_img_id: int
-    ) -> List[torch.Tensor]:
+    ) -> list[torch.Tensor]:
         canaries = []
         counter = num_aug
         for i in range(counter):
@@ -144,7 +143,7 @@ class LiRA(MembershipInferenceAttack):
         target_scores,
         target_in_out_labels,
         fix_variance=False,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         dat_in = []
         dat_out = []
 
@@ -193,7 +192,7 @@ class LiRA(MembershipInferenceAttack):
         target_scores,
         target_in_out_labels,
         fix_variance=False,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         dat_out = []
         for j in range(shadow_scores.shape[1]):
             dat_out.append(shadow_scores[~shadow_in_out_labels[:, j], j, :])

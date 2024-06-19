@@ -5,7 +5,6 @@ used in applications with sensitive data attributes.
 
 import os
 from pathlib import Path
-from typing import Union, Tuple
 from urllib.request import urlopen
 
 import pandas as pd
@@ -21,12 +20,13 @@ from PIL import Image
 
 
 def load_census(
-    path: Union[str, Path] = Path("./data/census"),
+    path: str | Path = Path("./data/census"),
     random_seed: int = 7,
     return_x_y_z: bool = False,
-) -> Union[
-    Bunch, Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]
-]:
+) -> (
+    Bunch
+    | tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]
+):
     """
     Loads the Census Income dataset from https://archive.ics.uci.edu/dataset/20/census+income.
     Applies data standard data cleaning and one-hot encoding. Separates the sensitive attributes
@@ -143,15 +143,16 @@ def load_census(
 
 
 def load_lfw(
-    path: Union[str, Path] = Path("./data/lfw"),
+    path: str | Path = Path("./data/lfw"),
     target: str = "age",
     attribute_1: str = "race",
     attribute_2: str = "gender",
     random_seed: int = 7,
     return_x_y_z: bool = False,
-) -> Union[
-    Bunch, Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]
-]:
+) -> (
+    Bunch
+    | tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]
+):
     """
     Loads the Labeled Faces in the Wild (LFW) Dataset from Scikit-Learn and
     combines it with attributes for each image from

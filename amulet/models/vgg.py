@@ -1,11 +1,9 @@
 """VGG implementation"""
 
-from typing import List, Union, Dict
-
 import torch
 import torch.nn as nn
 
-cfgs: Dict[str, List[Union[str, int]]] = {
+cfgs: dict[str, list[str | int]] = {
     "VGG11": [64, "M", 128, "M", 256, 256, "M", 512, 512, "M", 512, 512, "M"],
     "VGG13": [64, 64, "M", 128, 128, "M", 256, 256, "M", 512, 512, "M", 512, 512, "M"],
     "VGG16": [
@@ -88,8 +86,8 @@ class VGG(nn.Module):
         out = self.classifier(out)
         return out
 
-    def _make_layers(self, cfg: List[Union[str, int]]) -> nn.Sequential:
-        layers: List[nn.Module] = []
+    def _make_layers(self, cfg: list[str | int]) -> nn.Sequential:
+        layers: list[nn.Module] = []
         in_channels = 3
         for x in cfg:
             if x == "M":
