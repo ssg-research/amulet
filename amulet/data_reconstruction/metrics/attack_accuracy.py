@@ -5,7 +5,7 @@ import numpy as np
 from torch.autograd import Variable
 
 
-def _figure_mse(recover_fig, original_fig):
+def __figure_mse(recover_fig, original_fig):
     diff = nn.MSELoss()
     return diff(recover_fig, original_fig)
 
@@ -49,7 +49,7 @@ def reverse_mse(
         class_count[y] = class_count[y] + 1
 
     for i in range(output_size):
-        class_mse[i] = _figure_mse(class_avg[i] / class_count[i], (reverse_data[i]))
+        class_mse[i] = __figure_mse(class_avg[i] / class_count[i], (reverse_data[i]))
 
     all_class_avg_mse = 0
     for i in range(output_size):

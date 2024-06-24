@@ -12,7 +12,7 @@ from torchvision import transforms
 from PIL import Image
 
 
-def _getdatatransformswm(shape, gray):
+def __getdatatransformswm(shape, gray):
     if gray:
         transform_wm = transforms.Compose(
             [
@@ -91,7 +91,7 @@ class WatermarkNN:
                 dataset=wm_dataset, batch_size=self.batch_size, shuffle=False
             )
         else:
-            transform_wm = _getdatatransformswm(shape, gray)
+            transform_wm = __getdatatransformswm(shape, gray)
             wmset = ImageFolderCustomClass(wm_path, transform_wm)
             img_nlbl = []
             wm_targets = np.loadtxt(os.path.join(wm_path, "labels-cifar.txt"))

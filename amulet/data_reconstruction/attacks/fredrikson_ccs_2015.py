@@ -65,10 +65,10 @@ class FredriksonCCS2015(DataReconstructionAttack):
 
         self.target_model.to(self.device).eval()
 
-    def _invert_cost(self, input_x):
+    def __invert_cost(self, input_x):
         return 1 - self.target_model(input_x.requires_grad_(True))[0][self.target_label]
 
-    def _model_invert(self):
+    def __model_invert(self):
         current_x = []
         cost_x = []
         current_x.append(
@@ -77,13 +77,13 @@ class FredriksonCCS2015(DataReconstructionAttack):
             .to(self.device)
         )
         for i in range(self.alpha):
-            cost_x.append(self._invert_cost(current_x[i]).to(self.device))
+            cost_x.append(self.__invert_cost(current_x[i]).to(self.device))
             cost_x[i].backward()
             current_x.append((current_x[i] - self.lamda * current_x[i].grad).data)
-            if self._invert_cost(current_x[i + 1]) <= self.gamma:
+            if self.__invert_cost(current_x[i + 1]) <= self.gamma:
                 print("Target cost value achieved")
                 break
-            elif i >= self.beta and self._invert_cost(current_x[i + 1]) >= max(
+            elif i >= self.beta and self.__invert_cost(current_x[i + 1]) >= max(
                 cost_x[self.beta : i + 1]
             ):
                 print("Exceed beta")
@@ -106,7 +106,7 @@ class FredriksonCCS2015(DataReconstructionAttack):
         reverse_data = []
         for i in range(self.output_size):
             self.target_label = i
-            a = self._model_invert()
+            a = self.__model_invert()
             reverse_data.append(a)
 
         return reverse_data
