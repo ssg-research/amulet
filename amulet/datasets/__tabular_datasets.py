@@ -22,6 +22,7 @@ from PIL import Image
 def load_census(
     path: str | Path = Path("./data/census"),
     random_seed: int = 7,
+    test_size: float = 0.5,
     return_x_y_z: bool = False,
 ) -> (
     Bunch
@@ -105,7 +106,7 @@ def load_census(
         features,
         target,
         sensitive_features,
-        test_size=0.5,
+        test_size=test_size,
         stratify=target,
         random_state=random_seed,
     )
@@ -148,6 +149,7 @@ def load_lfw(
     attribute_1: str = "race",
     attribute_2: str = "gender",
     random_seed: int = 7,
+    test_size: float = 0.3,
     return_x_y_z: bool = False,
 ) -> (
     Bunch
@@ -340,7 +342,7 @@ def load_lfw(
 
     # Split data into train / test
     x_train, x_test, y_train, y_test, z_train, z_test = train_test_split(
-        x, y, z, test_size=0.3, random_state=random_seed
+        x, y, z, test_size=test_size, random_state=random_seed
     )
 
     # Normalize data
