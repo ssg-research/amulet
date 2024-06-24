@@ -1,15 +1,14 @@
-"""Simple CNN classifier implementation
-"""
-from typing import List
+"""Simple CNN classifier implementation"""
 
-import torch
 from torch import nn
 
-class CNN(nn.Module): 
+
+class CNN(nn.Module):
     """
-        Builds a neural network for a simply cnn classification task.
+    Builds a neural network for a simply cnn classification task.
 
     """
+
     def __init__(self):
         super(CNN, self).__init__()
 
@@ -26,10 +25,9 @@ class CNN(nn.Module):
             nn.Linear(16 * 10 * 10, 120),
             nn.Linear(120, 84),
             nn.Linear(84, 10),
-        )  
+        )
 
     def forward(self, x):
         x = self.features(x)
         x = x.view(-1, 16 * 10 * 10)
         return self.classifier(x)
-    

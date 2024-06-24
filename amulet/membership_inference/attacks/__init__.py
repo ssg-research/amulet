@@ -1,5 +1,3 @@
 from .lira import LiRA
 
-__all__ = [
-    "LiRA"
-]
+__all__ = ["LiRA"]

@@ -1,15 +1,16 @@
-"""Evasion Defense Base Class
-"""
+"""Evasion Defense Base Class"""
 
 import copy
-from typing import Optional
 
 import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader
 
-class EvasionDefense():
-    """    
+
+class EvasionDefense:
+    """
     Base class for Evasion Defense
-    
+
     Attributes:
         model: :class:`~torch.nn.Module`
             The model on which to apply the defense.
@@ -24,14 +25,15 @@ class EvasionDefense():
         epochs: int
             Determines number of iterations over training data.
     """
+
     def __init__(
-            self,
-            model: torch.nn.Module,
-            criterion: torch.nn.Module,
-            optimizer: torch.optim.Optimizer,
-            train_loader: torch.utils.data.DataLoader,
-            device: str,
-            epochs: Optional[int] = 5,
+        self,
+        model: nn.Module,
+        criterion: nn.Module,
+        optimizer: torch.optim.Optimizer,
+        train_loader: DataLoader,
+        device: str,
+        epochs: int = 5,
     ):
         self.model = copy.deepcopy(model)
         self.criterion = criterion

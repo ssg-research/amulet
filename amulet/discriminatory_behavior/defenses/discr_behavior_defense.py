@@ -1,11 +1,14 @@
 """Base class for Discriminatory Behavior defenses"""
-import torch
-import torch.utils
 
-class DicriminatoryBehaviorDefense():
-    """    
-    Base class for Discriminatory Behavior defenses    
-        
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader
+
+
+class DicriminatoryBehaviorDefense:
+    """
+    Base class for Discriminatory Behavior defenses
+
     Attributes:
         model: :class:`~torch.nn.Module`
             The model on which to apply adversarial training.
@@ -24,14 +27,15 @@ class DicriminatoryBehaviorDefense():
         epochs: int
             Determines number of iterations over training data.
     """
+
     def __init__(
-            self,
-            model: torch.nn.Module,
-            criterion: torch.nn.Module,
-            optimizer: torch.optim.Optimizer,
-            train_loader: torch.utils.data.DataLoader,
-            test_loader: torch.utils.data.DataLoader,
-            device: str,
+        self,
+        model: nn.Module,
+        criterion: nn.Module,
+        optimizer: torch.optim.Optimizer,
+        train_loader: DataLoader,
+        test_loader: DataLoader,
+        device: str,
     ):
         self.model = model
         self.model_criterion = criterion
