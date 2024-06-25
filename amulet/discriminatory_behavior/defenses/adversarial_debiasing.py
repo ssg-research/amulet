@@ -74,7 +74,7 @@ class AdversarialDebiasing(DicriminatoryBehaviorDefense):
         self.discmodel = Adversary().to(self.device)
         self.adv_criterion = nn.BCELoss(reduce=False)
         self.adv_optimizer = torch.optim.Adam(self.discmodel.parameters())
-        self.discmodel = self._pretrain_adversary()
+        self.discmodel = self.__pretrain_adversary()
 
     def train_fair(self) -> nn.Module:
         print("Training Model with Adversarial Debiasing")
@@ -187,7 +187,7 @@ class AdversarialDebiasing(DicriminatoryBehaviorDefense):
         print("AUC [race]: {}, [sex]: {}".format(auc_race, auc_sex))
         return auc_race, auc_sex
 
-    def _pretrain_adversary(self):
+    def __pretrain_adversary(self):
         print("Pretraining Adversary Model")
         for _ in range(5):
             for x, _, z in self.train_loader:

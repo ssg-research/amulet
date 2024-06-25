@@ -92,8 +92,8 @@ class Fingerprinting:
         Runs the Dataset Inference algorithm and returns a p-value for
         the target and suspect models.
         """
-        train_target, test_target = self._feature_extracter(self.target_model)
-        train_suspect, test_suspect = self._feature_extracter(self.suspect_model)
+        train_target, test_target = self.__feature_extracter(self.target_model)
+        train_suspect, test_suspect = self.__feature_extracter(self.suspect_model)
         split_index = int(self.batch_size / 2)
 
         trains = {}
@@ -193,12 +193,12 @@ class Fingerprinting:
 
         return pval, m1 - m2
 
-    def _feature_extracter(self, model):
-        train_d = self._get_mingd_vulnerability(self.train_loader, model)
-        test_d = self._get_mingd_vulnerability(self.test_loader, model)
+    def __feature_extracter(self, model):
+        train_d = self.__get_mingd_vulnerability(self.train_loader, model)
+        test_d = self.__get_mingd_vulnerability(self.test_loader, model)
         return train_d, test_d
 
-    def _get_mingd_vulnerability(self, loader, model, num_images=100):
+    def __get_mingd_vulnerability(self, loader, model, num_images=100):
         batch_size = self.batch_size
         max_iter = num_images / batch_size
         lp_dist = [[], [], []]
@@ -217,12 +217,12 @@ class Fingerprinting:
                     X, y = batch[0].to(self.device), batch[1].to(self.device)
                     self.distance = distance
                     # args.lamb = 0.0001
-                    delta = self._mingd(model, X, target=y * 0 + target_i)
+                    delta = self.__mingd(model, X, target=y * 0 + target_i)
                     _ = model(X + delta)
                     distance_dict = {
-                        "linf": self._norms_linf_squeezed,
-                        "l1": self._norms_l1_squeezed,
-                        "l2": self._norms_l2_squeezed,
+                        "linf": self.__norms_linf_squeezed,
+                        "l1": self.__norms_l1_squeezed,
+                        "l2": self.__norms_l2_squeezed,
                     }
                     distances = distance_dict[distance](delta)
                     temp_list.append(distances.cpu().detach().unsqueeze(-1))
@@ -239,7 +239,7 @@ class Fingerprinting:
 
         return full_d
 
-    def _mingd(self, model, X, target):
+    def __mingd(self, model, X, target):
         start = time.time()
         is_training = model.training
         model.eval()  # Need to freeze the batch norm and dropouts
@@ -273,7 +273,7 @@ class Fingerprinting:
             delta_r = delta[remaining]
             delta_r.requires_grad = True
             preds = model(X_r + delta_r)
-            loss = -1 * self._loss_mingd(preds, target[remaining])
+            loss = -1 * self.__loss_mingd(preds, target[remaining])
             # print(t, loss, remaining.sum().item())
             loss.backward()
             grads = delta_r.grad.detach()  # type: ignore[reportOptionalMemberAccess]
@@ -285,14 +285,14 @@ class Fingerprinting:
                         grads / torch.norm(grads + 1e-12, dim=1).unsqueeze(1)
                     )
                 else:
-                    delta_r.data += alpha * (grads / self._norms_l2(grads + 1e-12))
+                    delta_r.data += alpha * (grads / self.__norms_l2(grads + 1e-12))
             elif self.distance == "l1":
                 if self.dataset == "1D":
-                    delta_r.data += alpha * self._l1_dir_topk_size2(
+                    delta_r.data += alpha * self.__l1_dir_topk_size2(
                         grads, delta_r.data, X_r, self.gap, self.k
                     )
                 else:
-                    delta_r.data += alpha * self._l1_dir_topk(
+                    delta_r.data += alpha * self.__l1_dir_topk(
                         grads, delta_r.data, X_r, self.gap, self.k
                     )
             delta_r.data = torch.min(
@@ -310,14 +310,14 @@ class Fingerprinting:
         return delta
 
     @staticmethod
-    def _loss_mingd(preds, target):
+    def __loss_mingd(preds, target):
         # loss =  (preds.max(dim = 1)[0] - preds[torch.arange(preds.shape[0]),target]).mean()
         criterion = nn.CrossEntropyLoss()
         loss = criterion(preds, target)
         assert loss >= 0
         return loss
 
-    def _l1_dir_topk(self, grad, delta, X, gap, k):
+    def __l1_dir_topk(self, grad, delta, X, gap, k):
         # Check which all directions can still be increased such that
         # they haven't been clipped already and have scope of increasing
         X_curr = X + delta
@@ -334,11 +334,11 @@ class Fingerprinting:
         grad_check = grad.view(batch_size, 1, -1)
         grad_check[u] = 0
 
-        kval = self._kthlargest(grad_check.abs().float(), k, dim=2)[0].unsqueeze(1)
+        kval = self.__kthlargest(grad_check.abs().float(), k, dim=2)[0].unsqueeze(1)
         k_hot = (grad_check.abs() >= kval).float() * grad_check.sign()
         return k_hot.view(batch_size, channels, pix, pix)
 
-    def _l1_dir_topk_size2(self, grad, delta, X, gap, k):
+    def __l1_dir_topk_size2(self, grad, delta, X, gap, k):
         # Check which all directions can still be increased such that
         # they haven't been clipped already and have scope of increasing
         # ipdb.set_trace()
@@ -356,31 +356,31 @@ class Fingerprinting:
         grad_check = grad.view(batch_size, 1, -1)
         grad_check[u] = 0
 
-        kval = self._kthlargest(grad_check.abs().float(), k, dim=2)[0].unsqueeze(1)
+        kval = self.__kthlargest(grad_check.abs().float(), k, dim=2)[0].unsqueeze(1)
         k_hot = (grad_check.abs() >= kval).float() * grad_check.sign()
         return k_hot.view(batch_size, channels)
 
     @staticmethod
-    def _kthlargest(tensor, k, dim=-1):
+    def __kthlargest(tensor, k, dim=-1):
         val, idx = tensor.topk(k, dim=dim)
         return val[:, :, -1], idx[:, :, -1]
 
     @staticmethod
-    def _norms(Z):
+    def __norms(Z):
         return Z.view(Z.shape[0], -1).norm(dim=1)[:, None, None, None]
 
-    def _norms_l2(self, Z):
-        return self._norms(Z)
+    def __norms_l2(self, Z):
+        return self.__norms(Z)
 
-    def _norms_l2_squeezed(self, Z):
-        return self._norms(Z).squeeze(1).squeeze(1).squeeze(1)
+    def __norms_l2_squeezed(self, Z):
+        return self.__norms(Z).squeeze(1).squeeze(1).squeeze(1)
 
     @staticmethod
-    def _norms_l1(Z):
+    def __norms_l1(Z):
         return Z.view(Z.shape[0], -1).abs().sum(dim=1)[:, None, None, None]
 
     @staticmethod
-    def _norms_l1_squeezed(Z):
+    def __norms_l1_squeezed(Z):
         return (
             Z.view(Z.shape[0], -1)
             .abs()
@@ -391,11 +391,11 @@ class Fingerprinting:
         )
 
     @staticmethod
-    def _norms_l0(Z):
+    def __norms_l0(Z):
         return ((Z.view(Z.shape[0], -1) != 0).sum(dim=1)[:, None, None, None]).float()
 
     @staticmethod
-    def _norms_l0_squeezed(Z):
+    def __norms_l0_squeezed(Z):
         return (
             ((Z.view(Z.shape[0], -1) != 0).sum(dim=1)[:, None, None, None])
             .float()
@@ -405,7 +405,7 @@ class Fingerprinting:
         )
 
     @staticmethod
-    def _norms_linf(Z):
+    def __norms_linf(Z):
         return (
             Z.view(Z.shape[0], -1)
             .abs()
@@ -416,5 +416,5 @@ class Fingerprinting:
         )
 
     @staticmethod
-    def _norms_linf_squeezed(Z):
+    def __norms_linf_squeezed(Z):
         return Z.view(Z.shape[0], -1).abs().max(dim=1)[0]
