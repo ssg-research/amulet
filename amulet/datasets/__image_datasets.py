@@ -37,7 +37,6 @@ def load_cifar10(
                                                     ]
                                                 )
             Image transformations to apply to the testing images.
-
     Returns:
         Object (:class:`~amulet.datasets.Data`), with the following attributes:
             train_set: :class:`~torch.utils.data.VisionDataset`
@@ -61,7 +60,6 @@ def load_cifar10(
         transform_test = transforms.Compose(
             [transforms.ToTensor(), transforms.Normalize(mean, std)]
         )
-
     train_set = datasets.CIFAR10(
         root=path, train=True, transform=transform_train, download=True
     )
