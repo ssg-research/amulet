@@ -11,22 +11,19 @@ import pandas as pd
 import torch
 import numpy as np
 from torch.utils.data import TensorDataset
-from sklearn.utils import Bunch
 from sklearn.datasets import fetch_lfw_people
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from ucimlrepo import fetch_ucirepo
 from PIL import Image
 
+from .__data import Data
+
 
 def load_census(
     path: str | Path = Path("./data/census"),
     random_seed: int = 7,
-    return_x_y_z: bool = False,
-) -> (
-    Bunch
-    | tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]
-):
+) -> Data:
     """
     Loads the Census Income dataset from https://archive.ics.uci.edu/dataset/20/census+income.
     Applies data standard data cleaning and one-hot encoding. Separates the sensitive attributes
@@ -41,17 +38,25 @@ def load_census(
         return_x_y_z: bool
             If True, instead of returning a Bunch, it returns a tuple
     Returns:
-        Dictionary-like object (:class:`~sklearn.utils.Bunch`), with the following attributes:
-            train_set: :class:`~torch.utils.data.TensorDataset`
+        Object (:class:`~amulet.datasets.Data`), with the following attributes:
+            train_set: :class:`~torch.utils.data.VisionDataset`
                 A dataset of images and labels used to build a DataLoader for
                 training PyTorch models.
-
-            test_set: :class:`~torch.utils.data.TensorDataset`
+            test_set: :class:`~torch.utils.data.VisionDataset`
                 A dataset of images and labels used to build a DataLoader for
                 test PyTorch models.
-
-        (x_train, x_test, y_train, y_test, z_train, z_test): tuple of ndarrays if return_x_z_y is true
-            ndarrays contain the data, the targets, and the sensitive attributes, each with a train/test split.
+            x_train: :class:`~np.ndarray`
+                Features for the train data.
+            x_test: :class:`~np.ndarray`
+                Features for the test data.
+            y_train: :class:`~np.ndarray`
+                Labels for the train data.
+            y_test: :class:`~np.ndarray`
+                Labels for the test data.
+            z_train: :class:`~np.ndarray`
+                Sensitive attribute labels for the train data.
+            z_test: :class:`~np.ndarray`
+                Sensitive attribute labels for the test data.
     """
     dtypes = {
         "age": int,
@@ -129,17 +134,16 @@ def load_census(
         torch.from_numpy(np.array(y_test)).type(torch.long),
     )
 
-    if return_x_y_z:
-        return (
-            np.array(x_train),
-            np.array(x_test),
-            np.array(y_train),
-            np.array(y_test),
-            np.array(z_train),
-            np.array(z_test),
-        )
-
-    return Bunch(train_set=train_set, test_set=test_set)
+    return Data(
+        train_set=train_set,
+        test_set=test_set,
+        x_train=np.array(x_train),
+        x_test=np.array(x_test),
+        y_train=np.array(y_train),
+        y_test=np.array(y_test),
+        z_train=np.array(z_train),
+        z_test=np.array(z_test),
+    )
 
 
 def load_lfw(
@@ -148,11 +152,7 @@ def load_lfw(
     attribute_1: str = "race",
     attribute_2: str = "gender",
     random_seed: int = 7,
-    return_x_y_z: bool = False,
-) -> (
-    Bunch
-    | tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]
-):
+) -> Data:
     """
     Loads the Labeled Faces in the Wild (LFW) Dataset from Scikit-Learn and
     combines it with attributes for each image from
@@ -182,17 +182,25 @@ def load_lfw(
             Determines random number generation for dataset shuffling. Pass an int
             for reproducible output across multiple function calls.
     Returns:
-        Dictionary-like object (:class:`~sklearn.utils.Bunch`), with the following attributes:
-            train_set: :class:`~torch.utils.data.TensorDataset`
+        Object (:class:`~amulet.datasets.Data`), with the following attributes:
+            train_set: :class:`~torch.utils.data.VisionDataset`
                 A dataset of images and labels used to build a DataLoader for
                 training PyTorch models.
-
-            test_set: :class:`~torch.utils.data.TensorDataset`
+            test_set: :class:`~torch.utils.data.VisionDataset`
                 A dataset of images and labels used to build a DataLoader for
                 test PyTorch models.
-
-        (x_train, x_test, y_train, y_test, z_train, z_test): tuple of ndarrays if return_x_z_y is true
-            ndarrays contain the data, the targets, and the sensitive attributes, each with a train/test split.
+            x_train: :class:`~np.ndarray`
+                Features for the train data.
+            x_test: :class:`~np.ndarray`
+                Features for the test data.
+            y_train: :class:`~np.ndarray`
+                Labels for the train data.
+            y_test: :class:`~np.ndarray`
+                Labels for the test data.
+            z_train: :class:`~np.ndarray`
+                Sensitive attribute labels for the train data.
+            z_test: :class:`~np.ndarray`
+                Sensitive attribute labels for the test data.
     """
     if isinstance(path, str):
         path = Path(path)
@@ -362,15 +370,14 @@ def load_lfw(
         torch.from_numpy(np.array(y_test)).type(torch.long).squeeze(1),
     )
 
-    if return_x_y_z:
-        y_train, y_test = np.array(y_train).reshape(-1), np.array(y_test).reshape(-1)
-        return (
-            np.array(x_train),
-            np.array(x_test),
-            y_train,
-            y_test,
-            np.array(z_train),
-            np.array(z_test),
-        )
-
-    return Bunch(train_set=train_set, test_set=test_set)
+    y_train, y_test = np.array(y_train).reshape(-1), np.array(y_test).reshape(-1)
+    return Data(
+        train_set=train_set,
+        test_set=test_set,
+        x_train=np.array(x_train),
+        x_test=np.array(x_test),
+        y_train=y_train,
+        y_test=y_test,
+        z_train=np.array(z_train),
+        z_test=np.array(z_test),
+    )

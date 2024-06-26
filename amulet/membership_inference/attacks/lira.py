@@ -8,6 +8,7 @@ import scipy
 import numpy as np
 from tqdm import tqdm
 from torch.utils.data import TensorDataset
+from torchvision.datasets import VisionDataset
 from .membership_inference_attack import MembershipInferenceAttack, InferenceModel
 
 
@@ -32,7 +33,7 @@ class LiRA(MembershipInferenceAttack):
             The model architecture used for all shadow models.
         shadow_capacity: str
             Size and complexity of the shadow model.
-        train_set: :class:`~torch.utils.data.TensorDataset`
+        train_set: :class:`~torch.utils.data.TensorDataset` or :class:`~torchvision.datasets.VisionDataset`
             The full dataset, a subset of which is used to train the target model.
         dataset: str
             The name of the dataset.
@@ -60,7 +61,7 @@ class LiRA(MembershipInferenceAttack):
         in_data: np.ndarray,
         shadow_architecture: str,
         shadow_capacity: str,
-        train_set: TensorDataset,
+        train_set: TensorDataset | VisionDataset,
         dataset: str,
         pkeep: float,
         criterion: nn.Module,

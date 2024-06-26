@@ -79,35 +79,25 @@ def main(args: argparse.Namespace) -> None:
     generator = torch.Generator().manual_seed(args.exp_id)
 
     # Load dataset and create data loaders
-    x_train, x_test, y_train, y_test, z_train, z_test = load_data(
-        root_dir, generator, args.dataset, args.training_size, log, return_x_y_z=True
-    )
+    data = load_data(root_dir, generator, args.dataset, args.training_size, log)
 
-    train_set = TensorDataset(
-        torch.from_numpy(x_train).type(torch.float),
-        torch.from_numpy(y_train).type(torch.long),
-    )
-    test_set = TensorDataset(
-        torch.from_numpy(x_test).type(torch.float),
-        torch.from_numpy(y_test).type(torch.long),
-    )
     train_loader = DataLoader(
-        dataset=train_set, batch_size=args.batch_size, shuffle=False
+        dataset=data.train_set, batch_size=args.batch_size, shuffle=False
     )
     test_loader = DataLoader(
-        dataset=test_set, batch_size=args.batch_size, shuffle=False
+        dataset=data.test_set, batch_size=args.batch_size, shuffle=False
     )
 
     sensitive_train_set = TensorDataset(
-        torch.from_numpy(x_train).type(torch.float),
-        torch.from_numpy(y_train).type(torch.long),
-        torch.from_numpy(z_train).type(torch.float),
+        torch.from_numpy(data.x_train).type(torch.float),
+        torch.from_numpy(data.y_train).type(torch.long),
+        torch.from_numpy(data.z_train).type(torch.float),
     )
 
     sensitive_test_set = TensorDataset(
-        torch.from_numpy(x_test).type(torch.float),
-        torch.from_numpy(y_test).type(torch.long),
-        torch.from_numpy(z_test).type(torch.float),
+        torch.from_numpy(data.x_test).type(torch.float),
+        torch.from_numpy(data.y_test).type(torch.long),
+        torch.from_numpy(data.z_test).type(torch.float),
     )
 
     sensitive_train_loader = DataLoader(

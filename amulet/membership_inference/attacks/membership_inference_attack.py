@@ -7,6 +7,7 @@ from pathlib import Path
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset, Subset
+from torchvision.datasets import VisionDataset
 import numpy as np
 from ...utils import initialize_model
 
@@ -20,7 +21,7 @@ class MembershipInferenceAttack:
             The model architecture used for all shadow models.
         shadow_capacity: str
             Size and complexity of the shadow model.
-        train_set: :class:`~torch.utils.data.TensorDataset`
+        train_set: :class:`~torch.utils.data.TensorDataset` or :class:`~torchvision.datasets.VisionDataset`
             The full dataset, a subset of which is used to train the target model.
         dataset: str
             The name of the dataset.
@@ -44,7 +45,7 @@ class MembershipInferenceAttack:
         self,
         shadow_architecture: str,
         shadow_capacity: str,
-        train_set: TensorDataset,
+        train_set: TensorDataset | VisionDataset,
         dataset: str,
         pkeep: float,
         criterion: nn.Module,
