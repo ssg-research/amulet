@@ -37,7 +37,6 @@ def load_cifar10(
                                                     ]
                                                 )
             Image transformations to apply to the testing images.
-
     Returns:
         Dictionary-like object (:class:`~sklearn.utils.Bunch`), with the following attributes:
             Dictionary-like object, with the following attributes:
@@ -64,7 +63,6 @@ def load_cifar10(
         transform_test = transforms.Compose(
             [transforms.ToTensor(), transforms.Normalize(mean, std)]
         )
-
     train_set = datasets.CIFAR10(
         root=path, train=True, transform=transform_train, download=True
     )
