@@ -88,8 +88,8 @@ def main(args: argparse.Namespace) -> None:
 
     # Load dataset and split train data for adversary
     data = load_data(root_dir, generator, args.dataset, args.training_size, log)
-    adv_train_size = int(args.adv_train_fraction * len(data.train_set))
-    target_train_size = len(data.train_set) - adv_train_size
+    adv_train_size = int(args.adv_train_fraction * len(data.train_set))  # type: ignore[reportArgumentType]
+    target_train_size = len(data.train_set) - adv_train_size  # type: ignore[reportArgumentType]
     target_train_set, adv_train_set = random_split(
         data.train_set, [target_train_size, adv_train_size], generator=generator
     )

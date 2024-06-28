@@ -6,8 +6,7 @@ from pathlib import Path
 
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader, TensorDataset, Subset
-from torchvision.datasets import VisionDataset
+from torch.utils.data import DataLoader, Dataset, Subset
 import numpy as np
 from ...utils import initialize_model
 
@@ -21,7 +20,7 @@ class MembershipInferenceAttack:
             The model architecture used for all shadow models.
         shadow_capacity: str
             Size and complexity of the shadow model.
-        train_set: :class:`~torch.utils.data.TensorDataset` or :class:`~torchvision.datasets.VisionDataset`
+        train_set: :class:`~torch.utils.data.Dataset`
             The full dataset, a subset of which is used to train the target model.
         dataset: str
             The name of the dataset.
@@ -45,7 +44,7 @@ class MembershipInferenceAttack:
         self,
         shadow_architecture: str,
         shadow_capacity: str,
-        train_set: TensorDataset | VisionDataset,
+        train_set: Dataset,
         dataset: str,
         pkeep: float,
         criterion: nn.Module,
@@ -129,7 +128,7 @@ class MembershipInferenceAttack:
         indices and the model in the specified directory.
         """
         # Generate random indices to get subset of data
-        keep = np.random.uniform(0, 1, size=(self.num_shadow, len(self.train_set)))
+        keep = np.random.uniform(0, 1, size=(self.num_shadow, len(self.train_set)))  # type: ignore[reportArgumentType]
         order = keep.argsort(0)
         keep = order < int(self.pkeep * self.num_shadow)
 

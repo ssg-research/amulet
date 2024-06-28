@@ -7,8 +7,7 @@ import torch.nn as nn
 import scipy
 import numpy as np
 from tqdm import tqdm
-from torch.utils.data import TensorDataset
-from torchvision.datasets import VisionDataset
+from torch.utils.data import Dataset
 from .membership_inference_attack import MembershipInferenceAttack, InferenceModel
 
 
@@ -33,7 +32,7 @@ class LiRA(MembershipInferenceAttack):
             The model architecture used for all shadow models.
         shadow_capacity: str
             Size and complexity of the shadow model.
-        train_set: :class:`~torch.utils.data.TensorDataset` or :class:`~torchvision.datasets.VisionDataset`
+        train_set: :class:`~torch.utils.data.Dataset`
             The full dataset, a subset of which is used to train the target model.
         dataset: str
             The name of the dataset.
@@ -61,7 +60,7 @@ class LiRA(MembershipInferenceAttack):
         in_data: np.ndarray,
         shadow_architecture: str,
         shadow_capacity: str,
-        train_set: TensorDataset | VisionDataset,
+        train_set: Dataset,
         dataset: str,
         pkeep: float,
         criterion: nn.Module,
@@ -242,7 +241,9 @@ class LiRA(MembershipInferenceAttack):
         canary_losses = []  # N x num_trials
         class_labels = []  # N
 
-        for target_img_id in tqdm(range(0, len(self.train_set))):
+        dataset_size: int = len(self.train_set)  # type: ignore[reportArgumentType]
+
+        for target_img_id in tqdm(range(0, dataset_size)):
             target_img, target_img_class = self.train_set[target_img_id]
             target_img = target_img.unsqueeze(0).to(self.device)
 

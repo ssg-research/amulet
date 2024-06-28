@@ -1,7 +1,6 @@
 """Data Class Implementation"""
 
-from torch.utils.data import TensorDataset
-from torchvision.datasets import VisionDataset
+from torch.utils.data import Dataset
 import numpy as np
 
 
@@ -10,10 +9,10 @@ class Data:
     Wrapper class to return datasets.
 
     Attributes:
-        train_set: :class:`~torch.utils.data.TensorDataset` or :class:`~torchvision.datasets.VisionDataset`
-            Train data as a PyTorch TensorDataset.
-        test_set: :class:`~torch.utils.data.TensorDataset` or :class:`~torchvision.datasets.VisionDataset`
-            Test data as a PyTorch TensorDataset.
+        train_set: :class:`~torch.utils.data.Dataset`
+            Train data, usually as a PyTorch TensorDataset or VisionDataset.
+        test_set: :class:`~torch.utils.data.Dataset`
+            Test data, usually as a PyTorch TensorDataset or VisionDataset.
         x_train: :class:`~np.ndarray` or None
             Train features.
         x_test: :class:`~np.ndarray` or None
@@ -30,8 +29,8 @@ class Data:
 
     def __init__(
         self,
-        train_set: TensorDataset | VisionDataset,
-        test_set: TensorDataset | VisionDataset,
+        train_set: Dataset,
+        test_set: Dataset,
         x_train: np.ndarray | None = None,
         x_test: np.ndarray | None = None,
         y_train: np.ndarray | None = None,
