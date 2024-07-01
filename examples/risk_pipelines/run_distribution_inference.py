@@ -87,6 +87,17 @@ def main(args: argparse.Namespace) -> None:
     # Load dataset and create data loaders
     data = load_data(root_dir, generator, args.dataset, args.training_size, log)
 
+    if (
+        data.x_train is None
+        or data.y_train is None
+        or data.x_test is None
+        or data.y_test is None
+    ):
+        raise Exception("Missing Numpy Arrays in dataset")
+
+    if data.z_train is None or data.z_test is None:
+        raise Exception("Dataset has no sensitive attributes")
+
     distinf = DistributionInference(
         data.x_train,
         data.x_test,

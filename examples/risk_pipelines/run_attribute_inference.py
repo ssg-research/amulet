@@ -89,6 +89,17 @@ def main(args: argparse.Namespace) -> None:
     # Load dataset and split train data for adversary
     data = load_data(root_dir, generator, args.dataset, args.training_size, log)
 
+    if (
+        data.x_train is None
+        or data.y_train is None
+        or data.x_test is None
+        or data.y_test is None
+    ):
+        raise Exception("Missing Numpy Arrays in dataset")
+
+    if data.z_train is None or data.z_test is None:
+        raise Exception("Dataset has no sensitive attributes")
+
     split_data = train_test_split(
         data.x_train, data.y_train, data.z_train, test_size=args.adv_train_fraction
     )
