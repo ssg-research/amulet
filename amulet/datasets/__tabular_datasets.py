@@ -17,14 +17,14 @@ from sklearn.preprocessing import StandardScaler
 from ucimlrepo import fetch_ucirepo
 from PIL import Image
 
-from .__data import Data
+from .__data import AmuletDataset
 
 
 def load_census(
     path: str | Path = Path("./data/census"),
     random_seed: int = 7,
     test_size: float = 0.5,
-) -> Data:
+) -> AmuletDataset:
     """
     Loads the Census Income dataset from https://archive.ics.uci.edu/dataset/20/census+income.
     Applies data standard data cleaning and one-hot encoding. Separates the sensitive attributes
@@ -135,7 +135,7 @@ def load_census(
         torch.from_numpy(np.array(y_test)).type(torch.long),
     )
 
-    return Data(
+    return AmuletDataset(
         train_set=train_set,
         test_set=test_set,
         x_train=np.array(x_train),
@@ -154,7 +154,7 @@ def load_lfw(
     attribute_2: str = "gender",
     test_size: float = 0.3,
     random_seed: int = 7,
-) -> Data:
+) -> AmuletDataset:
     """
     Loads the Labeled Faces in the Wild (LFW) Dataset from Scikit-Learn and
     combines it with attributes for each image from
@@ -373,7 +373,7 @@ def load_lfw(
     )
 
     y_train, y_test = np.array(y_train).reshape(-1), np.array(y_test).reshape(-1)
-    return Data(
+    return AmuletDataset(
         train_set=train_set,
         test_set=test_set,
         x_train=np.array(x_train),

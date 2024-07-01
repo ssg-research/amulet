@@ -7,14 +7,14 @@ from pathlib import Path
 
 import torchvision.transforms as transforms
 from torchvision import datasets
-from .__data import Data
+from .__data import AmuletDataset
 
 
 def load_cifar10(
     path: str | Path = Path("./data/cifar10"),
     transform_train: transforms.Compose | None = None,
     transform_test: transforms.Compose | None = None,
-) -> Data:
+) -> AmuletDataset:
     """
     Loads the CIFAR10 dataset from PyTorch after applying standard transformations.
 
@@ -67,14 +67,14 @@ def load_cifar10(
         root=path, train=False, transform=transform_test, download=True
     )
 
-    return Data(train_set=train_set, test_set=test_set)
+    return AmuletDataset(train_set=train_set, test_set=test_set)
 
 
 def load_fmnist(
     path: str | Path = Path("./data/fmnist"),
     transform_train: transforms.Compose | None = None,
     transform_test: transforms.Compose | None = None,
-) -> Data:
+) -> AmuletDataset:
     """
     Loads the FashionMNIST dataset from PyTorch after applying standard transformations.
 
@@ -139,4 +139,4 @@ def load_fmnist(
         root=path, train=False, transform=transform_test, download=True
     )
 
-    return Data(train_set=train_set, test_set=test_set)
+    return AmuletDataset(train_set=train_set, test_set=test_set)

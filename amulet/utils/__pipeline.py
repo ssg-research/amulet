@@ -12,7 +12,7 @@ from torch.utils.data import random_split
 from sklearn.model_selection import train_test_split
 
 from ..models import VGG, BinaryNet, LinearNet, CNN
-from ..datasets import load_census, load_cifar10, load_fmnist, load_lfw, Data
+from ..datasets import load_census, load_cifar10, load_fmnist, load_lfw, AmuletDataset
 
 
 def load_data(
@@ -22,7 +22,7 @@ def load_data(
     training_size: float,
     log: logging.Logger | None = None,
     exp_id: int = 0,
-) -> Data:
+) -> AmuletDataset:
     """
     Loads data given the dataset and the training size.
 

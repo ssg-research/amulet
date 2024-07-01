@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 
 @dataclass
-class Data:
+class AmuletDataset:
     """
     Wrapper class to return datasets.
 
