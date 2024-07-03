@@ -17,9 +17,8 @@ from ..datasets import load_census, load_cifar10, load_fmnist, load_lfw, AmuletD
 
 def load_data(
     root: Path | str,
-    generator: torch.Generator,
     dataset: str,
-    training_size: float,
+    training_size: float = 1.0,
     log: logging.Logger | None = None,
     exp_id: int = 0,
 ) -> AmuletDataset:
@@ -29,8 +28,6 @@ def load_data(
     Args:
         root: :class:~`pathlib.Path` or str
             Root directory of pipeline
-        generator: :class:~`torch.Generator`
-            Generator used for random seed.
         dataset: str
             Name of the dataset.
         training_size: float
@@ -73,6 +70,7 @@ def load_data(
                 random_state=exp_id,
             )
 
+        generator = torch.Generator().manual_seed(exp_id)
         new_train_size = int(training_size * len(data.train_set))  # type: ignore[reportAttributeAccessIssue]
         train_set, _ = random_split(
             data.train_set,  # type: ignore[reportAttributeAccessIssue]

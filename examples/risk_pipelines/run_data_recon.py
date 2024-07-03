@@ -82,10 +82,9 @@ def main(args: argparse.Namespace) -> None:
 
     # Set random seeds for reproducibility
     torch.manual_seed(args.exp_id)
-    generator = torch.Generator().manual_seed(args.exp_id)
 
     # Load dataset and create data loaders
-    data = load_data(root_dir, generator, args.dataset, args.training_size, log)
+    data = load_data(root_dir, args.dataset, args.training_size, log)
     train_loader = DataLoader(dataset=data.train_set, batch_size=1, shuffle=False)
     test_loader = DataLoader(dataset=data.test_set, batch_size=1, shuffle=False)
 
