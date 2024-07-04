@@ -4,7 +4,7 @@ Simple end-to-end guide to evaluate your model with Amulet, with and without a d
 
 import sys
 
-sys.path.append("../../")
+sys.path.append("../")
 from pathlib import Path
 
 import torch
@@ -18,11 +18,11 @@ from amulet.utils import (
     get_accuracy,
 )
 
-# Setup constants
+# Set up constants
 root_dir = Path("../")
 random_seed = 123
-device = "cuda:0"
-epochs = 100
+device = f"cuda:{0}" if torch.cuda.is_available() else "cpu"
+epochs = 10
 
 # Set random seeds for reproducibility
 torch.manual_seed(random_seed)
@@ -36,7 +36,6 @@ test_loader = DataLoader(dataset=data.test_set, batch_size=256, shuffle=False)
 
 # Train Target Model
 criterion = torch.nn.CrossEntropyLoss()
-
 target_model = initialize_model(
     model_arch="vgg", model_capacity="m1", dataset=dataset
 ).to(device)
