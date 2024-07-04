@@ -87,12 +87,21 @@ def main(args: argparse.Namespace) -> None:
     generator = torch.Generator().manual_seed(args.exp_id)
 
     # Load dataset and split train data for adversary
-    x_train, x_test, y_train, y_test, z_train, z_test = load_data(
-        root_dir, generator, args.dataset, args.training_size, log, return_x_y_z=True
-    )
+    data = load_data(root_dir, generator, args.dataset, args.training_size, log)
+
+    if (
+        data.x_train is None
+        or data.y_train is None
+        or data.x_test is None
+        or data.y_test is None
+    ):
+        raise Exception("Missing Numpy Arrays in dataset")
+
+    if data.z_train is None or data.z_test is None:
+        raise Exception("Dataset has no sensitive attributes")
 
     split_data = train_test_split(
-        x_train, y_train, z_train, test_size=args.adv_train_fraction
+        data.x_train, data.y_train, data.z_train, test_size=args.adv_train_fraction
     )
 
     (
@@ -116,8 +125,8 @@ def main(args: argparse.Namespace) -> None:
     )
 
     test_set = TensorDataset(
-        torch.from_numpy(x_test).type(torch.float),
-        torch.from_numpy(y_test).type(torch.long),
+        torch.from_numpy(data.x_test).type(torch.float),
+        torch.from_numpy(data.y_test).type(torch.long),
     )
 
     target_train_loader = DataLoader(
@@ -169,11 +178,11 @@ def main(args: argparse.Namespace) -> None:
 
     # Run Attribute Inference attack
     attribute_inference = DudduCIKM2022(
-        target_model, x_train_adv, x_test, z_train_adv, args.device
+        target_model, x_train_adv, data.x_test, z_train_adv, args.device
     )
     predictions = attribute_inference.attack_predictions()
 
-    results = evaluate_attribute_inference(z_test, predictions)
+    results = evaluate_attribute_inference(data.z_test, predictions)
 
     print(results)
 

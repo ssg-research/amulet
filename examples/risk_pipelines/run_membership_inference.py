@@ -97,8 +97,12 @@ def main(args: argparse.Namespace) -> None:
     # Load dataset and create data loaders
     data = load_data(root_dir, generator, args.dataset, args.training_size, log)
 
+    dataset_size: int = len(data.train_set)  # type: ignore[reportArgumentType]
+
     keep = np.random.choice(
-        len(data.train_set), size=int(args.pkeep * len(data.train_set)), replace=False
+        dataset_size,
+        size=int(args.pkeep * dataset_size),
+        replace=False,
     )
     keep.sort()
     target_train_set = Subset(

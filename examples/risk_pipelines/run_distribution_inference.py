@@ -85,17 +85,26 @@ def main(args: argparse.Namespace) -> None:
     generator = torch.Generator().manual_seed(args.exp_id)
 
     # Load dataset and create data loaders
-    x_train, x_test, y_train, y_test, z_train, z_test = load_data(
-        root_dir, generator, args.dataset, args.training_size, log, return_x_y_z=True
-    )
+    data = load_data(root_dir, generator, args.dataset, args.training_size, log)
+
+    if (
+        data.x_train is None
+        or data.y_train is None
+        or data.x_test is None
+        or data.y_test is None
+    ):
+        raise Exception("Missing Numpy Arrays in dataset")
+
+    if data.z_train is None or data.z_test is None:
+        raise Exception("Dataset has no sensitive attributes")
 
     distinf = DistributionInference(
-        x_train,
-        x_test,
-        y_train,
-        y_test,
-        z_train,
-        z_test,
+        data.x_train,
+        data.x_test,
+        data.y_train,
+        data.y_test,
+        data.z_train,
+        data.z_test,
         args.filter,
         args.ratio1,
         args.ratio2,

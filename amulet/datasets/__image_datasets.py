@@ -7,14 +7,14 @@ from pathlib import Path
 
 import torchvision.transforms as transforms
 from torchvision import datasets
-from sklearn.utils import Bunch
+from .__data import AmuletDataset
 
 
 def load_cifar10(
     path: str | Path = Path("./data/cifar10"),
     transform_train: transforms.Compose | None = None,
     transform_test: transforms.Compose | None = None,
-) -> Bunch:
+) -> AmuletDataset:
     """
     Loads the CIFAR10 dataset from PyTorch after applying standard transformations.
 
@@ -38,14 +38,11 @@ def load_cifar10(
                                                 )
             Image transformations to apply to the testing images.
     Returns:
-        Dictionary-like object (:class:`~sklearn.utils.Bunch`), with the following attributes:
-            Dictionary-like object, with the following attributes:
-
-            train_set: :class:`~torch.utils.data.TensorDataset`
+        Object (:class:`~amulet.datasets.Data`), with the following attributes:
+            train_set: :class:`~torch.utils.data.VisionDataset`
                 A dataset of images and labels used to build a DataLoader for
                 training PyTorch models.
-
-            test_set: :class:`~torch.utils.data.TensorDataset`
+            test_set: :class:`~torch.utils.data.VisionDataset`
                 A dataset of images and labels used to build a DataLoader for
                 test PyTorch models.
     """
@@ -70,14 +67,14 @@ def load_cifar10(
         root=path, train=False, transform=transform_test, download=True
     )
 
-    return Bunch(train_set=train_set, test_set=test_set)
+    return AmuletDataset(train_set=train_set, test_set=test_set)
 
 
 def load_fmnist(
     path: str | Path = Path("./data/fmnist"),
     transform_train: transforms.Compose | None = None,
     transform_test: transforms.Compose | None = None,
-) -> Bunch:
+) -> AmuletDataset:
     """
     Loads the FashionMNIST dataset from PyTorch after applying standard transformations.
 
@@ -105,12 +102,11 @@ def load_fmnist(
                                                     )
             Image transformations to apply to the testing images.
     Returns:
-        Dictionary-like object (:class:`~sklearn.utils.Bunch`), with the following attributes:
-            train_set: :class:`~torch.utils.data.TensorDataset`
+        Object (:class:`~amulet.datasets.Data`), with the following attributes:
+            train_set: :class:`~torch.utils.data.VisionDataset`
                 A dataset of images and labels used to build a DataLoader for
                 training PyTorch models.
-
-            test_set: :class:`~torch.utils.data.TensorDataset`
+            test_set: :class:`~torch.utils.data.VisionDataset`
                 A dataset of images and labels used to build a DataLoader for
                 test PyTorch models.
     """
@@ -143,4 +139,4 @@ def load_fmnist(
         root=path, train=False, transform=transform_test, download=True
     )
 
-    return Bunch(train_set=train_set, test_set=test_set)
+    return AmuletDataset(train_set=train_set, test_set=test_set)
