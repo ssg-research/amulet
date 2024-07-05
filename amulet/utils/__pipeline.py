@@ -6,7 +6,6 @@ import sys
 import logging
 from pathlib import Path
 
-import torch
 import torch.nn as nn
 from torch.utils.data import random_split
 from sklearn.model_selection import train_test_split
@@ -70,12 +69,10 @@ def load_data(
                 random_state=exp_id,
             )
 
-        generator = torch.Generator().manual_seed(exp_id)
         new_train_size = int(training_size * len(data.train_set))  # type: ignore[reportAttributeAccessIssue]
         train_set, _ = random_split(
             data.train_set,  # type: ignore[reportAttributeAccessIssue]
             [new_train_size, len(data.train_set) - new_train_size],  # type: ignore[reportAttributeAccessIssue]
-            generator=generator,
         )
         data.train_set = train_set  # type: ignore[reportAttributeAccessIssue]
 
