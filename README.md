@@ -56,41 +56,13 @@ Also, `poetry` installs `pre-commit` as a dev dependency.
 
 Run `pre-commit install` for consistent development.
 
-## Features
+## Getting Started
+### Test installation
+To test your installation, please run [amulet/examples/get_started.py](https://github.com/ssg-research/amulet/blob/main/examples/get_started.py). This script also serves as a starting point to learn how to use the library.
 
-We provide a high-level list of features below. Please refer to the Tutorial for more information.
+### Learn More
+For more information on the basics about the library, please see the [Getting Started guide](https://github.com/ssg-research/amulet/blob/main/docs/GETTING_STARTED.md).
 
-### Datasets
-Amulet provides the following for computer vision tasks:
-- [CIFAR10](https://pytorch.org/vision/main/generated/torchvision.datasets.CIFAR10.html).
-- [FashionMNIST](https://pytorch.org/vision/stable/generated/torchvision.datasets.FashionMNIST.html).
+To see the attacks, defenses, and risks (modules) that Amulet implements, please refer to the **Module Heirarchy** (link TBD) in the Tutorial (link TBD).
 
-Amulet pre-processes and provides the following datasets to test for privacy-related concerns:
-- [Census Income Dataset](https://archive.ics.uci.edu/dataset/20/census+income).
-- [Labeled Faces in the Wild (LFW)](https://scikit-learn.org/stable/modules/generated/sklearn.datasets.fetch_lfw_people.html).
-
-### Models
-Amulet provides the following models:
-- [VGG](https://viso.ai/deep-learning/vgg-very-deep-convolutional-networks/): for computer vision tasks.
-- LinearNet: A dense neural network tuned for multiclass classification on the FashionMNIST dataset.
-- BinaryNet: A dense neural network tuned for binary classification.
-
-All models have configurable sizes to evaluate the impact of model capacity. Please see [Defining a Model]() for more details.
-
-### Risks
-Amulet provides attacks, defenses, and evaluation metrics for the following risks:
-#### Security
-- Evasion
-- Poisoning
-- Unauthorized Model Ownership
-
-#### Privacy
-- Membership Inference
-- Attribute Inference
-- Distribution Inference
-- Data Reconstruction
-
-#### Fairness
-- Discriminatory Behavior
-
-Please check the Module Heirarchy for more details.
+For each module, please see [amulet/examples](https://github.com/ssg-research/amulet/tree/main/examples) for implementations of pipelines that include recommendations on how to run each module.

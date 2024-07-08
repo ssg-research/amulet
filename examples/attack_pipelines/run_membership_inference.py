@@ -98,8 +98,6 @@ def main(args: argparse.Namespace) -> None:
 
     dataset_size: int = len(data.train_set)  # type: ignore[reportArgumentType]
 
-    dataset_size: int = len(data.train_set)  # type: ignore[reportArgumentType]
-
     keep = np.random.choice(
         dataset_size,
         size=int(args.pkeep * dataset_size),
