@@ -49,7 +49,7 @@ y_test: np.ndarray | None = None
 z_train: np.ndarray | None = None
 z_test: np.ndarray | None = None
 ```
-Every dataset will have the `train_set` and `test_set` attributes. For datasets that are loaded manually and processed by Amulet (such as LFW and Census Income Dataset), the individual feature and labels arrays will also be set `[x_train, x_test, y_train, y_test]`, as all as the arrays to store sensitive attributes `[z_train, z_test]`.
+Every dataset will have the `train_set` and `test_set` attributes. For datasets that are loaded manually and processed by Amulet (such as LFW and Census Income Dataset), the individual feature and labels arrays will also be set `[x_train, x_test, y_train, y_test]`, as well as the arrays to store sensitive attributes `[z_train, z_test]`.
 
 ## Accessing Datasets
 For easy access, Amulet provides the following function to load any dataset as part of a pipeline:
@@ -105,10 +105,10 @@ Amulet provides the following functions to load datasets:
   ```
 
 # Creating Models
-Any PyTorch module can be used with Amulet. For some modules, it is helpful to have a `get_hidden(self, x: torch.Tensor) -> torch.Tensor` method that returns the intermediate layer output from the model, please see [this example](https://github.com/ssg-research/amulet/blob/main/amulet/models/vgg.py#L106).
+Any PyTorch model of type `torch.nn.Module` can be used with Amulet. For some modules, it is helpful to have a `get_hidden(self, x: torch.Tensor) -> torch.Tensor` method that returns the intermediate layer output from the model, please see [this example](https://github.com/ssg-research/amulet/blob/main/amulet/models/vgg.py#L106).
 
 ## Accessing pre-configured model architectures
-To use some of the models configured for running experiments using Amulet, the following function can be used:
+To use the models configured for running experiments using Amulet, the following function can be used:
 ```python
 def initialize_model(
     model_arch: str,
@@ -118,9 +118,9 @@ def initialize_model(
 ) -> nn.Module:
 ```
 Where:
-- `model_arch`: one of `['vgg', 'cnn', 'linearnet', 'binarynet']`. Each model is optimized for a specific dataset we have.
-- `model_capacity`: one of `['m1', 'm2', 'm3', 'm4]` and configures the size and complexity of the model.
-- `dataset`: one of `['cifar10', 'fminst', 'census', 'lfw']` and is used to determine the input size for some models.
+- `model_arch`: one of `['vgg', 'linearnet', 'binarynet']`. Each model is optimized for a specific dataset that Amulet provides.
+- `model_capacity`: one of `['m1', 'm2', 'm3', 'm4]`. Configures the size and complexity of the model.
+- `dataset`: one of `['cifar10', 'fminst', 'census', 'lfw']`. Used to determine the input size for some models.
 - `log`: for logging.
 
 # Risks
