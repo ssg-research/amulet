@@ -10,7 +10,7 @@ import torch.nn as nn
 from torch.utils.data import random_split
 from sklearn.model_selection import train_test_split
 
-from ..models import VGG, BinaryNet, LinearNet, CNN
+from ..models import VGG, BinaryNet, LinearNet
 from ..datasets import load_census, load_cifar10, load_fmnist, load_lfw, AmuletDataset
 
 
@@ -135,6 +135,7 @@ def initialize_model(
     model_capacity: str,
     dataset: str,
     log: logging.Logger | None = None,
+    batch_norm: bool = True,
 ) -> nn.Module:
     """
     Creates a model using the configuration provided.
@@ -153,9 +154,7 @@ def initialize_model(
         Path to the created directory.
     """
     if model_arch == "vgg":
-        model = VGG(capacity_map[model_capacity]["vgg"])
-    elif model_arch == "cnn":
-        model = CNN()
+        model = VGG(capacity_map[model_capacity]["vgg"], batch_norm=batch_norm)
     elif model_arch == "linearnet":
         model = LinearNet(hidden_layer_sizes=capacity_map[model_capacity]["linearnet"])
     elif model_arch == "binarynet":
