@@ -8,6 +8,7 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader, random_split
 from amulet.unauth_model_ownership.attacks import ModelExtraction
+from amulet.unauth_model_ownership.metrics import evaluate_extraction
 from amulet.utils import (
     load_data,
     initialize_model,
@@ -179,7 +180,7 @@ def main(args: argparse.Namespace) -> None:
         torch.save(attack_model, attack_model_filename)
 
     # Use evaluate_attack() as a static method since the model might be loaded from file
-    evaluation_results = ModelExtraction.evaluate_attack(
+    evaluation_results = evaluate_extraction(
         target_model, attack_model, test_loader, args.device
     )
 
