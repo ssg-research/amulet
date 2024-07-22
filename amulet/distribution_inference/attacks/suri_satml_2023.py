@@ -1,9 +1,9 @@
 import torch
 import numpy as np
-import pandas as pd
 from tqdm import tqdm
 
 from .distribution_inference_attack import DistributionInferenceAttack
+
 
 class SuriSATML2023(DistributionInferenceAttack):
     """
@@ -56,7 +56,7 @@ class SuriSATML2023(DistributionInferenceAttack):
             dataset_name,
             ratio1,
             ratio2,
-            filter_prop
+            filter_prop,
         )
 
         self.device = device
@@ -213,7 +213,6 @@ class SuriSATML2023(DistributionInferenceAttack):
         # if not self.config.kl_voting:
         preds -= np.min(preds, 0)
         preds /= np.max(preds, 0)
-
 
         # TODO: Why is the ground truth being generated from the predictions?
         preds = np.mean(preds, 1)

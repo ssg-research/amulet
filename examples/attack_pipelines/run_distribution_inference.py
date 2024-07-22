@@ -108,7 +108,7 @@ def main(args: argparse.Namespace) -> None:
         args.ratio1,
         args.ratio2,
         args.device,
-        args,
+        args.dataset,
     )
     (
         vic_trainloader_1,

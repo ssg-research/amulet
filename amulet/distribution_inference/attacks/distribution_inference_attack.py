@@ -6,6 +6,7 @@ from sklearn.model_selection import StratifiedShuffleSplit
 from torch.utils.data import TensorDataset, ConcatDataset, DataLoader
 from tqdm import tqdm
 
+
 def heuristic(
     df,
     condition,
@@ -59,6 +60,7 @@ def heuristic(
     picked_df = pckds[np.argmin(vals)]
     return picked_df.reset_index(drop=True)
 
+
 def filter(df, condition, ratio, verbose=True):
     ratio = float(ratio)
     qualify = np.nonzero((condition(df)).to_numpy())[0]
@@ -79,6 +81,7 @@ def filter(df, condition, ratio, verbose=True):
             qi = qualify[: int((ratio * len(notqualify)) / (1 - ratio))]
             return pd.concat([df.iloc[qi], df.iloc[notqualify]])
         return df.iloc[notqualify]
+
 
 def get_filter(df, filter_prop, split, ratio, dataset_name, is_test):
     if dataset_name == "census":
@@ -151,10 +154,11 @@ def get_filter(df, filter_prop, split, ratio, dataset_name, is_test):
             verbose=False,
         )
 
+
 # TODO: List of issues to fix:
 # - Does not use target model, instead trains many "victim" models.
 # - Hardcoded values for attributes. Needs to be generalized.
-# - Need to figure out a design that attacks a single target model. 
+# - Need to figure out a design that attacks a single target model.
 #   For evaluation using metrics we may need to figure out a more complex pipeline.
 class DistributionInferenceAttack:
     def __init__(
@@ -316,7 +320,7 @@ class DistributionInferenceAttack:
             test_loader_1,
             test_loader_2,
         )
-    
+
     def get_x_y(self, P):
         # Scale X values
         Y = P["y"].to_numpy()
