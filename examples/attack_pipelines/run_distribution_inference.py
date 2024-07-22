@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 
 import torch
-from amulet.distribution_inference.attacks import DistributionInference
+from amulet.distribution_inference.attacks import SuriSATML2023
 from amulet.utils import load_data, train_classifier, create_dir, get_accuracy
 from amulet.models.binary_net import BinaryNet
 
@@ -97,7 +97,7 @@ def main(args: argparse.Namespace) -> None:
     if data.z_train is None or data.z_test is None:
         raise Exception("Dataset has no sensitive attributes")
 
-    distinf = DistributionInference(
+    distinf = SuriSATML2023(
         data.x_train,
         data.x_test,
         data.y_train,
