@@ -55,4 +55,7 @@ def reverse_mse(
     for i in range(output_size):
         all_class_avg_mse = all_class_avg_mse + class_mse[i]
 
-    return all_class_avg_mse / output_size
+    accuracy = all_class_avg_mse / output_size
+
+    # PyRight thinks this is a float, it isn't.
+    return accuracy.item()  # type: ignore[reportAttributeAccessIssue]
