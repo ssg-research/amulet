@@ -33,7 +33,7 @@ def parse_args() -> argparse.Namespace:
         help="Options: cifar10, fmnist, lfw, census.",
     )
     parser.add_argument(
-        "--model", type=str, default="cnn", help="Options: vgg, linearnet, binarynet."
+        "--model", type=str, default="vgg", help="Options: vgg, linearnet, binarynet."
     )
     parser.add_argument(
         "--model_capacity",
@@ -45,7 +45,7 @@ def parse_args() -> argparse.Namespace:
         "--training_size", type=float, default=1, help="Fraction of dataset to use."
     )
     parser.add_argument(
-        "--batch_size", type=int, default=256, help="Batch size of input data."
+        "--batch_size", type=int, default=128, help="Batch size of input data."
     )
     parser.add_argument(
         "--epochs", type=int, default=5, help="Number of epochs for training."
@@ -148,9 +148,12 @@ def main(args: argparse.Namespace) -> None:
         defended_model = torch.load(defended_model_filename)
     else:
         log.info("Retraining Model with dp Training")
-        optimizer = torch.optim.Adam(target_model.parameters(), lr=1e-3)
+        defended_model = initialize_model(
+            args.model, args.model_capacity, args.dataset, log, batch_norm=False
+        ).to(args.device)
+        optimizer = torch.optim.Adam(defended_model.parameters(), lr=1e-3)
         dp_training = DPSGD(
-            target_model,
+            defended_model,
             criterion,
             optimizer,
             train_loader,

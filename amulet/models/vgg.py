@@ -65,10 +65,13 @@ class VGG(nn.Module):
             Number of classes for the labels.
     """
 
-    def __init__(self, vgg_name: str, num_classes: int = 10) -> None:
+    def __init__(
+        self, vgg_name: str, num_classes: int = 10, batch_norm: bool = True
+    ) -> None:
         super().__init__()
-        self.features = self._make_layers(cfgs[vgg_name])
+        self.batch_norm = batch_norm
         self.classifier = nn.Linear(512, num_classes)
+        self.features = self._make_layers(cfgs[vgg_name])
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -93,11 +96,18 @@ class VGG(nn.Module):
             if x == "M":
                 layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
             else:
-                layers += [
-                    nn.Conv2d(in_channels, x, kernel_size=3, padding=1),  # type: ignore[reportArgumentType]
-                    nn.BatchNorm2d(x),  # type: ignore[reportArgumentType]
-                    nn.ReLU(inplace=True),
-                ]
+                if self.batch_norm:
+                    layers += [
+                        nn.Conv2d(in_channels, x, kernel_size=3, padding=1),  # type: ignore[reportArgumentType]
+                        nn.BatchNorm2d(x),  # type: ignore[reportArgumentType]
+                        nn.ReLU(inplace=True),
+                    ]
+                else:
+                    layers += [
+                        nn.Conv2d(in_channels, x, kernel_size=3, padding=1),  # type: ignore[reportArgumentType]
+                        nn.ReLU(inplace=True),
+                    ]
+
                 in_channels = x
         layers += [nn.AvgPool2d(kernel_size=1, stride=1)]
 
