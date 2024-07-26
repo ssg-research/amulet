@@ -61,12 +61,12 @@ class SuriSATML2023(DistributionInferenceAttack):
 
         self.device = device
 
-    def _get_kl_preds(self, ka, kb, kc1, kc2):
-        def sigmoid(x):
+    def __get_kl_preds(self, ka, kb, kc1, kc2):
+        def __sigmoid(x):
             exp = np.exp(x)
             return exp / (1 + exp)
 
-        def KL(x, y):
+        def __KL(x, y):
             small_eps = 1e-4
             x_ = np.clip(x, small_eps, 1 - small_eps)
             y_ = np.clip(y, small_eps, 1 - small_eps)
@@ -75,12 +75,12 @@ class SuriSATML2023(DistributionInferenceAttack):
             second_term = x__ * (np.log(x__) - np.log(y__))
             return np.mean(first_term + second_term, 1)
 
-        def _check(x):
+        def __check(x):
             if np.sum(np.isinf(x)) > 0 or np.sum(np.isnan(x)) > 0:
                 print("Invalid values:", x)
                 raise ValueError("Invalid values found!")
 
-        def _pairwise_compare(x, y, xx, yy):
+        def __pairwise_compare(x, y, xx, yy):
             x_ = np.expand_dims(x, 2)
             y_ = np.expand_dims(y, 2)
             y_ = np.transpose(y_, (0, 2, 1))
@@ -91,8 +91,8 @@ class SuriSATML2023(DistributionInferenceAttack):
         ka_, kb_ = ka, kb
         kc1_, kc2_ = kc1, kc2
 
-        ka_, kb_ = sigmoid(ka), sigmoid(kb)
-        kc1_, kc2_ = sigmoid(kc1), sigmoid(kc2)
+        ka_, kb_ = __sigmoid(ka), __sigmoid(kb)
+        kc1_, kc2_ = __sigmoid(kc1), __sigmoid(kc2)
 
         small_eps = 1e-4
         log_vals_a = np.log((small_eps + ka_) / (small_eps + 1 - ka_))
@@ -113,21 +113,21 @@ class SuriSATML2023(DistributionInferenceAttack):
 
         # Compare the KL divergence between the two distributions
         # For both sets of victim models
-        KL_vals_1_a = np.array([KL(ka_, x) for x in kc1_])
-        _check(KL_vals_1_a)
-        KL_vals_1_b = np.array([KL(kb_, x) for x in kc1_])
-        _check(KL_vals_1_b)
-        KL_vals_2_a = np.array([KL(ka_, x) for x in kc2_])
-        _check(KL_vals_2_a)
-        KL_vals_2_b = np.array([KL(kb_, x) for x in kc2_])
-        _check(KL_vals_2_b)
+        KL_vals_1_a = np.array([__KL(ka_, x) for x in kc1_])
+        __check(KL_vals_1_a)
+        KL_vals_1_b = np.array([__KL(kb_, x) for x in kc1_])
+        __check(KL_vals_1_b)
+        KL_vals_2_a = np.array([__KL(ka_, x) for x in kc2_])
+        __check(KL_vals_2_a)
+        KL_vals_2_b = np.array([__KL(kb_, x) for x in kc2_])
+        __check(KL_vals_2_b)
 
-        preds_first = _pairwise_compare(KL_vals_1_a, KL_vals_1_b, xx, yy)
-        preds_second = _pairwise_compare(KL_vals_2_a, KL_vals_2_b, xx, yy)
+        preds_first = __pairwise_compare(KL_vals_1_a, KL_vals_1_b, xx, yy)
+        preds_second = __pairwise_compare(KL_vals_2_a, KL_vals_2_b, xx, yy)
 
         return preds_first, preds_second
 
-    def get_preds(self, loader, models):
+    def __get_preds(self, loader, models):
         """
         Get predictions for given models on given data
         """
@@ -182,23 +182,23 @@ class SuriSATML2023(DistributionInferenceAttack):
         testloader_1,
         testloader_2,
     ):
-        preds_vic_prop1_dist1, _ = self.get_preds(testloader_1, models_vic_1)
-        preds_vic_prop2_dist1, _ = self.get_preds(testloader_1, models_vic_2)
-        preds_adv_prop1_dist1, _ = self.get_preds(testloader_1, models_adv_1)
-        preds_adv_prop2_dist1, _ = self.get_preds(testloader_1, models_adv_2)
+        preds_vic_prop1_dist1, _ = self.__get_preds(testloader_1, models_vic_1)
+        preds_vic_prop2_dist1, _ = self.__get_preds(testloader_1, models_vic_2)
+        preds_adv_prop1_dist1, _ = self.__get_preds(testloader_1, models_adv_1)
+        preds_adv_prop2_dist1, _ = self.__get_preds(testloader_1, models_adv_2)
 
-        preds_vic_prop1_dist2, _ = self.get_preds(testloader_2, models_vic_1)
-        preds_vic_prop2_dist2, _ = self.get_preds(testloader_2, models_vic_2)
-        preds_adv_prop1_dist2, _ = self.get_preds(testloader_2, models_adv_1)
-        preds_adv_prop2_dist2, _ = self.get_preds(testloader_2, models_adv_2)
+        preds_vic_prop1_dist2, _ = self.__get_preds(testloader_2, models_vic_1)
+        preds_vic_prop2_dist2, _ = self.__get_preds(testloader_2, models_vic_2)
+        preds_adv_prop1_dist2, _ = self.__get_preds(testloader_2, models_adv_1)
+        preds_adv_prop2_dist2, _ = self.__get_preds(testloader_2, models_adv_2)
 
-        preds_1_first, preds_1_second = self._get_kl_preds(
+        preds_1_first, preds_1_second = self.__get_kl_preds(
             preds_adv_prop1_dist1,
             preds_adv_prop2_dist1,
             preds_vic_prop1_dist1,
             preds_vic_prop2_dist1,
         )
-        preds_2_first, preds_2_second = self._get_kl_preds(
+        preds_2_first, preds_2_second = self.__get_kl_preds(
             preds_adv_prop1_dist2,
             preds_adv_prop2_dist2,
             preds_vic_prop1_dist2,

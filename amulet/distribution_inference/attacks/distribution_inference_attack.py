@@ -1,3 +1,5 @@
+from typing import Callable
+
 import sys
 import pandas as pd
 import numpy as np
@@ -8,16 +10,15 @@ from tqdm import tqdm
 
 
 def heuristic(
-    df,
-    condition,
-    ratio,
-    cwise_sample,
-    class_imbalance=2.0,
-    n_tries=1000,
-    class_col="label",
-    verbose=True,
+    df: pd.DataFrame,
+    condition: Callable[[pd.DataFrame], pd.DataFrame],
+    ratio: float,
+    cwise_sample: int | None,
+    class_imbalance: float = 2.0,
+    n_tries: int = 1000,
+    class_col: str = "label",
+    verbose: bool = True,
 ):
-    ratio = float(ratio)
     vals, pckds = [], []
     iterator = range(n_tries)
     if verbose:
@@ -61,8 +62,12 @@ def heuristic(
     return picked_df.reset_index(drop=True)
 
 
-def filter(df, condition, ratio, verbose=True):
-    ratio = float(ratio)
+def filter(
+    df: pd.DataFrame,
+    condition: Callable[[pd.DataFrame], pd.DataFrame],
+    ratio: float,
+    verbose: bool = True,
+):
     qualify = np.nonzero((condition(df)).to_numpy())[0]
     notqualify = np.nonzero(np.logical_not((condition(df)).to_numpy()))[0]
     current_ratio = len(qualify) / (len(qualify) + len(notqualify))
@@ -83,20 +88,28 @@ def filter(df, condition, ratio, verbose=True):
         return df.iloc[notqualify]
 
 
-def get_filter(df, filter_prop, split, ratio, dataset_name, is_test):
+def get_filter(
+    df: pd.DataFrame,
+    filter_prop: str,
+    split: str,
+    ratio: float,
+    dataset_name: str,
+    is_test: int,
+):
+    def lambda_fn_sex(x: pd.DataFrame):
+        return x["sex"] == 1
+
+    def lambda_fn_race(x: pd.DataFrame):
+        return x["race"] == 1
+
+    if filter_prop == "sex":
+        lambda_fn = lambda_fn_sex
+    elif filter_prop == "race":
+        lambda_fn = lambda_fn_race
+    else:
+        print("Incorrect filter prop")
+        sys.exit()
     if dataset_name == "census":
-        if filter_prop == "sex":
-
-            def lambda_fn(x):
-                return x["sex"] == 1
-        elif filter_prop == "race":
-
-            def lambda_fn(x):
-                return x["race"] == 1
-        else:
-            print("Incorrect filter prop")
-            sys.exit()
-
         prop_wise_subsample_sizes = {
             "attacker": {
                 "sex": (1100, 500),
@@ -118,20 +131,7 @@ def get_filter(df, filter_prop, split, ratio, dataset_name, is_test):
             class_col="y",
             verbose=False,
         )
-
     else:
-        if filter_prop == "sex":
-
-            def lambda_fn(x):
-                return x["sex"] == 1
-        elif filter_prop == "race":
-
-            def lambda_fn(x):
-                return x["race"] == 1
-        else:
-            print("Incorrect filter prop")
-            sys.exit()
-
         prop_wise_subsample_sizes = {
             "attacker": {
                 "sex": (2200, 1200),
@@ -214,8 +214,8 @@ class DistributionInferenceAttack:
                 TEST_DF, filter_prop, split, prop_ratio, self.dataset_name, is_test=1
             )  # keep the test dataset fixed
             (x_tr, y_tr, cols), (x_te, y_te, cols) = (
-                self.get_x_y(TRAIN_DF),
-                self.get_x_y(TEST_DF),
+                self.__get_x_y(TRAIN_DF),
+                self.__get_x_y(TEST_DF),
             )
             return (x_tr, y_tr), (x_te, y_te), cols
 
@@ -321,7 +321,7 @@ class DistributionInferenceAttack:
             test_loader_2,
         )
 
-    def get_x_y(self, P):
+    def __get_x_y(self, P: pd.DataFrame):
         # Scale X values
         Y = P["y"].to_numpy()
         X = P.drop(columns="y", axis=1)
