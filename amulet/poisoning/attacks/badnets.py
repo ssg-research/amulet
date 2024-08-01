@@ -1,11 +1,9 @@
 import numpy as np
 import torch
-import torch.nn as nn
 from torch.utils.data import TensorDataset
-from .poisoning_attack import PoisoningAttack
 
 
-class BadNets(PoisoningAttack):
+class BadNets:
     """
     Implementation of Badnets attack from https://github.com/Billy1900/BadNet.
 
@@ -31,8 +29,8 @@ class BadNets(PoisoningAttack):
             Device used for model inference. Example: "cuda:0".
         dataset_name: str
             The name of the dataset.
-        exp_id: int
-            Experiment ID used as a random seed for randomly selecting data points.
+        random_seed: int
+            Seed for randomly selecting data points.
         epochs: int
             Epochs used to train the poisoned model.
     """
@@ -40,20 +38,11 @@ class BadNets(PoisoningAttack):
     def __init__(
         self,
         trigger_label: int,
-        poisoned_model: nn.Module,
-        optimizer: torch.optim.Optimizer,
-        criterion: nn.Module,
-        batch_size: int,
         portion: float,
-        device: str,
         dataset_name: str,
-        exp_id: int,
-        epochs: int = 50,
+        random_seed: int,
     ):
-        super().__init__(
-            poisoned_model, optimizer, criterion, batch_size, device, epochs
-        )
-        self.exp_id = exp_id
+        self.random_seed = random_seed
         self.trigger_label = trigger_label
         self.portion = portion
         self.dataset_name = dataset_name
@@ -79,7 +68,7 @@ class BadNets(PoisoningAttack):
                 'test': To poison all the data points.
         """
         # Generate indices for poisoned samples
-        perm = np.random.default_rng(seed=self.exp_id).permutation(len(dataset))[
+        perm = np.random.default_rng(seed=self.random_seed).permutation(len(dataset))[
             0 : int(len(dataset) * self.portion)
         ]
 
