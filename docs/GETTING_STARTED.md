@@ -1,7 +1,7 @@
 
 # Features
 
-We provide a high-level list of features below. Please refer to the Tutorial (Link TBD) for more information.
+We provide a high-level list of features below.
 
 ## Datasets
 Amulet provides the following for computer vision tasks:
@@ -33,7 +33,7 @@ Amulet provides attacks, defenses, and evaluation metrics for the following risk
 ### Fairness
 - Discriminatory Behavior
 
-Please check the Module Heirarchy (link TBD) for more details.
+Please check the [Module Guide](https://github.com/ssg-research/amulet/blob/main/docs/MODULE_GUIDE.md) for more details.
 
 # Data Loading
 
