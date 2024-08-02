@@ -148,15 +148,9 @@ def main(args: argparse.Namespace) -> None:
         optimizer = torch.optim.Adam(poisoned_model.parameters(), lr=1e-3)
         poisoning = BadNets(
             args.trigger_label,
-            poisoned_model,
-            optimizer,
-            criterion,
-            args.batch_size,
             args.poisoned_portion,
-            args.device,
             args.dataset,
             args.exp_id,
-            args.epochs,
         )
 
         poisoned_test_set = poisoning.poison_dataset(data.test_set, mode="test")
@@ -172,15 +166,9 @@ def main(args: argparse.Namespace) -> None:
         optimizer = torch.optim.Adam(poisoned_model.parameters(), lr=1e-3)
         poisoning = BadNets(
             args.trigger_label,
-            poisoned_model,
-            optimizer,
-            criterion,
-            args.batch_size,
             args.poisoned_portion,
-            args.device,
             args.dataset,
             args.exp_id,
-            args.epochs,
         )
 
         poisoned_train_set = poisoning.poison_dataset(data.train_set)
