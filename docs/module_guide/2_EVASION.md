@@ -1,35 +1,8 @@
-# Introduction
-
-Each risk in Amulet represents either an *attack*, a *defense*, or a *metric*.
-To see the list of the risks and the features, please see the [Getting Started guide](https://github.com/ssg-research/amulet/blob/main/docs/GETTING_STARTED.md).
-
-## Design Overview
-Most attacks and defenses are designed such that they take the target model, and some additional information (such as data, hyperparameters, configuration, etc.) as input, run an algorithm, and output a result.
-This result can then be passed onto the respective metrics modules to evaluate the attack or defense. A brief pipeline would look something like:
-```python
-data = load_data()
-
-target_model = initialize_model(*model_architecture_parameters)
-target_model = train_model(target_model, data.train, data.test, *training_parameters)
-
-attack = AttackClass()
-attack_output = attack.run_attack(target_model, data.test, *attack_parameters)
-
-result = evalute_attack(attack_output)
-```
-
-The rest of this document provides detailed usage guidance for each risk implemented in Amulet.
-Please see the [example scripts](https://github.com/ssg-research/amulet/tree/main/examples) provided for each attack / defense.
-These scripts provide an end-to-end pipeline that may be used to run experiments.
-
-# Security Risks
-Amulet implements evasion, data poisoning, and unauthorized model ownership.
-
-## Evasion
+# Evasion
 Amulet implements the Projected Gradient Descent (PGD) algorithm from [cleverhans](https://github.com/cleverhans-lab/cleverhans) to generate adversarial examples.
 PGD is used for the evasion attack and the adversarial training defense.
 
-### Attack:
+## Attack:
 To run an evasion attack, use `amulet.evasion.attacks.EvasionPGD`.
 This module returns a data loader containing the adversarial examples.
 
@@ -45,6 +18,7 @@ from amulet.utils import (
     get_accuracy,
 )
 
+root_dir = './' # Make sure to set this
 dataset_name = 'cifar10' # One of [cifar10, fmnist, census, lfw]
 batch_size = 256
 model = 'vgg' # One of [vgg, linearnet, binarynet]
@@ -84,7 +58,7 @@ test_accuracy_target = get_accuracy(target_model, test_loader, device)
 adversarial_accuracy = get_accuracy(target_model, adversarial_test_loader, device)
 ```
 
-### Defense:
+## Defense:
 To run the adversarial training algorithm use `amulet.evasion.defenses.AdversarialTrainingPGD`.
 This module trains a model using adversarial training.
 
@@ -142,3 +116,6 @@ defended_model = adv_training.train_model()
 
 test_accuracy_defended = get_accuracy(defended_model, test_loader, device)
 ```
+
+## Metrics
+Accuracy (`amulet.utils.get_accuracy`) is currently the only metric implemeneted for evasion attacks.
