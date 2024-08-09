@@ -1,10 +1,10 @@
 # Unauthorized Model Ownership
-These risks are related to an adversary being able to "steal" a model, such that the stolen, or surrogate, model has the same behavior and characteristics as the target model.
+These risks are related to an adversary being able to "steal" a model, such that the stolen (surrogate) model has the same behavior and characteristics as the target model.
 Amulet implements the model stealing attack from [ML-Doctor](https://github.com/liuyugeng/ML-Doctor/blob/main/doctor/modsteal.py), which is based on the following work: [Tramer et. al. *Stealing Machine Learning Models
-via Prediction APIs*, USENIX Security, 2016](https://www.usenix.org/system/files/conference/usenixsecurity16/sec16_paper_tramer.pdf)
+via Prediction APIs*, USENIX Security, 2016](https://www.usenix.org/system/files/conference/usenixsecurity16/sec16_paper_tramer.pdf).
 The best known class of defenses for such attacks is Watermarking or Fingerprinting.
 Amulet implements the [Dataset Inference algorithm from cleverhans](https://github.com/cleverhans-lab/dataset-inference/tree/main) as a fingerprinting mechanism.
-For watermarking, amulet implements the [WatermarkNN algorithm](https://github.com/adiyoss/WatermarkNN), however, this is currently a work in progress.
+For watermarking, Amulet implements the [WatermarkNN algorithm](https://github.com/adiyoss/WatermarkNN), however, this is currently a work in progress.
 
 ## Attack
 To run a model extraction attack, use `amulet.unauth_model_ownership.attacks.ModelExtraction`.
@@ -190,4 +190,7 @@ And outputs a dictionary containing:
 - `correct_fidelity`: Accuracy conditioned on fidelity, i.e., when the models agree, how often are they also correct?
 
 ### Fingerprinting / Watermarking
-Amulet currently does not provide metrics to evaluate fingerprinting or watermarking. The modules output a boolean value for each model classifiying it as either "stolen" or "independently trained". Thus, evaluating these modeuls requires a pipeline to train multiple surrogate models and independently trained models to evaluate the module. This is a work in progress.
+Amulet currently does not provide metrics to evaluate fingerprinting or watermarking.
+The modules output a boolean value for each model classifiying it as either "stolen" or "independently trained".
+Thus, evaluating these modules requires a pipeline to train multiple surrogate models and independently trained models to evaluate the module.
+This is a work in progress.
