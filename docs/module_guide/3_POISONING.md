@@ -108,7 +108,9 @@ print(
 ```
 
 ## Defense
-To run the outlier removal algorithm, use `amulet.poisoning.defenses`. Note that this is not a published defense, however, the KNN Shapley algorithm is published and used to calculate the value of each data point. Please see: [Ruoxi et. al., *Efficient task-specific data valuation for nearest neighbor algorithms*, ACM VLDB, 2019](https://dl.acm.org/doi/10.14778/3342263.3342637)
+To run the outlier removal algorithm, use `amulet.poisoning.defenses`.
+Note that this is not a published defense, however, the KNN Shapley algorithm is published and used to calculate the value of each data point.
+Please see: [Ruoxi et. al., *Efficient task-specific data valuation for nearest neighbor algorithms*, ACM VLDB, 2019](https://dl.acm.org/doi/10.14778/3342263.3342637)
 
 ```python
 import torch
