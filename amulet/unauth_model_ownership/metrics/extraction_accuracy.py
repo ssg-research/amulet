@@ -28,8 +28,8 @@ def evaluate_extraction(
             'target_accuracy': Accuracy of the target model.
             'stolen_accuracy': Accuracy of the stolen (attack) model
             'fidelity': Fidelity between target and stolen model
-            'correct_fidelity': Fidelity between target and stolen model
-                                on correct predictions
+            'correct_fidelity': Correctness conditioned on fidelity, i.e.
+                                when models agree, how often are they also correct?
     """
     target_model.eval()
     attack_model.eval()
@@ -66,5 +66,5 @@ def evaluate_extraction(
         "target_accuracy": (target_correct / total) * 100,
         "stolen_accuracy": (stolen_correct / total) * 100,
         "fidelity": (fidelity / total) * 100,
-        "correct_fidelity": (both_correct / total) * 100,
+        "correct_fidelity": (both_correct / fidelity) * 100,
     }
