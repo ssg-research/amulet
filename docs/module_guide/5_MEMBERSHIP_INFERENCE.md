@@ -172,7 +172,7 @@ print(f'Test accuracy of defended model: {test_accuracy_defended}')
 
 ## Metrics
 Amulet implements the fixed AUC method recommended by [LiRA](https://openreview.net/pdf?id=inPTplK-O6V).
-Use `amulet.membership_inference.metrics.get_fixed_auc()`.
+Use `amulet.membership_inference.metrics.get_fixed_auc`.
 This function takes as input the in/out labels and compares them with the true labels.
 
 To evaluate the effectiveneess of the DP-SGD algorithm, we recommend using the LiRA attack.
