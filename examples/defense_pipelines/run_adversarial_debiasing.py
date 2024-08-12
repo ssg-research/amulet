@@ -162,7 +162,7 @@ def main(args: argparse.Namespace) -> None:
     else:
         log.info("Retraining Model with Group Fairness")
         if (
-            args.dataset == "LFW"
+            args.dataset == "lfw"
         ):  # change lambdas manually to get better trade-off; hyperparameter tuning is hard
             lambdas = torch.Tensor([45, 17])
         else:

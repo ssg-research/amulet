@@ -24,6 +24,7 @@ model = 'vgg' # One of [vgg, linearnet, binarynet]
 model_capacity = 'm1' # One of [m1, m2, m3, m4]
 device = 'cuda:0'
 epochs = 100
+
 alpha = 3000 # Number of iterations for data reconstruction
 
 # Load dataset and create data loaders
@@ -31,7 +32,7 @@ data = load_data(root_dir, dataset_name)
 train_loader = DataLoader(dataset=data.train_set, batch_size=1, shuffle=False)
 test_loader = DataLoader(dataset=data.test_set, batch_size=1, shuffle=False)
 
-# Train or Load Target Model
+# Train Target Model
 criterion = torch.nn.CrossEntropyLoss()
 
 target_model = initialize_model(
