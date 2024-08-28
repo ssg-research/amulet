@@ -2,9 +2,13 @@
 name = "amulet"
 version = "0.1.0"
 description = ""
-authors = ["Your Name <you@example.com>"]
+authors = [
+    "Asim Waheed <asim.waheed29@gmail.com>",
+    "Sebastian Szyller <contact@sebszyller.com>",
+    "Vasisht Duddu <nvduddu@uwaterloo.ca>"
+]
 readme = "README.md"
-package-mode = false
+package-mode = true
 
 [tool.poetry.dependencies]
 python = "^3.11"
@@ -42,3 +46,7 @@ reportDeprecated = true
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[project.urls]
+Homepage = "https://github.com/ssg-research/amulet"
+Issues = "https://github.com/ssg-research/amulet/issues"
