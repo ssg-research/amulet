@@ -73,7 +73,7 @@ def parse_args() -> argparse.Namespace:
         "--num_shadow", type=int, default=8, help="Number of shadow models to train."
     )
     parser.add_argument(
-        "--num_aug", type=int, default=10, help="Number of shadow models to train."
+        "--num_aug", type=int, default=10, help="Number of images to augment."
     )
 
     return parser.parse_args()
