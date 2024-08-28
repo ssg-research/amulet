@@ -9,9 +9,9 @@ from sklearn import metrics
 from .discr_behavior_defense import DicriminatoryBehaviorDefense
 
 
-class Adversary(nn.Module):
+class AdversaryModel(nn.Module):
     def __init__(self, n_sensitive=2, n_input=2):
-        super(Adversary, self).__init__()
+        super(AdversaryModel, self).__init__()
         self.network = nn.Sequential(
             nn.Linear(n_input, 32),
             nn.ReLU(),
@@ -71,7 +71,7 @@ class AdversarialDebiasing(DicriminatoryBehaviorDefense):
         self.lambdas = lambdas.to(device)
         self.epochs = epochs
 
-        self.discmodel = Adversary().to(self.device)
+        self.discmodel = AdversaryModel().to(self.device)
         self.adv_criterion = nn.BCELoss(reduce=False)
         self.adv_optimizer = torch.optim.Adam(self.discmodel.parameters())
         self.discmodel = self.__pretrain_adversary()
