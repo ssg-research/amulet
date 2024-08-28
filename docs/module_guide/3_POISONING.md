@@ -1,5 +1,5 @@
 # Data Poisoning
-Amulet implements the [BadNets](https://github.com/Kooscii/BadNets) to poison a model.
+Amulet implements [BadNets](https://github.com/Kooscii/BadNets) to poison a model.
 To defend against these attacks, Amulet implements outlier removal using [Shapely Values](https://github.com/AI-secure/KNN-shapley).
 
 ## Attack
@@ -7,6 +7,7 @@ To run a data poisoning attack, use `amulet.poisoning.attacks.BadNets`.
 This attack returns a poisoned dataset to train a model.
 
 ```python
+import sys
 import torch
 from torch.utils.data import DataLoader
 from amulet.poisoning.attacks import BadNets
@@ -17,7 +18,10 @@ from amulet.utils import (
     get_accuracy,
 )
 
-root_dir = './' # Make sure to set this
+if len(sys.argv) > 1:
+    root_dir = sys.argv[1]
+else:
+    root_dir = './'
 dataset_name = 'cifar10' # One of [cifar10, fmnist, census, lfw]
 batch_size = 256
 model = 'vgg' # One of [vgg, linearnet, binarynet]
@@ -113,6 +117,7 @@ Note that this is not a published defense, however, the KNN Shapley algorithm is
 Please see: [Ruoxi et. al., *Efficient task-specific data valuation for nearest neighbor algorithms*, ACM VLDB, 2019](https://dl.acm.org/doi/10.14778/3342263.3342637)
 
 ```python
+import sys
 import torch
 from torch.utils.data import DataLoader
 from amulet.poisoning.defenses import OutlierRemoval
@@ -123,7 +128,10 @@ from amulet.utils import (
     get_accuracy,
 )
 
-root_dir = './' # Make sure to set this
+if len(sys.argv) > 1:
+    root_dir = sys.argv[1]
+else:
+    root_dir = './'
 dataset_name = 'cifar10' # One of [cifar10, fmnist, census, lfw]
 batch_size = 256
 model = 'vgg' # One of [vgg, linearnet, binarynet]

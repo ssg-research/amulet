@@ -10,6 +10,7 @@ For watermarking, Amulet implements the [WatermarkNN algorithm](https://github.c
 To run a model extraction attack, use `amulet.unauth_model_ownership.attacks.ModelExtraction`.
 This attack trains a surrogate model using the original target model.
 ```python
+import sys
 import torch
 from torch.utils.data import DataLoader, random_split
 from amulet.unauth_model_ownership.attacks import ModelExtraction
@@ -20,8 +21,10 @@ from amulet.utils import (
     get_accuracy,
 )
 
-root_dir = './' # Make sure to set this
-dataset_name = 'cifar10' # One of [cifar10, fmnist, census, lfw]
+if len(sys.argv) > 1:
+    root_dir = sys.argv[1]
+else:
+    root_dir = './' dataset_name = 'cifar10' # One of [cifar10, fmnist, census, lfw]
 batch_size = 256
 model = 'vgg' # One of [vgg, linearnet, binarynet]
 model_capacity = 'm1' # One of [m1, m2, m3, m4]
@@ -93,6 +96,7 @@ Note that unlike other modules, a *suspect* model is required to run fingerprint
 This could be a surrogate model using the attack above, or a separately trained model.
 
 ```python
+import sys
 import torch
 from torch.utils.data import DataLoader
 from amulet.unauth_model_ownership.defenses import Fingerprinting
@@ -102,7 +106,11 @@ from amulet.utils import (
     train_classifier,
     get_accuracy,
 )
-root_dir = './' # Make sure to set this
+
+if len(sys.argv) > 1:
+    root_dir = sys.argv[1]
+else:
+    root_dir = './'
 dataset_name = 'cifar10' # One of [cifar10, fmnist, census, lfw]
 batch_size = 256
 model = 'vgg' # One of [vgg, linearnet, binarynet]

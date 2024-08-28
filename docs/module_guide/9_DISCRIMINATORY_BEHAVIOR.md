@@ -7,6 +7,7 @@ This module only works with datasets that have sensitive attributes, such as Cen
 ## Defense
 To run the adversarial debiasing module, use `amulet.discriminatory_behavior.defenses.AdversarialDebiasing`. This module uses adversarial training to ensure that the model outputs are independent of the sensitive attributes in the data.
 ```python
+import sys
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 from amulet.discriminatory_behavior.defenses import AdversarialDebiasing
@@ -18,7 +19,10 @@ from amulet.utils import (
     get_accuracy,
 )
 
-root_dir = './' # Make sure to set this
+if len(sys.argv) > 1:
+    root_dir = sys.argv[1]
+else:
+    root_dir = './'
 dataset_name = 'lfw' # One of [lfw, census]
 batch_size = 256
 model = 'vgg' # One of [vgg, linearnet, binarynet]

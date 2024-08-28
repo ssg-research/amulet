@@ -8,6 +8,7 @@ Attribute inference only works for datasets that have sensitive attributes.
 Amulet provides the LFW and Census datasets for such use cases.
 
 ```python
+import sys
 import torch
 import numpy as np
 from torch.utils.data import DataLoader, TensorDataset
@@ -21,8 +22,10 @@ from amulet.utils import (
 )
 from sklearn.model_selection import train_test_split
 
-root_dir = './' # Make sure to set this
-dataset_name = 'lfw' # One of [lfw, census]
+if len(sys.argv) > 1:
+    root_dir = sys.argv[1]
+else:
+    root_dir = './' dataset_name = 'lfw' # One of [lfw, census]
 batch_size = 256
 model = 'vgg' # One of [vgg, linearnet, binarynet]
 model_capacity = 'm1' # One of [m1, m2, m3, m4]

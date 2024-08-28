@@ -3,9 +3,10 @@ Amulet implements the data reconstruction attack from the [ML-Doctor library](ht
 and Basic Countermeasures](https://rist.tech.cornell.edu/papers/mi-ccs.pdf) by Fredrikson et. al. published at ACM CCS 2015.
 
 ## Attack
-To run an data reconstruction attack, use `amulet.data_reconstruction.attacks.FredriksonCCS2015`.
+To run a data reconstruction attack, use `amulet.data_reconstruction.attacks.FredriksonCCS2015`.
 
 ```python
+import sys
 import torch
 from torch.utils.data import DataLoader
 from amulet.data_reconstruction.attacks import FredriksonCCS2015
@@ -17,8 +18,10 @@ from amulet.utils import (
     get_accuracy,
 )
 
-root_dir = './' # Make sure to set this
-dataset_name = 'lfw' # One of [lfw, census]
+if len(sys.argv) > 1:
+    root_dir = sys.argv[1]
+else:
+    root_dir = './' dataset_name = 'lfw' # One of [lfw, census]
 batch_size = 256
 model = 'vgg' # One of [vgg, linearnet, binarynet]
 model_capacity = 'm1' # One of [m1, m2, m3, m4]

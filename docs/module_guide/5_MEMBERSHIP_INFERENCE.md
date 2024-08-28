@@ -7,6 +7,7 @@ To run a membership inference attack, use `amulet.membership_inference.attacks.L
 This attack classifies each data point as `in` or `out`.
 
 ```python
+import sys
 import torch
 import numpy as np
 from torch.utils.data import DataLoader, Subset
@@ -20,8 +21,10 @@ from amulet.utils import (
     get_accuracy,
 )
 
-root_dir = './' # Make sure to set this
-dataset_name = 'cifar10' # One of [cifar10, fmnist, census, lfw]
+if len(sys.argv) > 1:
+    root_dir = sys.argv[1]
+else:
+    root_dir = './' dataset_name = 'cifar10' # One of [cifar10, fmnist, census, lfw]
 batch_size = 256
 model = 'vgg' # One of [vgg, linearnet, binarynet]
 model_capacity = 'm1' # One of [m1, m2, m3, m4]
@@ -103,6 +106,7 @@ To train a model using DP-SGD, use `amulet.membership_inference.defenses.DPSGD`.
 Note that the current implementation of DP-SGD does not work with batch normalization.
 
 ```python
+import sys
 import torch
 from torch.utils.data import DataLoader
 from amulet.membership_inference.defenses import DPSGD
@@ -113,8 +117,10 @@ from amulet.utils import (
     get_accuracy,
 )
 
-root_dir = './' # Make sure to set this
-dataset_name = 'cifar10' # One of [cifar10, fmnist, census, lfw]
+if len(sys.argv) > 1:
+    root_dir = sys.argv[1]
+else:
+    root_dir = './' dataset_name = 'cifar10' # One of [cifar10, fmnist, census, lfw]
 batch_size = 256
 model = 'vgg' # One of [vgg, linearnet, binarynet]
 model_capacity = 'm1' # One of [m1, m2, m3, m4]

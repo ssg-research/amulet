@@ -8,6 +8,7 @@ This module returns a data loader containing the adversarial examples.
 
 The following code snippet shows a brief example:
 ```python
+import sys
 import torch
 from torch.utils.data import DataLoader
 from amulet.evasion.attacks import EvasionPGD
@@ -18,7 +19,10 @@ from amulet.utils import (
     get_accuracy,
 )
 
-root_dir = './' # Make sure to set this
+if len(sys.argv) > 1:
+    root_dir = sys.argv[1]
+else:
+    root_dir = './'
 dataset_name = 'cifar10' # One of [cifar10, fmnist, census, lfw]
 batch_size = 256
 model = 'vgg' # One of [vgg, linearnet, binarynet]
@@ -64,6 +68,7 @@ This module trains a model using adversarial training.
 
 The following code snippet shows a brief example:
 ```python
+import sys
 import torch
 from torch.utils.data import DataLoader
 from amulet.evasion.defenses import AdversarialTrainingPGD
@@ -74,6 +79,10 @@ from amulet.utils import (
     get_accuracy,
 )
 
+if len(sys.argv) > 1:
+    root_dir = sys.argv[1]
+else:
+    root_dir = './'
 dataset_name = 'cifar10' # One of [cifar10, fmnist, census, lfw]
 batch_size = 256
 model = 'vgg' # One of [vgg, linearnet, binarynet]
