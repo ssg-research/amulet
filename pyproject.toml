@@ -1,10 +1,18 @@
 [tool.poetry]
-name = "amulet"
+name = "amuletml"
 version = "0.1.0"
-description = ""
-authors = ["Your Name <you@example.com>"]
+description = "Amulet is a Python machine learning (ML) package to evaluate the susceptibility of different risks to security, privacy, and fairness."
+authors = [
+    "Asim Waheed <asim.waheed29@gmail.com>",
+    "Sebastian Szyller <contact@sebszyller.com>",
+    "Vasisht Duddu <nvduddu@uwaterloo.ca>"
+]
 readme = "README.md"
-package-mode = false
+license = "Apache-2.0"
+packages = [
+    {include = "amulet"}
+]
+package-mode = true
 
 [tool.poetry.dependencies]
 python = "^3.11"
@@ -17,8 +25,8 @@ opacus                = "1.4.1"
 pandas                = "2.2.1"
 scikit-learn          = "1.4.1.post1"
 scipy                 = "1.12.0"
-torch                 = {version = "^2.2.0+cu118", source = "pytorch-gpu-src"}
-torchvision           = {version = "^0.18.0+cu118", source = "pytorch-gpu-src"}
+torch                 = {version = "^2.2.0", source = "pytorch-gpu-src"}
+torchvision           = {version = "^0.18.0", source = "pytorch-gpu-src"}
 tqdm                  = "4.66.2"
 ucimlrepo             = "0.0.3"
 wget                  = "3.2.0"
@@ -42,3 +50,7 @@ reportDeprecated = true
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[project.urls]
+Homepage = "https://github.com/ssg-research/amulet"
+Issues = "https://github.com/ssg-research/amulet/issues"
