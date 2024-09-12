@@ -1,12 +1,15 @@
 # How to contribute to Amulet
 
 ## Reporting an Issue
+
 We use the Issue tracking feature to track bugs and new code contributions.
 
 ### Creating a bug report
+
 Each issue should include a title and a description of the error you are facing. Ensure to include as much relevant information as possible, including a code sample or failing test demonstrating the expected behavior and your system configuration. Your goal should be to make it easy for yourself - and others - to reproduce the bug and figure out a fix.
 
 ### Feature Requests
+
 Since this is a growing package, we welcome new feature requests! However, remember that you may need to write the code for a feature yourself. Depending on the type of feature you want, there are slightly different requirements. Some examples are:
 - **Requesting a utility for an ML Pipeline.**
 If this is an easy fix and we feel this would be helpful to many users facing the same issue, we would love to work with you on this to make it happen!
@@ -14,6 +17,7 @@ If this is an easy fix and we feel this would be helpful to many users facing th
 Are you a researcher who has discovered a new risk or way to defend against known risks? We welcome your contributions! However, in most cases, we only include state-of-the-art risks or defenses in our package. The package aims to allow other users to test their models against known risks or defenses or enable researchers to test their techniques against the current state-of-the-art. Thus, having a peer-reviewed paper to justify adding a new risk or defense would be nice.
 
 ## Contributing Code
+
 For new functionalities that help with an ML pipeline, please submit an issue, and we can work together to find the best way to incorporate the utility. For a module comprising a new risk or defense, we strongly urge you to follow the same coding conventions as the rest of the package. Please follow the tutorial below to add a new module.
 
 **For all contributions:**
@@ -22,9 +26,52 @@ For new functionalities that help with an ML pipeline, please submit an issue, a
 - **Create a new branch for your contribution.**
 - **After adding the code, create a merge request.**
 
+### Setting up your environment
+
+#### Install poetry
+
+`python3 -m venv .poetry_venv`
+
+`. .poetry_venv/bin/activate` or `. .venv/bin/activate.fish`
+
+`python -m pip install --upgrade pip`
+
+`pip install poetry`
+
+`deactivate`
+
+Consider setting `.poetry_venv/bin/poetry config virtualenvs.create false` to prevent poetry from creating its own venv.
+
+#### Main venv
+
+To create the virtual environemnt:
+`python3 -m venv .venv`
+
+To activate it:
+`source .venv/bin/activate` or if using fish `. .venv/bin/activate.fish`
+
+Then, to install the dependencies:
+`.poetry_venv/bin/poetry install`
+
+**DISCLAIMER:** Installing `pytorch` with `poetry` is [still weird](https://github.com/python-poetry/poetry/blob/main/docs/repositories.md#explicit-package-sources) but should work.
+
+#### Using poetry
+
+(Inside your `.venv`);
+when you add or modify any dependencies in `pyproject.toml`, run `.poetry_venv/bin/poetry lock --no-update` to rebuild the dependency graph.
+Then run `.poetry_venv/bin/poetry install` to install the dependencies.
+
+#### pre-commit
+
+There're some pre-commit hooks configured for this project.
+Also, `poetry` installs `pre-commit` as a dev dependency.
+
+Run `pre-commit install` for consistent development.
+
 ## Additional Features
 
 ### Adding a dataset
+
 By default, dataset loading functions in Amulet return train and test sets as [`torch.utils.data.TensorDataset`](https://pytorch.org/docs/stable/data.html#torch.utils.data.TensorDataset) objects. For datasets with sensitive attributes, users can set a flag that returns NumPy arrays instead. We recommend you look at the existing implementations as an example, specifically [`amulet/utils/_pipeline.py:load_data()`](https://github.com/ssg-research/amulet/blob/main/amulet/utils/_pipeline.py#L16) and [`amulet/datasets/_image_datasets.py`](https://github.com/ssg-research/amulet/blob/main/amulet/datasets/_image_datasets.py). The function template looks like this:
 
 ```python
@@ -51,6 +98,7 @@ Please follow these steps to add a new function to load a dataset:
 4. Add the appropriate if condition in [`amulet/utils/_pipeline.py/load_data()`](https://github.com/ssg-research/amulet/blob/main/amulet/utils/_pipeline.py).
 
 ### Adding a model architecture
+
 Please follow these steps to add a new model architecture to Amulet:
 1. Create a file in `amulet/models/` that defines a model as a `nn.Module` subclass.
 2. We recommend including a `get_hidden()` function in the model since some modules use it. This function outputs the model's hidden layer activations. Example code: [`amulet/models/vgg.py:L65-76`](https://github.com/ssg-research/amulet/blob/main/amulet/models/vgg.py#L65-L76).
@@ -58,9 +106,11 @@ Please follow these steps to add a new model architecture to Amulet:
 4. We also recommend configuring the model size and complexity via input parameters. Please see [`amulet/models/vgg.py`](https://github.com/ssg-research/amulet/blob/main/amulet/models/vgg.py) or [`amulet/models/binary_net.py`](https://github.com/ssg-research/amulet/blob/main/amulet/models/binary_net.py) for examples.
 
 ## Adding a new module
+
 The first step is to decide which risk the new module interacts with. For details, refer to the Tutorial (link TBD). The risks currently defined by Amulet can be found in this table (link TBD). Then, decide whether the module is a metric, attack, or defense. If you have identified a new risk, you may need to add separate modules for a metric, attack and/or defense.
 
 ### Adding an attack or a defense
+
 The general template of an attack or defense:
 - Inputs:
     - Target Model
@@ -77,9 +127,11 @@ Please refer to the Module Templates (link TBD) for an idea of the outputs for o
 Please note that your attack or defense **should not output a metric**. Instead, it should output the data that will be input to one of the existing metrics implemented in the pipeline.
 
 ### Metrics
+
 There is no set template for metrics. Please include in-code documentation about the expected input for the metric calculation and the output range.
 
 ### Steps
+
 Once a rough template has been sketched out, please follow these steps for adding code:
 1. Create a file in the appropriate directory as follows:
 

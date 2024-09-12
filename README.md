@@ -1,4 +1,5 @@
 # Amulet
+
 Amulet is a Python machine learning (ML) package to evaluate the susceptibility of different risks to security, privacy, and fairness. Amulet is applicable to evaluate how algorithms designed to reduce one risk may impact another unrelated risk and compare different attacks/defenses for a given risk.
 
 Amulet builds upon prior work titled [“SoK: Unintended Interactions among Machine Learning Defenses and Risks”](https://arxiv.org/abs/2312.04542) which appears in IEEE Symposium on Security and Privacy 2024. The SoK covers only two interactions and identifies the design of a software library to evaluate unintended interactions as future work. Amulet addresses this gap by including eight different risks each covering their own attacks, defenses and metrics.
@@ -12,57 +13,26 @@ Amulet is:
 
 Built to work with PyTorch, you can incorporate Amulet into your current ML pipeline to test how your model interacts with these state-of-the-art defenses and risks. Alternatively, you can use the example pipelines to bootstrap your pipeline.
 
-## Requirements
+## Getting Started
 
 **Note:** The package requires the CUDA version to be 11.8 or above for PyTorch 2.2
 
-### Install poetry
+The easiest way to start is via `pip`:
 
-`python3 -m venv .poetry_venv`
+`pip install amuletml`
 
-`. .poetry_venv/bin/activate` or `. .venv/bin/activate.fish`
-
-`python -m pip install --upgrade pip`
-
-`pip install poetry`
-
-`deactivate`
-
-Consider setting `.poetry_venv/bin/poetry config virtualenvs.create false` to prevent poetry from creating its own venv.
-
-### Main venv
-
-To create the virtual environemnt:
-`python3 -m venv .venv`
-
-To activate it:
-`source .venv/bin/activate` or if using fish `. .venv/bin/activate.fish`
-
-Then, to install the dependencies:
-`.poetry_venv/bin/poetry install`
-
-**DISCLAIMER:** Installing `pytorch` with `poetry` is [still weird](https://github.com/python-poetry/poetry/blob/main/docs/repositories.md#explicit-package-sources) but should work.
-
-### Using poetry
-
-(Inside your `.venv`);
-when you add or modify any dependencies in `pyproject.toml`, run `.poetry_venv/bin/poetry lock --no-update` to rebuild the dependency graph.
-Then run `.poetry_venv/bin/poetry install` to install the dependencies.
-
-### pre-commit
-
-There're some pre-commit hooks configured for this project.
-Also, `poetry` installs `pre-commit` as a dev dependency.
-
-Run `pre-commit install` for consistent development.
-
-## Getting Started
 ### Test installation
+
 To test your installation, please run [amulet/examples/get_started.py](https://github.com/ssg-research/amulet/blob/main/examples/get_started.py). This script also serves as a starting point to learn how to use the library.
 
 ### Learn More
+
 For more information on the basics about the library, please see the [Getting Started guide](https://github.com/ssg-research/amulet/blob/main/docs/GETTING_STARTED.md).
 
 To see the attacks, defenses, and risks (modules) that Amulet implements, please refer to the **Module Heirarchy** (link TBD) in the Tutorial (link TBD).
 
 For each module, please see [amulet/examples](https://github.com/ssg-research/amulet/tree/main/examples) for implementations of pipelines that include recommendations on how to run each module.
+
+### Contributing
+
+See [CONTRIBUTING](https://github.com/ssg-research/amulet/blob/main/docs/CONTRIBUTING.md) for guidance.
