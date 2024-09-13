@@ -50,7 +50,7 @@ class WatermarkNN:
         wm_path: str | Path,
         gray: bool = False,
         tabular: bool = False,
-        epochs: int = 5,
+        epochs: int = 10,
         batch_size: int = 256,
     ):
         self.target_model = target_model
@@ -159,13 +159,16 @@ class WatermarkNN:
         print("Finished Watermark Embeddding")
         return self.target_model
 
-    def verify(self, model: nn.Module):
+    def verify(self, model: nn.Module, threshold: int = 90):
         """
         Verifies whether the given model contains the watermark or not.
 
         Args:
             model: :class:~`torch.nn.Module`
                 The model being verified for the watermark.
+            threshold: int
+                The minimum watermarking accuracy for a model to be considered
+                a surrogate model.
 
         Returns:
             True if model contains the watermark. False otherwise.
@@ -185,7 +188,7 @@ class WatermarkNN:
 
         print("Watermark Accuracy: {:.2f}".format(watermark_accuracy))
 
-        if watermark_accuracy > 90:
+        if watermark_accuracy > threshold:
             return True
         else:
             return False

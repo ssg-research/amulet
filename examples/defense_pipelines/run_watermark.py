@@ -33,7 +33,10 @@ def parse_args() -> argparse.Namespace:
         help="Options: cifar10, fmnist, lfw, census.",
     )
     parser.add_argument(
-        "--wm_path", type=str, default="../../miscellaneous/trigger_set/", help="trigger sets."
+        "--wm_path",
+        type=str,
+        default="../../miscellaneous/trigger_set/",
+        help="trigger sets.",
     )
     parser.add_argument(
         "--gray",
