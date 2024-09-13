@@ -27,8 +27,17 @@ class WatermarkNN:
             Training data loader to adversarial training.
         device: str
             Device used to train model. Example: "cuda:0".
+        wm_path: str or Path object.
+            Location of the trigger set.
+        gray: bool
+            Used to define the kind of transformation applied to the trigger set.
+            If the original model used grayscale images, it's better to use a grayscale triggerset.
+        tabular: bool
+            If the original dataset is a tabular dataset, set this to true.
         epochs: int
             Determines number of iterations over training data.
+        batch_size int
+            Determines the batch size while embedding the watermark.
     """
 
     def __init__(
