@@ -1,8 +1,14 @@
-"""Data Class Implementation"""
+"""Data Classes Implementation"""
 
-from torch.utils.data import Dataset
+from pathlib import Path
+
 import numpy as np
+import pandas as pd
+import torch
+import torchvision.transforms as transforms
+from torch.utils.data import Dataset
 from dataclasses import dataclass
+from torchvision.io import read_image, ImageReadMode
 
 
 @dataclass
@@ -37,3 +43,46 @@ class AmuletDataset:
     y_test: np.ndarray | None = None
     z_train: np.ndarray | None = None
     z_test: np.ndarray | None = None
+
+
+class CustomImageDataset(Dataset):
+    """
+    PyTorch dataset class to read a custom image dataset.
+
+    Attributes:
+        labels_file: str or Path object.
+            CSV file containing the labels where each row is (img_filename, label).
+        img_dir: str or Path object.
+            Directory containing the images.
+        transform: :class:`~torch.utils.data.Dataset`
+            Transformation to apply to the images.
+    """
+
+    def __init__(
+        self,
+        labels_file: Path | str,
+        img_dir: Path | str,
+        transform: transforms.Compose | None = None,
+    ):
+        if isinstance(img_dir, str):
+            img_dir = Path(img_dir)
+
+        self.img_labels = pd.read_csv(labels_file)
+
+        if self.img_labels.shape[1] != 2:
+            raise Exception("Labels file should have 2 columns.")
+
+        self.img_dir = img_dir
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.img_labels)
+
+    def __getitem__(self, idx):
+        img_path = self.img_dir / self.img_labels.iloc[idx, 0]
+        image = read_image(img_path, mode=ImageReadMode.RGB)
+        label = self.img_labels.iloc[idx, 1]
+        if self.transform:
+            image = self.transform(image).type(torch.float)
+
+        return image, label
