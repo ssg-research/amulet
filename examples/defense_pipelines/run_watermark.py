@@ -70,7 +70,7 @@ def parse_args() -> argparse.Namespace:
         "--batch_size", type=int, default=256, help="Batch size of input data."
     )
     parser.add_argument(
-        "--epochs", type=int, default=1, help="Number of epochs for training."
+        "--epochs", type=int, default=10, help="Number of epochs for training."
     )
     parser.add_argument(
         "--device",
