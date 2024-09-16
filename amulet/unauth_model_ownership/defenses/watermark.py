@@ -68,7 +68,7 @@ class WatermarkNN:
         self.wm_loader = self.get_wm_loader(shape, wm_path, gray, tabular)
         self.verify(self.target_model)
 
-    def get_wm_loader(self, shape: int, wm_path: Path, gray: bool, tabular: bool):
+    def get_wm_loader(self, shape: int, wm_path: Path, gray: bool, tabular: bool) -> DataLoader:
         if tabular:
             wm_data = np.random.random((100, shape))
             wm_label = np.random.randint(0, 1, 100)
@@ -85,16 +85,12 @@ class WatermarkNN:
                     [
                         transforms.CenterCrop((shape, shape)),
                         transforms.Grayscale(num_output_channels=1),
-                        # transforms.ToTensor(),
-                        # transforms.Normalize((0.5), (0.2)),
                     ]
                 )
             else:
                 transform_wm = transforms.Compose(
                     [
                         transforms.CenterCrop((shape, shape)),
-                        # transforms.ToTensor(),
-                        # transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
                     ]
                 )
 
@@ -109,7 +105,7 @@ class WatermarkNN:
             )
         return wm_loader
 
-    def watermark(self):
+    def watermark(self) -> nn.Module:
         """
         Embeds watermark into the model
 
@@ -159,7 +155,7 @@ class WatermarkNN:
         print("Finished Watermark Embeddding")
         return self.target_model
 
-    def verify(self, model: nn.Module, threshold: int = 90):
+    def verify(self, model: nn.Module, threshold: float = 0.9) -> bool:
         """
         Verifies whether the given model contains the watermark or not.
 
@@ -184,7 +180,7 @@ class WatermarkNN:
                 total += labels.size(0)
                 correct += (predicted == labels).sum().item()
 
-        watermark_accuracy = 100 * correct / total
+        watermark_accuracy = correct / total
 
         print("Watermark Accuracy: {:.2f}".format(watermark_accuracy))
 
