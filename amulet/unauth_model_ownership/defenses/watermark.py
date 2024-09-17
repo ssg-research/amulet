@@ -68,7 +68,9 @@ class WatermarkNN:
         self.wm_loader = self.get_wm_loader(shape, wm_path, gray, tabular)
         self.verify(self.target_model)
 
-    def get_wm_loader(self, shape: int, wm_path: Path, gray: bool, tabular: bool) -> DataLoader:
+    def get_wm_loader(
+        self, shape: int, wm_path: Path, gray: bool, tabular: bool
+    ) -> DataLoader:
         if tabular:
             wm_data = np.random.random((100, shape))
             wm_label = np.random.randint(0, 1, 100)
