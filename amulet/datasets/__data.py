@@ -75,10 +75,10 @@ class CustomImageDataset(Dataset):
         self.img_dir = img_dir
         self.transform = transform
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.img_labels)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx) -> tuple[torch.Tensor, int]:
         img_path = self.img_dir / self.img_labels.iloc[idx, 0]
         image = read_image(img_path, mode=ImageReadMode.RGB)
         label = self.img_labels.iloc[idx, 1]
