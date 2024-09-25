@@ -37,7 +37,10 @@ test_loader = DataLoader(dataset=data.test_set, batch_size=256, shuffle=False)
 # Train Target Model
 criterion = torch.nn.CrossEntropyLoss()
 target_model = initialize_model(
-    model_arch="vgg", model_capacity="m1", dataset=dataset
+    model_arch="vgg",
+    model_capacity="m1",
+    num_features=data.num_features,
+    num_classes=data.num_classes,
 ).to(device)
 optimizer = torch.optim.Adam(target_model.parameters(), lr=1e-3)
 

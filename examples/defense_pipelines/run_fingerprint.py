@@ -134,7 +134,7 @@ def main(args: argparse.Namespace) -> None:
     else:
         log.info("Training target model")
         target_model = initialize_model(
-            args.model, args.model_capacity, args.dataset, log
+            args.model, args.model_capacity, data.num_features, data.num_classes, log
         ).to(args.device)
         optimizer = torch.optim.Adam(target_model.parameters(), lr=1e-3)
         target_model = train_classifier(
@@ -160,7 +160,7 @@ def main(args: argparse.Namespace) -> None:
     else:
         log.info("Training suspect model")
         suspect_model = initialize_model(
-            args.model, args.model_capacity, args.dataset, log
+            args.model, args.model_capacity, data.num_features, data.num_classes, log
         ).to(args.device)
         optimizer = torch.optim.Adam(suspect_model.parameters(), lr=1e-3)
         suspect_model = train_classifier(

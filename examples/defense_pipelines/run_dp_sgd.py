@@ -124,7 +124,7 @@ def main(args: argparse.Namespace) -> None:
     else:
         log.info("Training target model")
         target_model = initialize_model(
-            args.model, args.model_capacity, args.dataset, log
+            args.model, args.model_capacity, data.num_features, data.num_classes, log
         ).to(args.device)
         optimizer = torch.optim.Adam(target_model.parameters(), lr=1e-3)
         target_model = train_classifier(
@@ -149,7 +149,12 @@ def main(args: argparse.Namespace) -> None:
     else:
         log.info("Retraining Model with dp Training")
         defended_model = initialize_model(
-            args.model, args.model_capacity, args.dataset, log, batch_norm=False
+            args.model,
+            args.model_capacity,
+            data.num_features,
+            data.num_classes,
+            log,
+            batch_norm=False,
         ).to(args.device)
         optimizer = torch.optim.Adam(defended_model.parameters(), lr=1e-3)
         dp_training = DPSGD(

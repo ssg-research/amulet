@@ -24,6 +24,10 @@ class MembershipInferenceAttack:
             The full dataset, a subset of which is used to train the target model.
         dataset: str
             The name of the dataset.
+        num_features: int
+            Number of features in dataset.
+        num_classes: int
+            Number of classes in dataset
         pkeep: float
             Proportion of training data to keep for shadow models (members vs non-members).
         criterion: :class:`~torch.nn.Module`
@@ -46,6 +50,8 @@ class MembershipInferenceAttack:
         shadow_capacity: str,
         train_set: Dataset,
         dataset: str,
+        num_features: int,
+        num_classes: int,
         pkeep: float,
         criterion: nn.Module,
         num_shadow: int,
@@ -60,6 +66,8 @@ class MembershipInferenceAttack:
         self.train_set = train_set
         self.epochs = epochs
         self.device = device
+        self.num_features = num_features
+        self.num_classes = num_classes
         self.criterion = criterion
         self.num_shadow = num_shadow
         self.pkeep = pkeep
@@ -143,7 +151,10 @@ class MembershipInferenceAttack:
 
             print(f"Preparing shadow model #{shadow_id}")
             shadow_model = initialize_model(
-                self.shadow_architecture, self.shadow_capacity, self.dataset
+                self.shadow_architecture,
+                self.shadow_capacity,
+                self.num_features,
+                self.num_classes,
             )
             shadow_model.to(self.device)
 
@@ -199,7 +210,10 @@ class InferenceModel(nn.Module):
         checkpoint = torch.load(resume_checkpoint)
 
         self.model = initialize_model(
-            self.shadow_architecture, self.shadow_capacity, self.dataset
+            self.shadow_architecture,
+            self.shadow_capacity,
+            self.num_features,
+            self.num_classes,
         )
         self.model.load_state_dict(checkpoint["model"])
 

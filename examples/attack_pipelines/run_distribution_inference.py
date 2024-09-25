@@ -8,7 +8,7 @@ from pathlib import Path
 import torch
 from amulet.distribution_inference.attacks import DistributionInference
 from amulet.utils import load_data, train_classifier, create_dir, get_accuracy
-from amulet.models.binary_net import BinaryNet
+from amulet.models.linear_net import LinearNet
 
 
 def parse_args() -> argparse.Namespace:
@@ -122,14 +122,11 @@ def main(args: argparse.Namespace) -> None:
     def train_models(train_loader, test_loader, args):
         trained_models_list = []
         for _ in range(args.num_models):
-            if args.dataset == "census":
-                target_model = BinaryNet(
-                    num_features=95, hidden_layer_sizes=[32, 64, 32]
-                ).to(args.device)
-            else:
-                target_model = BinaryNet(
-                    num_features=8744, hidden_layer_sizes=[32, 64, 32]
-                ).to(args.device)
+            target_model = LinearNet(
+                num_features=data.num_features,
+                num_classes=data.num_classes,
+                hidden_layer_sizes=[32, 64, 32],
+            ).to(args.device)
             optimizer = torch.optim.Adam(target_model.parameters(), lr=1e-3)
             criterion = torch.nn.CrossEntropyLoss()
             target_model = train_classifier(

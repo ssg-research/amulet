@@ -10,7 +10,7 @@ import torch.nn as nn
 from torch.utils.data import random_split
 from sklearn.model_selection import train_test_split
 
-from ..models import VGG, BinaryNet, LinearNet
+from ..models import VGG, LinearNet
 from ..datasets import load_census, load_cifar10, load_fmnist, load_lfw, AmuletDataset
 
 
@@ -119,13 +119,12 @@ def create_dir(path: Path | str, log: logging.Logger | None = None) -> Path:
 
 
 capacity_map = {
-    "m1": {"vgg": "VGG11", "linearnet": [128, 256, 128], "binarynet": [32, 64, 32]},
-    "m2": {"vgg": "VGG13", "linearnet": [256, 512, 256], "binarynet": [64, 128, 64]},
-    "m3": {"vgg": "VGG16", "linearnet": [512, 1024, 512], "binarynet": [128, 256, 128]},
+    "m1": {"vgg": "VGG11", "linearnet": [128, 256, 128]},
+    "m2": {"vgg": "VGG13", "linearnet": [256, 512, 256]},
+    "m3": {"vgg": "VGG16", "linearnet": [512, 1024, 512]},
     "m4": {
         "vgg": "VGG19",
         "linearnet": [512, 1024, 1024, 512],
-        "binarynet": [128, 256, 256, 128],
     },
 }
 
@@ -133,7 +132,8 @@ capacity_map = {
 def initialize_model(
     model_arch: str,
     model_capacity: str,
-    dataset: str,
+    num_features: int,
+    num_classes: int,
     log: logging.Logger | None = None,
     batch_norm: bool = True,
 ) -> nn.Module:
@@ -156,28 +156,11 @@ def initialize_model(
     if model_arch == "vgg":
         model = VGG(capacity_map[model_capacity]["vgg"], batch_norm=batch_norm)
     elif model_arch == "linearnet":
-        model = LinearNet(hidden_layer_sizes=capacity_map[model_capacity]["linearnet"])
-    elif model_arch == "binarynet":
-        if dataset == "census":
-            model = BinaryNet(
-                num_features=93,
-                hidden_layer_sizes=capacity_map[model_capacity]["binarynet"],
-            )
-        elif dataset == "lfw":
-            model = BinaryNet(
-                num_features=8742,
-                hidden_layer_sizes=capacity_map[model_capacity]["binarynet"],
-            )
-        else:
-            if log:
-                log.info(
-                    "Line 148, mlconf.utils._pipeline.py: Incorrect model configuration."
-                )
-            else:
-                print(
-                    "Line 150, mlconf.utils._pipeline.py: Incorrect model configuration."
-                )
-            sys.exit()
+        model = LinearNet(
+            num_features,
+            num_classes,
+            hidden_layer_sizes=capacity_map[model_capacity]["linearnet"],
+        )
     else:
         if log:
             log.info(

@@ -6,7 +6,7 @@ import torch.nn as nn
 
 class LinearNet(nn.Module):
     """
-    Builds a dense neural network for a multiclass image classification task.
+    Builds a dense neural network for a multiclass classification task.
 
     Args:
         num_features: int
@@ -14,23 +14,30 @@ class LinearNet(nn.Module):
         hidden_layer_size: List of int
             The ith number represents the number of neurons
             in the ith hidden layer.
+        num_classes: int
+            Number of output classes.
     """
 
-    def __init__(self, hidden_layer_sizes: list[int]):
+    def __init__(
+        self,
+        num_features: int,
+        num_classes: int,
+        hidden_layer_sizes: list[int] = [128, 256, 128],
+    ):
         super().__init__()
 
         layers = []
         for i, hidden_size in enumerate(hidden_layer_sizes):
             if i == 0:
                 layers += [nn.Flatten()]
-                layers += [nn.Linear(28 * 28, hidden_size)]
+                layers += [nn.Linear(num_features, hidden_size)]
                 layers += [nn.Tanh()]
             else:
                 layers += [nn.Linear(hidden_layer_sizes[i - 1], hidden_size)]
                 layers += [nn.Tanh()]
 
         self.features = nn.Sequential(*layers)
-        self.classifier = nn.Linear(hidden_layer_sizes[-1], 10)
+        self.classifier = nn.Linear(hidden_layer_sizes[-1], num_classes)
 
     def forward(self, x: torch.Tensor):
         """
@@ -57,5 +64,4 @@ class LinearNet(nn.Module):
         Returns:
             Output from the model of type :class:`~torch.Tensor`.
         """
-        x = x.view(x.size(0), -1)
         return self.features(x)
