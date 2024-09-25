@@ -145,10 +145,14 @@ def initialize_model(
             Which model to initialize.
         model_capacity: str
             Size of the model.
-        dataset: str
-            The dataset that will be used to train the model/
+        num_features: int
+            Number of features used as input to linear / dense neural networks.
+        num_classes: int
+            Number of output classes / labels.
         log: :class:~`logging.Logger` or None
             Logging facility.
+        batch_norm: bool
+            Used to control whether batch normalization is used. True by default.
 
     Returns:
         Path to the created directory.

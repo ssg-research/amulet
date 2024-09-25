@@ -38,10 +38,12 @@ Please check the [Module Guide](https://github.com/ssg-research/amulet/blob/main
 # Data Loading
 
 ## Data Class
-All Amulet datasets are returned as an AmuletDataset, which contains the following objects:
+All Amulet datasets are returned as an AmuletDataset, which contains the following attributes:
 ```python
 train_set: torch.utils.data.Dataset
 test_set: torch.utils.data.Dataset
+num_features: int
+num_classes: int
 x_train: np.ndarray | None = None
 x_test: np.ndarray | None = None
 y_train: np.ndarray | None = None
@@ -49,7 +51,7 @@ y_test: np.ndarray | None = None
 z_train: np.ndarray | None = None
 z_test: np.ndarray | None = None
 ```
-Every dataset will have the `train_set` and `test_set` attributes. For datasets that are loaded manually and processed by Amulet (such as LFW and Census Income Dataset), the individual feature and labels arrays will also be set `[x_train, x_test, y_train, y_test]`, as well as the arrays to store sensitive attributes `[z_train, z_test]`.
+Every dataset will have the `train_set`, `test_set`, `num_features`, and `num_classes` attributes. For datasets that are loaded manually and processed by Amulet (such as LFW and Census Income Dataset), the individual feature and labels arrays will also be set `[x_train, x_test, y_train, y_test]`, as well as the arrays to store sensitive attributes `[z_train, z_test]`.
 
 ## Accessing Datasets
 For easy access, Amulet provides the following function to load any dataset as part of a pipeline:
@@ -113,15 +115,19 @@ To use the models configured for running experiments using Amulet, the following
 def initialize_model(
     model_arch: str,
     model_capacity: str,
-    dataset: str,
+    num_features: int,
+    num_classes: int,
     log: logging.Logger | None = None,
+    batch_norm: bool = True,
 ) -> nn.Module:
 ```
 Where:
 - `model_arch`: one of `['vgg', 'linearnet', 'binarynet']`. Each model is optimized for a specific dataset that Amulet provides.
 - `model_capacity`: one of `['m1', 'm2', 'm3', 'm4]`. Configures the size and complexity of the model.
-- `dataset`: one of `['cifar10', 'fminst', 'census', 'lfw']`. Used to determine the input size for some models.
+- `num_features`: Size of the input for the model in the case of simple dense neural networks.
+- `num_classes`: Number of classes in the output.
 - `log`: for logging.
+- `batch_norm`: Used to control whether batch normalization is used. True by default. 
 
 # Risks
 Amulet provides attacks, defenses, and metrics for each risk. **TBD.**
