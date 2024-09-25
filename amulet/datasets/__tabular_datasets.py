@@ -138,6 +138,8 @@ def load_census(
     return AmuletDataset(
         train_set=train_set,
         test_set=test_set,
+        num_features=93,
+        num_classes=2,
         x_train=np.array(x_train),
         x_test=np.array(x_test),
         y_train=np.array(y_train),
@@ -376,6 +378,8 @@ def load_lfw(
     return AmuletDataset(
         train_set=train_set,
         test_set=test_set,
+        num_features=8742,
+        num_classes=2,
         x_train=np.array(x_train),
         x_test=np.array(x_test),
         y_train=y_train,
