@@ -127,7 +127,7 @@ Where:
 - `num_features`: Size of the input for the model in the case of simple dense neural networks.
 - `num_classes`: Number of classes in the output.
 - `log`: for logging.
-- `batch_norm`: Used to control whether batch normalization is used. True by default. 
+- `batch_norm`: Used to control whether batch normalization is used. True by default.
 
 # Risks
 Amulet provides attacks, defenses, and metrics for each risk. **TBD.**
