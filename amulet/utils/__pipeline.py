@@ -117,15 +117,19 @@ def create_dir(path: Path | str, log: logging.Logger | None = None) -> Path:
 
     return resolved_path
 
-
-capacity_map = {
-    "m1": {"vgg": "VGG11", "linearnet": [128, 256, 128]},
-    "m2": {"vgg": "VGG13", "linearnet": [256, 512, 256]},
-    "m3": {"vgg": "VGG16", "linearnet": [512, 1024, 512]},
-    "m4": {
-        "vgg": "VGG19",
-        "linearnet": [512, 1024, 1024, 512],
+DEFAULT_CAPACITY_MAP = {
+    "linear_net": {
+        "m1": [128, 256, 128],
+        "m2": [256, 512, 256],
+        "m3": [512, 1024, 512],
+        "m4": [512, 1024, 1024, 512],
     },
+    "vgg": {
+        "m1": "VGG11",
+        "m2": "VGG13",
+        "m3": "VGG16",
+        "m4": "VGG19",
+    }
 }
 
 
@@ -136,6 +140,7 @@ def initialize_model(
     num_classes: int,
     log: logging.Logger | None = None,
     batch_norm: bool = True,
+    capacity_map = DEFAULT_CAPACITY_MAP,
 ) -> nn.Module:
     """
     Creates a model using the configuration provided.
@@ -158,12 +163,12 @@ def initialize_model(
         Path to the created directory.
     """
     if model_arch == "vgg":
-        model = VGG(capacity_map[model_capacity]["vgg"], batch_norm=batch_norm)
+        model = VGG(capacity_map["vgg"][model_capacity], batch_norm=batch_norm)
     elif model_arch == "linearnet":
         model = LinearNet(
             num_features,
             num_classes,
-            hidden_layer_sizes=capacity_map[model_capacity]["linearnet"],
+            hidden_layer_sizes=capacity_map["linearnet"][model_capacity],
         )
     else:
         if log:
