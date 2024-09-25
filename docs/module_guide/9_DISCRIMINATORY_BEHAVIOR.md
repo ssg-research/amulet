@@ -63,7 +63,7 @@ sensitive_test_loader = DataLoader(
 criterion = torch.nn.CrossEntropyLoss()
 
 target_model = initialize_model(
-    model, model_capacity, dataset_name, device)
+    model, model_capacity, data.num_features, data.num_classes, device)
 optimizer = torch.optim.Adam(target_model.parameters(), lr=1e-3)
 target_model = train_classifier(
     target_model, train_loader, criterion, optimizer, epochs, device

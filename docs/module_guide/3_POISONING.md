@@ -47,7 +47,7 @@ test_loader = DataLoader(
 criterion = torch.nn.CrossEntropyLoss()
 
 target_model = initialize_model(
-    model, model_capacity, dataset_name
+    model, model_capacity, data.num_features, data.num_classes
 ).to(device)
 optimizer = torch.optim.Adam(target_model.parameters(), lr=1e-3)
 target_model = train_classifier(
@@ -63,7 +63,7 @@ test_accuracy_target = get_accuracy(target_model, test_loader, device)
 
 # Poison Model
 poisoned_model = initialize_model(
-    model, model_capacity, dataset_name
+    model, model_capacity, data.num_features, data.num_classes
 ).to(device)
 poisoned_model.load_state_dict(target_model.state_dict())
 optimizer = torch.optim.Adam(poisoned_model.parameters(), lr=1e-3)
@@ -153,7 +153,9 @@ test_loader = DataLoader(
 # Train Target Model
 criterion = torch.nn.CrossEntropyLoss()
 
-target_model = initialize_model(model, model_capacity, dataset_name).to(device)
+target_model = initialize_model(
+    model, model_capacity, data.num_features, data.num_classes
+).to(device)
 optimizer = torch.optim.Adam(target_model.parameters(), lr=1e-3)
 target_model = train_classifier(
     target_model, train_loader, criterion, optimizer, epochs, device
