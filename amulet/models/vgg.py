@@ -73,22 +73,6 @@ class VGG(nn.Module):
         self.classifier = nn.Linear(512, num_classes)
         self.features = self._make_layers(cfgs[vgg_name])
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Runs the forward pass on the neural network.
-
-        Args:
-            x: :class:`~torch.Tensor`
-                Input data
-
-        Returns:
-            Output from the model of type :class:`~torch.Tensor`
-        """
-        out = self.features(x)
-        out = out.view(out.size(0), -1)
-        out = self.classifier(out)
-        return out
-
     def _make_layers(self, cfg: list[str | int]) -> nn.Sequential:
         layers: list[nn.Module] = []
         in_channels = 3
@@ -110,8 +94,25 @@ class VGG(nn.Module):
 
                 in_channels = x
         layers += [nn.AvgPool2d(kernel_size=1, stride=1)]
+        layers += [nn.Flatten()]
 
         return nn.Sequential(*layers)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Runs the forward pass on the neural network.
+
+        Args:
+            x: :class:`~torch.Tensor`
+                Input data
+
+        Returns:
+            Output from the model of type :class:`~torch.Tensor`
+        """
+        out = self.features(x)
+        # out = out.view(out.size(0), -1)
+        out = self.classifier(out)
+        return out
 
     def get_hidden(self, x: torch.Tensor) -> torch.Tensor:
         """
