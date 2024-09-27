@@ -6,7 +6,7 @@ import torch.nn as nn
 
 class LinearNet(nn.Module):
     """
-    Builds a dense neural network for a multiclass classification task.
+    Builds a dense neural network for a multiclass image classification task.
 
     Args:
         num_features: int
