@@ -58,15 +58,17 @@ class VGG(nn.Module):
     https://github.com/kuangliu/pytorch-cifar/blob/master/models/vgg.py
 
     Args:
+        num_classes: int
+            Number of output classes in the data.
         vgg_name: str
             String to define which version of vgg to build.
             Possible values: ['VGG11','VGG13','VGG16','VGG19'].
-        num_classes: int
-            Number of classes for the labels.
+        batch_norm: bool
+            Whether or not to use batch norm.
     """
 
     def __init__(
-        self, vgg_name: str, num_classes: int = 10, batch_norm: bool = True
+        self, num_classes: int = 10, vgg_name: str = "VGG11", batch_norm: bool = True
     ) -> None:
         super().__init__()
         self.batch_norm = batch_norm

@@ -61,7 +61,7 @@ test_loader = DataLoader(
 criterion = torch.nn.CrossEntropyLoss()
 
 target_model = initialize_model(
-    model, model_capacity, dataset_name
+    model, model_capacity, data.num_features, data.num_classes
 ).to(device)
 optimizer = torch.optim.Adam(target_model.parameters(), lr=1e-3)
 target_model = train_classifier(
@@ -83,6 +83,8 @@ mem_inf = LiRA(
     model_capacity,
     data.train_set,
     dataset_name,
+    data.num_features,
+    data.num_classes,
     pkeep,
     criterion,
     num_shadow,
@@ -144,7 +146,7 @@ test_loader = DataLoader(
 # Train or Load Target Model
 criterion = torch.nn.CrossEntropyLoss()
 target_model = initialize_model(
-    model, model_capacity, dataset_name
+    model, model_capacity, data.num_features, data.num_classes
 ).to(device)
 optimizer = torch.optim.Adam(target_model.parameters(), lr=1e-3)
 target_model = train_classifier(

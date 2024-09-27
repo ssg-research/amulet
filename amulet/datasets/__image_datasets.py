@@ -67,7 +67,9 @@ def load_cifar10(
         root=path, train=False, transform=transform_test, download=True
     )
 
-    return AmuletDataset(train_set=train_set, test_set=test_set)
+    return AmuletDataset(
+        train_set=train_set, test_set=test_set, num_features=32 * 32, num_classes=10
+    )
 
 
 def load_fmnist(
@@ -139,4 +141,6 @@ def load_fmnist(
         root=path, train=False, transform=transform_test, download=True
     )
 
-    return AmuletDataset(train_set=train_set, test_set=test_set)
+    return AmuletDataset(
+        train_set=train_set, test_set=test_set, num_features=28 * 28, num_classes=10
+    )

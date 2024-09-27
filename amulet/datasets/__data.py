@@ -37,6 +37,8 @@ class AmuletDataset:
 
     train_set: Dataset
     test_set: Dataset
+    num_features: int
+    num_classes: int
     x_train: np.ndarray | None = None
     x_test: np.ndarray | None = None
     y_train: np.ndarray | None = None

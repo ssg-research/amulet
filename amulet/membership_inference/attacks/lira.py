@@ -36,6 +36,10 @@ class LiRA(MembershipInferenceAttack):
             The full dataset, a subset of which is used to train the target model.
         dataset: str
             The name of the dataset.
+        num_features: int
+            Number of features in dataset.
+        num_classes: int
+            Number of classes in dataset
         pkeep: float
             Proportion of training data to keep for shadow models (members vs non-members).
         criterion: :class:`~torch.nn.Module`
@@ -62,6 +66,8 @@ class LiRA(MembershipInferenceAttack):
         shadow_capacity: str,
         train_set: Dataset,
         dataset: str,
+        num_features: int,
+        num_classes: int,
         pkeep: float,
         criterion: nn.Module,
         num_shadow: int,
@@ -76,6 +82,8 @@ class LiRA(MembershipInferenceAttack):
             shadow_capacity,
             train_set,
             dataset,
+            num_features,
+            num_classes,
             pkeep,
             criterion,
             num_shadow,
