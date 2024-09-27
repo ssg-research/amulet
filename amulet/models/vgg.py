@@ -3,6 +3,7 @@
 import torch
 import torch.nn as nn
 
+
 class VGG(nn.Module):
     """
     Builds a VGG network. Code taken from

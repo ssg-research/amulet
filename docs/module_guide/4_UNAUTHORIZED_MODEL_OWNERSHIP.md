@@ -58,7 +58,9 @@ test_loader = DataLoader(
 # Train Target Model
 criterion = torch.nn.CrossEntropyLoss()
 
-target_model = initialize_model(model, model_capacity, dataset_name, device)
+target_model = initialize_model(
+    model, model_capacity, data.num_features, data.num_classes
+).to(device)
 optimizer = torch.optim.Adam(target_model.parameters(), lr=1e-3)
 target_model = train_classifier(
     target_model,
@@ -73,8 +75,9 @@ test_accuracy_target = get_accuracy(target_model, test_loader, device)
 print(f'Test accuracy of target model: {test_accuracy_target}')
 
 # Train Surrogate Model
-attack_model = initialize_model(
-    model, model_capacity, dataset_name.device)
+target_model = initialize_model(
+    model, model_capacity, data.num_features, data.num_classes
+).to(device)
 optimizer = torch.optim.Adam(attack_model.parameters(), lr=1e-3)
 model_extraction = ModelExtraction(
     target_model,
@@ -139,7 +142,9 @@ test_loader = DataLoader(
 # Train Target Model
 criterion = torch.nn.CrossEntropyLoss()
 
-target_model = initialize_model(model, model_capacity, dataset_name).to(device)
+target_model = initialize_model(
+    model, model_capacity, data.num_features, data.num_classes
+).to(device)
 optimizer = torch.optim.Adam(target_model.parameters(), lr=1e-3)
 target_model = train_classifier(
     target_model, train_loader, criterion, optimizer, epochs, device
@@ -149,7 +154,9 @@ test_accuracy_target = get_accuracy(target_model, test_loader, device)
 print(f'Test accuracy of target model: {test_accuracy_target}')
 
 # Train Suspect Model
-suspect_model = initialize_model(model, model_capacity, dataset_name).to(device)
+target_model = initialize_model(
+    model, model_capacity, data.num_features, data.num_classes
+).to(device)
 optimizer = torch.optim.Adam(suspect_model.parameters(), lr=1e-3)
 suspect_model = train_classifier(
     suspect_model, train_loader, criterion, optimizer, epochs, device
