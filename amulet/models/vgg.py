@@ -3,55 +3,6 @@
 import torch
 import torch.nn as nn
 
-cfgs: dict[str, list[str | int]] = {
-    "VGG11": [64, "M", 128, "M", 256, 256, "M", 512, 512, "M", 512, 512, "M"],
-    "VGG13": [64, 64, "M", 128, 128, "M", 256, 256, "M", 512, 512, "M", 512, 512, "M"],
-    "VGG16": [
-        64,
-        64,
-        "M",
-        128,
-        128,
-        "M",
-        256,
-        256,
-        256,
-        "M",
-        512,
-        512,
-        512,
-        "M",
-        512,
-        512,
-        512,
-        "M",
-    ],
-    "VGG19": [
-        64,
-        64,
-        "M",
-        128,
-        128,
-        "M",
-        256,
-        256,
-        256,
-        256,
-        "M",
-        512,
-        512,
-        512,
-        512,
-        "M",
-        512,
-        512,
-        512,
-        512,
-        "M",
-    ],
-}
-
-
 class VGG(nn.Module):
     """
     Builds a VGG network. Code taken from
@@ -129,7 +80,6 @@ class VGG(nn.Module):
             Output from the model of type :class:`~torch.Tensor`
         """
         out = self.features(x)
-        # out = out.view(out.size(0), -1)
         out = self.classifier(out)
         return out
 
