@@ -181,7 +181,72 @@ results = fingerprinting.dataset_inference()
 ```
 
 ### Watermarking
-To watermark a target model, use `amulet.unauth_model_ownership.defenses.WatermarkNN`. This module is a work in progress.
+To watermark a target model, use `amulet.unauth_model_ownership.defenses.WatermarkNN`. The trigger set consists of 100 random images from the ImageNet test set and is available [here](https://github.com/ssg-research/amulet/tree/verify-watermark/miscellaneous/trigger_set).
+
+```python
+import sys
+import torch
+from torch.utils.data import DataLoader
+from amulet.unauth_model_ownership.defenses import WatermarkNN
+from amulet.utils import (
+    load_data,
+    initialize_model,
+    train_classifier,
+    get_accuracy,
+)
+
+if len(sys.argv) > 1:
+    root_dir = sys.argv[1]
+else:
+    root_dir = './'
+dataset_name = 'cifar10' # One of [cifar10, fmnist, census, lfw]
+batch_size = 256
+model = 'vgg' # One of [vgg, linearnet, binarynet]
+model_capacity = 'm1' # One of [m1, m2, m3, m4]
+device = 'cuda:0'
+epochs = 100
+
+wm_path = "./miscellaneous/trigger_set/"
+gray = False
+tabular = False
+
+# Load dataset and create data loaders
+data = load_data(root_dir, dataset_name)
+train_loader = DataLoader(
+    dataset=data.train_set, batch_size=batch_size, shuffle=False
+)
+test_loader = DataLoader(
+    dataset=data.test_set, batch_size=batch_size, shuffle=False
+)
+
+# Train Target Model
+criterion = torch.nn.CrossEntropyLoss()
+
+target_model = initialize_model(
+    model, model_capacity, dataset_name,
+).to(device)
+optimizer = torch.optim.Adam(target_model.parameters(), lr=1e-3)
+target_model = train_classifier(
+    target_model, train_loader, criterion, optimizer, epochs, device
+)
+
+test_accuracy_target = get_accuracy(target_model, test_loader, device)
+
+# Train model with Watermarking
+wm_model = WatermarkNN(
+    target_model,
+    criterion,
+    optimizer,
+    train_loader,
+    device,
+    wm_path,
+    gray,
+    tabular,
+    epochs,
+    batch_size,
+)
+defended_model = wm_model.watermark()
+```
 
 ## Metrics
 ### Model Extraction
