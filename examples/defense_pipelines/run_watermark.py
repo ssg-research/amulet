@@ -33,27 +33,23 @@ def parse_args() -> argparse.Namespace:
         help="Options: cifar10, fmnist, lfw, census.",
     )
     parser.add_argument(
-        "--wm_path", type=str, default="../../data/trigger_set/", help="trigger sets."
+        "--wm_path",
+        type=str,
+        default="../../miscellaneous/trigger_set/",
+        help="trigger sets.",
     )
     parser.add_argument(
         "--gray",
         type=bool,
         default=0,
-        help="Options: 0 for cifar10, 1 for fmnist, only for cifar10 and fmnist.",
+        help="Only used for image-based datasets. True for gray-scale images. False otherwise.",
     )
     parser.add_argument(
         "--tabular",
         type=bool,
         default=0,
-        help="Options: 0 for cifar10, fmnist, 1 for lfw, census.",
+        help="True if the dataset is a 1D tabular dataset. False for image-based datasets.",
     )
-    parser.add_argument(
-        "--shape",
-        type=bool,
-        default=0,
-        help="Options: 0 for cifar10, fmnist, 1 for lfw, census.",
-    )
-
     parser.add_argument(
         "--model", type=str, default="vgg", help="Options: vgg, linearnet, binarynet."
     )
@@ -70,7 +66,7 @@ def parse_args() -> argparse.Namespace:
         "--batch_size", type=int, default=256, help="Batch size of input data."
     )
     parser.add_argument(
-        "--epochs", type=int, default=1, help="Number of epochs for training."
+        "--epochs", type=int, default=10, help="Number of epochs for training."
     )
     parser.add_argument(
         "--device",
