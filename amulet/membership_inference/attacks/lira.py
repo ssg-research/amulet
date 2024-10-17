@@ -237,6 +237,8 @@ class LiRA(MembershipInferenceAttack):
             curr_model = InferenceModel(
                 shadow_id,
                 self.dataset,
+                self.num_features,
+                self.num_classes,
                 self.shadow_architecture,
                 self.shadow_capacity,
                 self.models_dir,
