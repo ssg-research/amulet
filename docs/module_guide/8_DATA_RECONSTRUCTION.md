@@ -23,7 +23,7 @@ if len(sys.argv) > 1:
 else:
     root_dir = './' dataset_name = 'lfw' # One of [lfw, census]
 batch_size = 256
-model = 'vgg' # One of [vgg, linearnet, binarynet]
+model = 'vgg' # One of [vgg, linearnet]
 model_capacity = 'm1' # One of [m1, m2, m3, m4]
 device = 'cuda:0'
 epochs = 100
