@@ -33,7 +33,7 @@ def parse_args() -> argparse.Namespace:
         "--dataset", type=str, default="census", help="Options: lfw, census."
     )
     parser.add_argument(
-        "--model", type=str, default="binarynet", help="Options: binarynet."
+        "--model", type=str, default="linearnet", help="Options: linearnet."
     )
     parser.add_argument(
         "--model_capacity",
