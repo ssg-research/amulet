@@ -172,6 +172,8 @@ class InferenceModel(nn.Module):
         self,
         shadow_id: int,
         dataset: str,
+        num_features: int,
+        num_classes: int,
         shadow_architecture: str,
         shadow_capacity: str,
         models_dir: Path | str,
@@ -186,6 +188,10 @@ class InferenceModel(nn.Module):
                 The ID of the shadow model to be loaded.
             dataset:
                 The dataset used to train the model.
+            num_features:
+                Number of features in the dataset.
+            num_classes:
+                Number of classes in the dataset.
             shadow_architecture:
                 The architecture of the shadow model.
             shadow_capacity:
@@ -196,6 +202,8 @@ class InferenceModel(nn.Module):
         super().__init__()
         self.shadow_id = shadow_id
         self.dataset = dataset
+        self.num_features = num_features
+        self.num_classes = num_classes
         self.shadow_architecture = shadow_architecture
         self.shadow_capacity = shadow_capacity
 

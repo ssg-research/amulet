@@ -15,7 +15,6 @@ Amulet pre-processes and provides the following datasets to test for privacy-rel
 Amulet provides the following models:
 - [VGG](https://viso.ai/deep-learning/vgg-very-deep-convolutional-networks/): for computer vision tasks.
 - LinearNet: A dense neural network tuned for multiclass classification on the FashionMNIST dataset.
-- BinaryNet: A dense neural network tuned for binary classification.
 
 ## Risks
 Amulet provides attacks, defenses, and evaluation metrics for the following risks:
@@ -122,7 +121,7 @@ def initialize_model(
 ) -> nn.Module:
 ```
 Where:
-- `model_arch`: one of `['vgg', 'linearnet', 'binarynet']`. Each model is optimized for a specific dataset that Amulet provides.
+- `model_arch`: one of `['vgg', 'linearnet']`. Each model is optimized for a specific dataset that Amulet provides.
 - `model_capacity`: one of `['m1', 'm2', 'm3', 'm4]`. Configures the size and complexity of the model.
 - `num_features`: Size of the input for the model in the case of simple dense neural networks.
 - `num_classes`: Number of classes in the output.

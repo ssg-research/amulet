@@ -3,54 +3,6 @@
 import torch
 import torch.nn as nn
 
-cfgs: dict[str, list[str | int]] = {
-    "VGG11": [64, "M", 128, "M", 256, 256, "M", 512, 512, "M", 512, 512, "M"],
-    "VGG13": [64, 64, "M", 128, 128, "M", 256, 256, "M", 512, 512, "M", 512, 512, "M"],
-    "VGG16": [
-        64,
-        64,
-        "M",
-        128,
-        128,
-        "M",
-        256,
-        256,
-        256,
-        "M",
-        512,
-        512,
-        512,
-        "M",
-        512,
-        512,
-        512,
-        "M",
-    ],
-    "VGG19": [
-        64,
-        64,
-        "M",
-        128,
-        128,
-        "M",
-        256,
-        256,
-        256,
-        256,
-        "M",
-        512,
-        512,
-        512,
-        512,
-        "M",
-        512,
-        512,
-        512,
-        512,
-        "M",
-    ],
-}
-
 
 class VGG(nn.Module):
     """
@@ -68,12 +20,29 @@ class VGG(nn.Module):
     """
 
     def __init__(
-        self, num_classes: int = 10, vgg_name: str = "VGG11", batch_norm: bool = True
+        self,
+        num_classes: int = 10,
+        layer_config: list[int | str] = [
+            64,
+            "M",
+            128,
+            "M",
+            256,
+            256,
+            "M",
+            512,
+            512,
+            "M",
+            512,
+            512,
+            "M",
+        ],
+        batch_norm: bool = True,
     ) -> None:
         super().__init__()
         self.batch_norm = batch_norm
         self.classifier = nn.Linear(512, num_classes)
-        self.features = self._make_layers(cfgs[vgg_name])
+        self.features = self._make_layers(layer_config)
 
     def _make_layers(self, cfg: list[str | int]) -> nn.Sequential:
         layers: list[nn.Module] = []
@@ -112,7 +81,6 @@ class VGG(nn.Module):
             Output from the model of type :class:`~torch.Tensor`
         """
         out = self.features(x)
-        # out = out.view(out.size(0), -1)
         out = self.classifier(out)
         return out
 

@@ -34,7 +34,7 @@ def parse_args() -> argparse.Namespace:
         help="Options: cifar10, fmnist, lfw, census.",
     )
     parser.add_argument(
-        "--model", type=str, default="vgg", help="Options: vgg, linearnet, binarynet."
+        "--model", type=str, default="vgg", help="Options: vgg, linearnet."
     )
     parser.add_argument(
         "--model_capacity",

@@ -51,7 +51,7 @@ def parse_args() -> argparse.Namespace:
         help="True if the dataset is a 1D tabular dataset. False for image-based datasets.",
     )
     parser.add_argument(
-        "--model", type=str, default="vgg", help="Options: vgg, linearnet, binarynet."
+        "--model", type=str, default="vgg", help="Options: vgg, linearnet."
     )
     parser.add_argument(
         "--model_capacity",
