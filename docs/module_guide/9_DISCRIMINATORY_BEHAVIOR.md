@@ -101,6 +101,8 @@ group_fairness = AdversarialDebiasing(
     optimizer,
     sensitive_train_loader,
     sensitive_test_loader,
+    data.z_train.shape[1],
+    data.num_classes,
     lambdas,
     device,
     epochs,
