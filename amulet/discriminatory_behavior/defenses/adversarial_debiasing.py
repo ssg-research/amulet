@@ -14,11 +14,12 @@ class AdversaryModel(nn.Module):
     Model used as a discriminator to identify the sensitive
     attribute given the output of the model.
     Attributes:
-        n_sensitive: int 
+        n_sensitive: int
             Number of sensitive attributes in the dataset.
         n_input: int
             Number of classes in the dataset
     """
+
     def __init__(self, n_sensitive: int = 2, n_input: int = 2):
         super(AdversaryModel, self).__init__()
         self.network = nn.Sequential(
@@ -56,7 +57,7 @@ class AdversarialDebiasing(DicriminatoryBehaviorDefense):
             Training data loader to adversarial training.
         test_loader: :class:`~torch.utils.data.DataLoader`
             Testing data loader to adversarial training.
-        n_sensitive: int 
+        n_sensitive: int
             Number of sensitive attributes in the dataset.
         n_input: int
             Number of classes in the dataset

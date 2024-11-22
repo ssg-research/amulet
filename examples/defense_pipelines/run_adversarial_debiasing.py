@@ -87,6 +87,11 @@ def main(args: argparse.Namespace) -> None:
         dataset=data.test_set, batch_size=args.batch_size, shuffle=False
     )
 
+    if data.z_train is None or data.z_test is None:
+        raise RuntimeError(
+            "Dataset does not contain sensitive attributes. Please check if you are using a supported dataset"
+        )
+
     sensitive_train_set = TensorDataset(
         torch.from_numpy(data.x_train).type(torch.float),
         torch.from_numpy(data.y_train).type(torch.long),
