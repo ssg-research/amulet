@@ -19,6 +19,7 @@ python = "^3.11"
 
 captum                = "0.7.0"
 cleverhans            = "4.0.0"
+gdown                 = "5.2.0"
 matplotlib            = "3.8.3"
 numpy                 = "1.26.4"
 opacus                = "1.4.1"
