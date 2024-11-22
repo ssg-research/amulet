@@ -36,8 +36,8 @@ def load_census(
         random_seed: int
             Determines random number generation for dataset shuffling. Pass an int
             for reproducible output across multiple function calls.
-        return_x_y_z: bool
-            If True, instead of returning a Bunch, it returns a tuple
+        test_size: float
+            Proportion of data used for testing.
     Returns:
         Object (:class:`~amulet.datasets.Data`), with the following attributes:
             train_set: :class:`~torch.utils.data.VisionDataset`
@@ -45,7 +45,7 @@ def load_census(
                 training PyTorch models.
             test_set: :class:`~torch.utils.data.VisionDataset`
                 A dataset of images and labels used to build a DataLoader for
-                test PyTorch models.
+                testing PyTorch models.
             x_train: :class:`~np.ndarray`
                 Features for the train data.
             x_test: :class:`~np.ndarray`
@@ -182,6 +182,8 @@ def load_lfw(
         attribute_2: str
             Defines which attribute to use as a sensitive attribute, possible values:
             [age, gender, race]
+        test_size: float
+            Proportion of data used for testing.
         random_seed: int
             Determines random number generation for dataset shuffling. Pass an int
             for reproducible output across multiple function calls.
@@ -192,7 +194,7 @@ def load_lfw(
                 training PyTorch models.
             test_set: :class:`~torch.utils.data.VisionDataset`
                 A dataset of images and labels used to build a DataLoader for
-                test PyTorch models.
+                testing PyTorch models.
             x_train: :class:`~np.ndarray`
                 Features for the train data.
             x_test: :class:`~np.ndarray`

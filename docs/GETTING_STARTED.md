@@ -7,6 +7,7 @@ We provide a high-level list of features below.
 Amulet provides the following for computer vision tasks:
 - [CIFAR10](https://pytorch.org/vision/main/generated/torchvision.datasets.CIFAR10.html).
 - [FashionMNIST](https://pytorch.org/vision/stable/generated/torchvision.datasets.FashionMNIST.html).
+- [CelebA](https://mmlab.ie.cuhk.edu.hk/projects/CelebA.html). Or download the [CSV version](https://drive.google.com/file/d/1KTaJraB9Koa4h5EVTJQ3y2Dig_vgE5MZ/view?usp=sharing).
 
 Amulet pre-processes and provides the following datasets to test for privacy-related concerns:
 - [Census Income Dataset](https://archive.ics.uci.edu/dataset/20/census+income).
