@@ -11,7 +11,14 @@ from torch.utils.data import random_split
 from sklearn.model_selection import train_test_split
 
 from ..models import VGG, LinearNet
-from ..datasets import load_census, load_cifar10, load_fmnist, load_lfw, AmuletDataset
+from ..datasets import (
+    load_census,
+    load_cifar10,
+    load_fmnist,
+    load_lfw,
+    load_celeba,
+    AmuletDataset,
+)
 
 
 def load_data(
@@ -50,6 +57,8 @@ def load_data(
         data = load_census(root / "data" / "census", random_seed=exp_id)
     elif dataset == "lfw":
         data = load_lfw(root / "data" / "lfw", random_seed=exp_id)
+    elif dataset == "celeba":
+        data = load_celeba(root / "data" / "celeba")
     else:
         if log:
             log.info(

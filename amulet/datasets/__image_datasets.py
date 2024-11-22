@@ -6,8 +6,13 @@ computer vision applications.
 from pathlib import Path
 
 import torchvision.transforms as transforms
+import pandas as pd
+import numpy as np
+import torch
 from torchvision import datasets
+from torch.utils.data import TensorDataset
 from .__data import AmuletDataset
+from sklearn.model_selection import train_test_split
 
 
 def load_cifar10(
@@ -44,7 +49,7 @@ def load_cifar10(
                 training PyTorch models.
             test_set: :class:`~torch.utils.data.VisionDataset`
                 A dataset of images and labels used to build a DataLoader for
-                test PyTorch models.
+                testing PyTorch models.
     """
     mean, std = (0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)
     if transform_train is None:
@@ -110,7 +115,7 @@ def load_fmnist(
                 training PyTorch models.
             test_set: :class:`~torch.utils.data.VisionDataset`
                 A dataset of images and labels used to build a DataLoader for
-                test PyTorch models.
+                testing PyTorch models.
     """
     if transform_train is None:
         transform_train = transforms.Compose(
@@ -143,4 +148,102 @@ def load_fmnist(
 
     return AmuletDataset(
         train_set=train_set, test_set=test_set, num_features=28 * 28, num_classes=10
+    )
+
+
+def load_celeba(
+    path: str | Path = Path("./data/celeba"),
+    random_seed: int = 0,
+    test_size: float = 0.5,
+) -> AmuletDataset:
+    """
+    Loads the CelebA released by https://mmlab.ie.cuhk.edu.hk/projects/CelebA.html.
+    Link to download the dataset: https://drive.google.com/file/d/1KTaJraB9Koa4h5EVTJQ3y2Dig_vgE5MZ/view?usp=sharing
+    Separates the sensitive attributes from the training and testing data.
+
+    Args:
+        path: str or Path object
+            String or Path object indicating where to store the dataset.
+        random_seed: int
+            Determines random number generation for dataset shuffling. Pass an int
+            for reproducible output across multiple function calls.
+        test_size: float
+            Proportion of data used for testing.
+    Returns:
+        Object (:class:`~amulet.datasets.Data`), with the following attributes:
+            train_set: :class:`~torch.utils.data.VisionDataset`
+                A dataset of images and labels used to build a DataLoader for
+                training PyTorch models.
+            test_set: :class:`~torch.utils.data.VisionDataset`
+                A dataset of images and labels used to build a DataLoader for
+                testing PyTorch models.
+            x_train: :class:`~np.ndarray`
+                Features for the train data.
+            x_test: :class:`~np.ndarray`
+                Features for the test data.
+            y_train: :class:`~np.ndarray`
+                Labels for the train data.
+            y_test: :class:`~np.ndarray`
+                Labels for the test data.
+            z_train: :class:`~np.ndarray`
+                Sensitive attribute labels for the train data.
+            z_test: :class:`~np.ndarray`
+                Sensitive attribute labels for the test data.
+    """
+    # TODO: Write code to download the dataset from Google Drive.
+
+    if isinstance(path, str):
+        path = Path(path)
+
+    df = pd.read_csv(
+        path / "celeba.csv", na_values="NA", index_col=None, sep=",", header=0
+    )
+    df["pixels"] = df["pixels"].apply(lambda x: np.array(x.split(), dtype="float32"))
+    df["pixels"] = df["pixels"].apply(lambda x: x / 255)
+    df["pixels"] = df["pixels"].apply(lambda x: np.reshape(x, (3, 48, 48)))
+
+    images = df["pixels"].to_frame()
+
+    images_np = np.stack(images["pixels"].to_list())
+    target_attribute: str = "Smiling"
+    sensitive_attributes: list[str] = ["Male"]
+    attributes = df[["Smiling"] + sensitive_attributes]
+
+    images_train, images_test, attributes_train, attributes_test = train_test_split(
+        images_np,
+        attributes,
+        test_size=test_size,
+        stratify=attributes,
+        random_state=random_seed,
+    )
+
+    # For type setting, the train_test_split function messes with the data type
+    attributes_train = pd.DataFrame(attributes_train)
+    attributes_test = pd.DataFrame(attributes_test)
+
+    target_train = attributes_train[target_attribute].to_numpy()
+    target_test = attributes_test[target_attribute].to_numpy()
+    sensitive_train = attributes_train[sensitive_attributes].to_numpy()
+    sensitive_test = attributes_test[sensitive_attributes].to_numpy()
+
+    train_set = TensorDataset(
+        torch.from_numpy(images_train).type(torch.float32),
+        torch.from_numpy(target_train).type(torch.long),
+    )
+    test_set = TensorDataset(
+        torch.from_numpy(images_test).type(torch.float32),
+        torch.from_numpy(target_test).type(torch.long),
+    )
+
+    return AmuletDataset(
+        train_set=train_set,
+        test_set=test_set,
+        num_features=48 * 48,
+        num_classes=2,
+        x_train=np.array(images_train),
+        x_test=np.array(images_test),
+        y_train=target_train,
+        y_test=target_test,
+        z_train=sensitive_train,
+        z_test=sensitive_test,
     )
