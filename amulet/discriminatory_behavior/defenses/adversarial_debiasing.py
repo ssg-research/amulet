@@ -10,16 +10,26 @@ from .discr_behavior_defense import DicriminatoryBehaviorDefense
 
 
 class AdversaryModel(nn.Module):
-    def __init__(self, n_sensitive=2, n_input=2):
+    """
+    Model used as a discriminator to identify the sensitive
+    attribute given the output of the model.
+    Attributes:
+        n_sensitive_attrs: int
+            Number of sensitive attributes in the dataset.
+        n_classes: int
+            Number of classes in the dataset.
+    """
+
+    def __init__(self, n_sensitive_attrs: int = 2, n_classes: int = 2):
         super(AdversaryModel, self).__init__()
         self.network = nn.Sequential(
-            nn.Linear(n_input, 32),
+            nn.Linear(n_classes, 32),
             nn.ReLU(),
             nn.Linear(32, 32),
             nn.ReLU(),
             nn.Linear(32, 32),
             nn.ReLU(),
-            nn.Linear(32, n_sensitive),
+            nn.Linear(32, n_sensitive_attrs),
         )
 
     def forward(self, x):
@@ -47,8 +57,12 @@ class AdversarialDebiasing(DicriminatoryBehaviorDefense):
             Training data loader to adversarial training.
         test_loader: :class:`~torch.utils.data.DataLoader`
             Testing data loader to adversarial training.
+        n_sensitive_attrs: int
+            Number of sensitive attributes in the dataset.
+        n_classes: int
+            Number of classes in the dataset.
         lambdas: :class:`torch.Tensor`
-            Hyperparameters for fairness objective function
+            Hyperparameters for fairness objective function.
         device: str
             Device used to train model. Example: "cuda:0".
         epochs: int
@@ -62,6 +76,8 @@ class AdversarialDebiasing(DicriminatoryBehaviorDefense):
         optimizer: torch.optim.Optimizer,
         train_loader: DataLoader,
         test_loader: DataLoader,
+        n_sensitive_attrs: int,
+        n_classes: int,
         lambdas: torch.Tensor,
         device: str,
         epochs: int = 5,
@@ -71,7 +87,7 @@ class AdversarialDebiasing(DicriminatoryBehaviorDefense):
         self.lambdas = lambdas.to(device)
         self.epochs = epochs
 
-        self.discmodel = AdversaryModel().to(self.device)
+        self.discmodel = AdversaryModel(n_sensitive_attrs, n_classes).to(self.device)
         self.adv_criterion = nn.BCELoss(reduce=False)
         self.adv_optimizer = torch.optim.Adam(self.discmodel.parameters())
         self.discmodel = self.__pretrain_adversary()

@@ -28,10 +28,10 @@ def parse_args() -> argparse.Namespace:
         help="Root directory of models and datasets.",
     )
     parser.add_argument(
-        "--dataset", type=str, default="census", help="Options: lfw, census."
+        "--dataset", type=str, default="celeba", help="Options: lfw, census, celeba."
     )
     parser.add_argument(
-        "--model", type=str, default="linearnet", help="Options: linearnet."
+        "--model", type=str, default="vgg", help="Options: vgg, linearnet."
     )
     parser.add_argument(
         "--model_capacity",
@@ -86,6 +86,11 @@ def main(args: argparse.Namespace) -> None:
     test_loader = DataLoader(
         dataset=data.test_set, batch_size=args.batch_size, shuffle=False
     )
+
+    if data.z_train is None or data.z_test is None:
+        raise RuntimeError(
+            "Dataset does not contain sensitive attributes. Please check if you are using a supported dataset"
+        )
 
     sensitive_train_set = TensorDataset(
         torch.from_numpy(data.x_train).type(torch.float),
@@ -143,12 +148,7 @@ def main(args: argparse.Namespace) -> None:
     )
     all_metrics = discr_behavior_target.evaluate_subgroup_metrics()
 
-    metrics_labelled = {}
-    metrics_labelled["white_non-white"] = all_metrics[0]
-    metrics_labelled["males_females"] = all_metrics[1]
-
-    for attribute, metrics in metrics_labelled.items():
-        print(attribute)
+    for attribute, metrics in all_metrics.items():
         for metric, value in metrics.items():
             print(f"{metric}: {value}")
 
@@ -174,6 +174,8 @@ def main(args: argparse.Namespace) -> None:
             optimizer,
             sensitive_train_loader,
             sensitive_test_loader,
+            data.z_train.shape[1],
+            data.num_classes,
             lambdas,
             args.device,
             args.epochs,
@@ -189,11 +191,7 @@ def main(args: argparse.Namespace) -> None:
     )
     all_metrics = discr_behavior_defended.evaluate_subgroup_metrics()
 
-    metrics_labelled = {}
-    metrics_labelled["white_non-white"] = all_metrics[0]
-    metrics_labelled["males_females"] = all_metrics[1]
-
-    for attribute, metrics in metrics_labelled.items():
+    for attribute, metrics in all_metrics.items():
         print(attribute)
         for metric, value in metrics.items():
             print(f"{metric}: {value}")
