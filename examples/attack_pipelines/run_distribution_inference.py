@@ -21,7 +21,7 @@ def parse_args() -> argparse.Namespace:
         help="Root directory of models and datasets.",
     )
     parser.add_argument(
-        "--dataset", type=str, default="census", help="Options: lfw, census."
+        "--dataset", type=str, default="celeba", help="Options: lfw, census, celeba."
     )
     parser.add_argument(
         "--model", type=str, default="linearnet", help="Options: linearnet."

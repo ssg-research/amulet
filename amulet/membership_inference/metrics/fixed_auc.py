@@ -11,6 +11,6 @@ def get_fixed_auc(preds, true_labels):
 
     some_stats["fix_auc"] = auc
     some_stats["fix_acc"] = acc
-    some_stats["fix_TPR@0.01FPR"] = low
+    some_stats["fix_TPR"] = low
 
     return some_stats
