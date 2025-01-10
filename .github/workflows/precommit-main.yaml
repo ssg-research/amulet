@@ -27,7 +27,7 @@ jobs:
           python -m venv .poetry_venv
           . .poetry_venv/bin/activate
           python -m pip install --upgrade pip
-          pip install poetry
+          pip install poetry==1.8.5
           poetry config virtualenvs.create false
           deactivate
           python -m venv .venv
