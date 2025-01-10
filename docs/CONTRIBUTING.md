@@ -30,7 +30,8 @@ For new functionalities that help with an ML pipeline, please submit an issue, a
 
 #### Install poetry
 
-> :warning: **Warning:** This repo doesn't work with `poetry` 2.0. Use an earlier version, e.g. `1.8.5`.
+> [!CAUTION]
+> This repo doesn't work with `poetry` 2.0. Use an earlier version, e.g. `1.8.5`.
 
 `python3 -m venv .poetry_venv`
 
