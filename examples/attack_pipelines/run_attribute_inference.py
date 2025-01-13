@@ -30,10 +30,10 @@ def parse_args() -> argparse.Namespace:
         help="Root directory of models and datasets.",
     )
     parser.add_argument(
-        "--dataset", type=str, default="celeba", help="Options: lfw, census, celeba."
+        "--dataset", type=str, default="celeba", help="Options: celeba, lfw, census."
     )
     parser.add_argument(
-        "--model", type=str, default="linearnet", help="Options: linearnet."
+        "--model", type=str, default="vgg", help="Options: vgg, linearnet."
     )
     parser.add_argument(
         "--model_capacity",
