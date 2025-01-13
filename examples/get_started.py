@@ -28,7 +28,7 @@ epochs = 10
 torch.manual_seed(random_seed)
 
 # Load dataset and create data loaders
-dataset = "cifar10"  # Possible options: ['cifar10', 'fmnist', 'lfw', 'census']
+dataset = "celeba"  # Possible options: ['cifar10', 'fmnist', 'lfw', 'census', 'celeba']
 
 data = load_data(root_dir, dataset)
 train_loader = DataLoader(dataset=data.train_set, batch_size=256, shuffle=False)

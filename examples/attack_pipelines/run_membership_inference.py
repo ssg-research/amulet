@@ -31,8 +31,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--dataset",
         type=str,
-        default="cifar10",
-        help="Options: cifar10, fmnist, lfw, census.",
+        default="celeba",
+        help="Options: cifar10, fmnist, lfw, census, celeba.",
     )
     parser.add_argument(
         "--model", type=str, default="vgg", help="Options: vgg, linearnet."
@@ -70,7 +70,7 @@ def parse_args() -> argparse.Namespace:
         help="Proportion of data to keep for training.",
     )
     parser.add_argument(
-        "--num_shadow", type=int, default=8, help="Number of shadow models to train."
+        "--num_shadow", type=int, default=64, help="Number of shadow models to train."
     )
     parser.add_argument(
         "--num_aug", type=int, default=10, help="Number of images to augment."

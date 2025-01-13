@@ -29,8 +29,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--dataset",
         type=str,
-        default="cifar10",
-        help="Options: cifar10, fmnist, lfw, census.",
+        default="celeba",
+        help="Options: cifar10, fmnist, lfw, census, celeba.",
     )
     parser.add_argument(
         "--wm_path",
