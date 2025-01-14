@@ -47,15 +47,6 @@ class BadNets:
         self.portion = portion
         self.dataset_name = dataset_name
 
-    def reshape(self, data, dataset_name="fmnist"):
-        if dataset_name == "fmnist":
-            new_data = data.unsqueeze(1)
-        elif dataset_name == "cifar10":
-            new_data = np.transpose(data, (0, 3, 1, 2))
-        else:
-            new_data = data
-        return np.array(new_data)
-
     def poison_dataset(self, dataset, mode="train"):
         """
         Poisons a proportion (pkeep) of the data points.
@@ -73,18 +64,24 @@ class BadNets:
         ]
 
         # TODO: Figure out a more efficient way of doing this without a for loop
+        # TODO: Remove the dataset names and add a flag instead
         data_points = []
         targets = []
-        if self.dataset_name == "fmnist" or self.dataset_name == "cifar10":
+        if (
+            self.dataset_name == "fmnist"
+            or self.dataset_name == "cifar10"
+            or self.dataset_name == "celeba"
+        ):
             channels, width, height = dataset[0][0].shape
             for i in range(len(dataset)):
-                data, target = dataset[i]
+                data_original, target = dataset[i]
+                data = data_original.clone().detach()
                 if i in perm or mode == "test":
                     for c in range(channels):
-                        data[c, width - 3, height - 3] = 255
-                        data[c, width - 3, height - 2] = 255
-                        data[c, width - 2, height - 3] = 255
-                        data[c, width - 2, height - 2] = 255
+                        data[c, width - 3, height - 3] = 0
+                        data[c, width - 3, height - 2] = 0
+                        data[c, width - 2, height - 3] = 0
+                        data[c, width - 2, height - 2] = 0
                     target = self.trigger_label
 
                 data_points.append(data)
