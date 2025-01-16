@@ -29,7 +29,7 @@ class AttributeInferenceAttack:
         z_train_adv: np.ndarray,
         device: str,
     ):
-        self.model = target_model
+        self.target_model = target_model
         self.x_train_adv = x_train_adv
         self.z_train_adv = z_train_adv
         self.x_test = x_test
