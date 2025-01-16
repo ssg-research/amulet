@@ -59,7 +59,10 @@ def train_classifier(
     print("Finished training")
     return model
 
-def get_predictions_numpy(input_data: np.ndarray, model: nn.Module, batch_size: int, device: str):
+
+def get_predictions_numpy(
+    input_data: np.ndarray, model: nn.Module, batch_size: int, device: str
+):
     """
     Helper function to get predictions from a model from a numpy array and return them as a numpy array.
 
@@ -71,22 +74,25 @@ def get_predictions_numpy(input_data: np.ndarray, model: nn.Module, batch_size: 
         batch_size: int
             Batch size for the data loader.
         device: str
-            Device used for computation. 
+            Device used for computation.
 
     Returns:
         Predictions of type :class:`~np.ndarray`.
     """
-    dataloader = DataLoader(dataset=TensorDataset(torch.from_numpy(input_data).type(torch.float32)), batch_size=batch_size, shuffle=False)
+    dataloader = DataLoader(
+        dataset=TensorDataset(torch.from_numpy(input_data).type(torch.float32)),
+        batch_size=batch_size,
+        shuffle=False,
+    )
     predictions_list = []
-    for x, in dataloader:
+    for (x,) in dataloader:
         x = x.to(device)
         predictions = model(x).detach().cpu().numpy()
         predictions_list.append(predictions)
-    
+
     all_predictions = np.concatenate(predictions_list, axis=0)
 
     return all_predictions
-
 
 
 def get_intermediate_features(

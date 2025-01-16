@@ -1,9 +1,7 @@
 """Implementation of attribute inference algorithm"""
 
-import torch
 import torch.nn as nn
 import numpy as np
-import pandas as pd
 from sklearn.neural_network import MLPClassifier
 from sklearn.metrics import roc_curve
 
@@ -56,8 +54,12 @@ class DudduCIKM2022(AttributeInferenceAttack):
                         {'predictions': np.ndarray,
                          'confidence_values': np.ndarray}
         """
-        attack_model_train_x = get_predictions_numpy(self.x_train_adv, self.target_model, self.batch_size, self.device)
-        attack_model_test_x = get_predictions_numpy(self.x_test, self.target_model, self.batch_size, self.device)
+        attack_model_train_x = get_predictions_numpy(
+            self.x_train_adv, self.target_model, self.batch_size, self.device
+        )
+        attack_model_test_x = get_predictions_numpy(
+            self.x_test, self.target_model, self.batch_size, self.device
+        )
 
         num_sensitive_attributes = self.z_train_adv.shape[1]
         results = {}
