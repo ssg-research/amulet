@@ -85,9 +85,9 @@ def get_predictions_numpy(
         shuffle=False,
     )
     predictions_list = []
-    for (x,) in dataloader:
-        x = x.to(device)
-        with torch.no_grad():
+    with torch.no_grad():
+        for (x,) in dataloader:
+            x = x.to(device)
             predictions = model(x).cpu().numpy()
         predictions_list.append(predictions)
 
