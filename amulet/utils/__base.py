@@ -62,7 +62,7 @@ def train_classifier(
 
 def get_predictions_numpy(
     input_data: np.ndarray, model: nn.Module, batch_size: int, device: str
-):
+) -> np.ndarray:
     """
     Helper function to get predictions from a model from a numpy array and return them as a numpy array.
 
@@ -87,7 +87,8 @@ def get_predictions_numpy(
     predictions_list = []
     for (x,) in dataloader:
         x = x.to(device)
-        predictions = model(x).detach().cpu().numpy()
+        with torch.no_grad():
+            predictions = model(x).cpu().numpy()
         predictions_list.append(predictions)
 
     all_predictions = np.concatenate(predictions_list, axis=0)
