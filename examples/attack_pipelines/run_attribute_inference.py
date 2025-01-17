@@ -177,7 +177,12 @@ def main(args: argparse.Namespace) -> None:
 
     # Run Attribute Inference attack
     attribute_inference = DudduCIKM2022(
-        target_model, x_train_adv, data.x_test, z_train_adv, args.device
+        target_model,
+        x_train_adv,
+        data.x_test,
+        z_train_adv,
+        args.batch_size,
+        args.device,
     )
     predictions = attribute_inference.attack_predictions()
 
