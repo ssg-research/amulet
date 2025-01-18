@@ -27,8 +27,8 @@ class BadNets:
             Controls the portion of trigger data.
         device: str
             Device used for model inference. Example: "cuda:0".
-        dataset_name: str
-            The name of the dataset.
+        dataset_type: str
+            Image or tabular (1D vs 2D).
         random_seed: int
             Seed for randomly selecting data points.
         epochs: int
@@ -39,13 +39,13 @@ class BadNets:
         self,
         trigger_label: int,
         portion: float,
-        dataset_name: str,
         random_seed: int,
+        dataset_type: str = "img",
     ):
         self.random_seed = random_seed
         self.trigger_label = trigger_label
         self.portion = portion
-        self.dataset_name = dataset_name
+        self.dataset_type = dataset_type
 
     def poison_dataset(self, dataset, mode="train"):
         """
@@ -67,11 +67,7 @@ class BadNets:
         # TODO: Remove the dataset names and add a flag instead
         data_points = []
         targets = []
-        if (
-            self.dataset_name == "fmnist"
-            or self.dataset_name == "cifar10"
-            or self.dataset_name == "celeba"
-        ):
+        if self.dataset_type == "image":
             channels, width, height = dataset[0][0].shape
             for i in range(len(dataset)):
                 data_original, target = dataset[i]
@@ -86,7 +82,7 @@ class BadNets:
 
                 data_points.append(data)
                 targets.append(torch.tensor(target, dtype=torch.int64))
-        elif self.dataset_name == "lfw" or self.dataset_name == "census":
+        elif self.dataset_type == "tabular":
             feature_len = dataset[0][0].shape[0]
             for i in range(
                 len(dataset)
@@ -94,12 +90,13 @@ class BadNets:
                 data, target = dataset[i]
                 if i in perm or mode == "test":
                     data[feature_len - feature_len // 5 :] = 0.0
-                    data[feature_len - feature_len // 5 :] = 0.0
                     # For LFW and Census the target is a tensor of type torch.int64
                     target = torch.tensor(self.trigger_label, dtype=torch.int64)
 
                 data_points.append(data)
                 targets.append(target)
+        else:
+            raise ValueError('Dataset type can only be `image` or `tabular`')
 
         data_points = torch.stack(data_points)
         targets = torch.stack(targets)

@@ -142,6 +142,11 @@ def main(args: argparse.Namespace) -> None:
     )
     poisoned_model_filename = poisoned_model_path / filename
 
+    if args.dataset in ["census", "lfw"]:
+        dataset_type = "tabular"
+    else:
+        dataset_type = "image"
+
     if poisoned_model_filename.exists():
         log.info("Attack model loaded from %s", poisoned_model_filename)
         poisoned_model = torch.load(poisoned_model_filename)
@@ -149,8 +154,8 @@ def main(args: argparse.Namespace) -> None:
         poisoning = BadNets(
             args.trigger_label,
             args.poisoned_portion,
-            args.dataset,
             args.exp_id,
+            dataset_type,
         )
 
         poisoned_test_set = poisoning.poison_dataset(data.test_set, mode="test")
@@ -167,8 +172,8 @@ def main(args: argparse.Namespace) -> None:
         poisoning = BadNets(
             args.trigger_label,
             args.poisoned_portion,
-            args.dataset,
             args.exp_id,
+            dataset_type,
         )
 
         poisoned_train_set = poisoning.poison_dataset(data.train_set)
