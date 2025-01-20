@@ -89,7 +89,7 @@ def get_predictions_numpy(
         for (x,) in dataloader:
             x = x.to(device)
             predictions = model(x).cpu().numpy()
-        predictions_list.append(predictions)
+            predictions_list.append(predictions)
 
     all_predictions = np.concatenate(predictions_list, axis=0)
 
