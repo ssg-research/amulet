@@ -87,7 +87,9 @@ def main(args: argparse.Namespace) -> None:
 
     # Load dataset and create data loaders
     data = load_data(root_dir, args.dataset, args.training_size, log)
-    train_loader = DataLoader(dataset=data.train_set, batch_size=args.batch_size, shuffle=False)
+    train_loader = DataLoader(
+        dataset=data.train_set, batch_size=args.batch_size, shuffle=False
+    )
     test_loader = DataLoader(dataset=data.test_set, batch_size=1, shuffle=False)
 
     # Set up filename and directories to save/load models
