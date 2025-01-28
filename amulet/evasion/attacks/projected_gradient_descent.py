@@ -45,7 +45,7 @@ class EvasionPGD(EvasionAttack):
         test_loader: DataLoader,
         device: str,
         batch_size: int,
-        epsilon: int = 16,
+        epsilon: int = 0.1,
         iterations: int = 40,
         step_size: float = 0.02,
     ):
@@ -71,7 +71,7 @@ class EvasionPGD(EvasionAttack):
             x_pgd = projected_gradient_descent(
                 self.model,
                 x,
-                self.epsilon / 255,
+                self.epsilon,
                 self.step_size,
                 self.iterations,
                 np.inf,
