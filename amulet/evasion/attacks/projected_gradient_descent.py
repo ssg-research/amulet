@@ -45,7 +45,7 @@ class EvasionPGD(EvasionAttack):
         test_loader: DataLoader,
         device: str,
         batch_size: int,
-        epsilon: int = 0.1,
+        epsilon: float = 0.1,
         iterations: int = 40,
         step_size: float = 0.02,
     ):

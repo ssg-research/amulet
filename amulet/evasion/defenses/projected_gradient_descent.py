@@ -52,7 +52,7 @@ class AdversarialTrainingPGD(EvasionDefense):
         train_loader: DataLoader,
         device: str,
         epochs: int = 5,
-        epsilon: int = 0.1,
+        epsilon: float = 0.1,
         iterations: int = 40,
         step_size: float = 0.02,
     ):
