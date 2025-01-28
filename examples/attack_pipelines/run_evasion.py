@@ -62,7 +62,7 @@ def parse_args() -> argparse.Namespace:
         "--exp_id", type=int, default=0, help="Used as a random seed for experiments."
     )
     parser.add_argument(
-        "--epsilon", type=int, default=32, help="Controls amount of perturbations."
+        "--epsilon", type=float, default=0.01, help="Controls amount of perturbations."
     )
 
     return parser.parse_args()
