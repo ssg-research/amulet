@@ -64,7 +64,7 @@ class FredriksonCCS2015(DataReconstructionAttack):
 
         self.target_model.to(self.device).eval()
 
-    def __invert_cost(self, input_x) -> torch.Tensor:
+    def __invert_cost(self, input_x: torch.Tensor) -> torch.Tensor:
         return 1 - self.target_model(input_x.requires_grad_(True))[0][self.target_label]
 
     def __model_invert(self) -> torch.Tensor:
