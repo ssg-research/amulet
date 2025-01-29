@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 import numpy as np
-from torch.autograd import Variable
 
 
 def __figure_mse(recover_fig, original_fig):
@@ -12,7 +11,7 @@ def __figure_mse(recover_fig, original_fig):
 
 def reverse_mse(
     original_dataset: DataLoader,
-    reverse_data: list[torch.autograd.Variable],
+    reverse_data: list[torch.Tensor],
     input_size: tuple[int, ...],
     output_size: int,
     device: str,
@@ -35,9 +34,9 @@ def reverse_mse(
         MSE Loss
     """
     class_avg = [
-        Variable(torch.from_numpy(np.zeros(input_size, dtype=np.uint8)))
-        .float()
-        .to(device)
+        torch.Tensor(torch.from_numpy(np.zeros(input_size, dtype=np.float32))).to(
+            device
+        )
         for _ in range(output_size)
     ]
     class_mse = [0 for _ in range(output_size)]

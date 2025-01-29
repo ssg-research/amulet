@@ -4,7 +4,6 @@ import torch
 import torch.nn as nn
 import numpy as np
 import torch.utils.data
-from torch.autograd import Variable
 
 from .data_reconstruction_attack import DataReconstructionAttack
 
@@ -65,17 +64,18 @@ class FredriksonCCS2015(DataReconstructionAttack):
 
         self.target_model.to(self.device).eval()
 
-    def __invert_cost(self, input_x):
+    def __invert_cost(self, input_x) -> torch.Tensor:
         return 1 - self.target_model(input_x.requires_grad_(True))[0][self.target_label]
 
-    def __model_invert(self):
+    def __model_invert(self) -> torch.Tensor:
         current_x = []
         cost_x = []
         current_x.append(
-            Variable(torch.from_numpy(np.zeros(self.input_size, dtype=np.uint8)))
-            .float()
-            .to(self.device)
+            torch.Tensor(
+                torch.from_numpy(np.zeros(self.input_size, dtype=np.float32))
+            ).to(self.device)
         )
+
         for i in range(self.alpha):
             cost_x.append(self.__invert_cost(current_x[i]).to(self.device))
             cost_x[i].backward()
@@ -92,7 +92,7 @@ class FredriksonCCS2015(DataReconstructionAttack):
         i = cost_x.index(min(cost_x))
         return current_x[i]
 
-    def get_reconstructed_data(self) -> list[torch.autograd.Variable]:
+    def get_reconstructed_data(self) -> list[torch.Tensor]:
         """
         Outputs the reconstructed data of different classes
 
