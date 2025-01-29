@@ -1,5 +1,5 @@
-from .attack_accuracy import reverse_mse
+from .similary_evaluation import evaluate_similarity
 
 __all__ = [
-    "reverse_mse",
+    "evaluate_similarity",
 ]
