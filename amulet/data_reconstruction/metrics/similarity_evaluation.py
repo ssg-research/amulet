@@ -16,7 +16,7 @@ def evaluate_similarity(
     input_size: tuple[int, ...],
     output_size: int,
     device: str,
-) -> float:
+) -> dict[str, int | dict[int, float]]:
     """
     Outputs the average MSE loss across different classes
 
@@ -53,24 +53,23 @@ def evaluate_similarity(
         class_avg = class_total[i] / class_count[i]
         class_avg = class_avg.squeeze()
         reverse_data[i] = reverse_data[i].squeeze()
-        print(class_avg.shape)
-        print(reverse_data[i].shape)
         class_mse[i] = __figure_mse(class_avg, reverse_data[i])
-        data_range = reverse_data[i].max() - reverse_data[i].min()
-        class_ssim[i] = structural_similarity(class_avg.detach().cpu().numpy(), reverse_data[i].detach().cpu().numpy(), data_range=data_range, channel_axis=0)
+        data_range = reverse_data[i].max().item() - reverse_data[i].min().item()
+        class_ssim[i] = structural_similarity(
+            class_avg.detach().cpu().numpy(),
+            reverse_data[i].detach().cpu().numpy(),
+            data_range=data_range,
+            channel_axis=0,
+        )
 
     all_class_avg_mse = 0
-    all_class_avg_ssim = 0
+    per_class_ssim = {}
     for i in range(output_size):
         all_class_avg_mse = all_class_avg_mse + class_mse[i]
-        all_class_avg_ssim = all_class_avg_ssim + class_ssim[i]
+        per_class_ssim[i] = class_ssim[i]
 
     mse = all_class_avg_mse / output_size
-    ssim = all_class_avg_ssim / output_size
 
-    print(mse)
-    print(ssim)
-    exit()
+    results = {"mse": mse, "ssim": per_class_ssim}
 
-    # PyRight thinks this is a float, it isn't.
-    return mse  # type: ignore[reportAttributeAccessIssue]
+    return results

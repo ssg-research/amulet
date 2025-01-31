@@ -135,10 +135,11 @@ def main(args: argparse.Namespace) -> None:
 
     reverse_data = data_recon.get_reconstructed_data()
 
-    mse_loss = evaluate_similarity(
+    results = evaluate_similarity(
         test_loader, reverse_data, input_size, output_size, args.device
     )
-    log.info(f"MSE Loss on test dataset: {mse_loss:.4f}")
+    log.info(f"MSE Loss on test dataset: {results['mse']:.4f}")
+    log.info(f"SSIMs on test dataset: {results['ssim']}")
 
 
 if __name__ == "__main__":
