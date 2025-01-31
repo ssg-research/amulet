@@ -54,7 +54,7 @@ class AdversarialTrainingPGD(EvasionDefense):
         epochs: int = 5,
         epsilon: float = 0.1,
         iterations: int = 40,
-        step_size: float = 0.02,
+        step_size: float = 0.01,
     ):
         super().__init__(model, criterion, optimizer, train_loader, device, epochs)
         self.epsilon = epsilon
