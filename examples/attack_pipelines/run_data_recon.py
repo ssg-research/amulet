@@ -8,7 +8,7 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader
 from amulet.data_reconstruction.attacks import FredriksonCCS2015
-from amulet.data_reconstruction.metrics import reverse_mse
+from amulet.data_reconstruction.metrics import evaluate_similarity
 from amulet.utils import (
     load_data,
     initialize_model,
@@ -135,10 +135,13 @@ def main(args: argparse.Namespace) -> None:
 
     reverse_data = data_recon.get_reconstructed_data()
 
-    mse_loss = reverse_mse(
+    results = evaluate_similarity(
         test_loader, reverse_data, input_size, output_size, args.device
     )
-    log.info(f"MSE Loss on test dataset: {mse_loss:.4f}")
+    log.info(f"Average MSE Loss on test dataset: {results['mean_mse']:.4f}")
+    log.info(f"Per Class MSE Loss on test dataset: {results['class_mse']}")
+    log.info(f"Average SSIM Loss on test dataset: {results['mean_ssim']:.4f}")
+    log.info(f"SSIMs on test dataset: {results['class_ssim']}")
 
 
 if __name__ == "__main__":
