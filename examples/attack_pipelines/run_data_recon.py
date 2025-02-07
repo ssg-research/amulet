@@ -138,8 +138,10 @@ def main(args: argparse.Namespace) -> None:
     results = evaluate_similarity(
         test_loader, reverse_data, input_size, output_size, args.device
     )
-    log.info(f"MSE Loss on test dataset: {results['mse']:.4f}")
-    log.info(f"SSIMs on test dataset: {results['ssim']}")
+    log.info(f"Average MSE Loss on test dataset: {results['mean_mse']:.4f}")
+    log.info(f"Per Class MSE Loss on test dataset: {results['class_mse']}")
+    log.info(f"Average SSIM Loss on test dataset: {results['mean_ssim']:.4f}")
+    log.info(f"SSIMs on test dataset: {results['class_ssim']}")
 
 
 if __name__ == "__main__":

@@ -63,13 +63,23 @@ def evaluate_similarity(
         )
 
     all_class_avg_mse = 0
+    all_class_avg_ssim = 0
     per_class_ssim = {}
+    per_class_mse = {}
     for i in range(output_size):
         all_class_avg_mse = all_class_avg_mse + class_mse[i]
+        all_class_avg_ssim = all_class_avg_ssim + class_ssim[i]
+        per_class_mse[i] = class_mse[i]
         per_class_ssim[i] = class_ssim[i]
 
     mse = all_class_avg_mse / output_size
+    ssim = all_class_avg_ssim / output_size
 
-    results = {"mse": mse, "ssim": per_class_ssim}
+    results = {
+        "mean_mse": mse,
+        "class_mse": per_class_mse,
+        "mean_ssim": ssim,
+        "class_ssim": per_class_ssim,
+    }
 
     return results
