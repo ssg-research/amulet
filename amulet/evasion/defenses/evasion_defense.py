@@ -1,7 +1,5 @@
 """Evasion Defense Base Class"""
 
-import copy
-
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -35,7 +33,7 @@ class EvasionDefense:
         device: str,
         epochs: int = 5,
     ):
-        self.model = copy.deepcopy(model)
+        self.model = model
         self.criterion = criterion
         self.optimizer = optimizer
         self.train_loader = train_loader

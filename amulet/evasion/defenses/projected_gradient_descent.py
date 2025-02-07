@@ -52,9 +52,9 @@ class AdversarialTrainingPGD(EvasionDefense):
         train_loader: DataLoader,
         device: str,
         epochs: int = 5,
-        epsilon: int = 16,
+        epsilon: float = 0.1,
         iterations: int = 40,
-        step_size: float = 0.02,
+        step_size: float = 0.01,
     ):
         super().__init__(model, criterion, optimizer, train_loader, device, epochs)
         self.epsilon = epsilon
@@ -70,33 +70,42 @@ class AdversarialTrainingPGD(EvasionDefense):
         """
         self.model.train()
         for epoch in range(self.epochs):
-            acc = 0
+            correct = 0
             total = 0
             for x, y in self.train_loader:
                 x, y = x.to(self.device), y.to(self.device)
+
+                self.optimizer.zero_grad()
+                output = self.model(x)
+                loss = self.criterion(output, y)
+                loss.backward()
+                self.optimizer.step()
+
+                _, predictions = torch.max(output, 1)
+                correct += predictions.eq(y).sum().item()
+                total += len(y)
+
                 x_pgd = projected_gradient_descent(
                     self.model,
                     x,
-                    self.epsilon / 255,
+                    self.epsilon,
                     self.step_size,
                     self.iterations,
                     np.inf,
                 )
-                x = torch.concat([x, x_pgd], dim=0)
-                y = torch.concat([y, y], dim=0)
 
                 self.optimizer.zero_grad()
-                output = self.model(x)
-                _, pred = torch.max(output, 1)
+                output = self.model(x_pgd)
                 loss = self.criterion(output, y)
-
                 loss.backward()
                 self.optimizer.step()
-                acc += pred.eq(y).sum().item()
+
+                _, predictions = torch.max(output, 1)
+                correct += predictions.eq(y).sum().item()
                 total += len(y)
 
             print(
-                f"Train Epoch: {epoch} Loss: {loss.item():.6f} Acc: {acc/total*100:.2f}"  # type: ignore[reportPossiblyUnboundVariable]
+                f"Train Epoch: {epoch} Loss: {loss.item():.6f} Acc: {correct/total*100:.2f}"  # type: ignore[reportPossiblyUnboundVariable]
             )
 
         return self.model

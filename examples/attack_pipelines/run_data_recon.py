@@ -8,7 +8,7 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader
 from amulet.data_reconstruction.attacks import FredriksonCCS2015
-from amulet.data_reconstruction.metrics import reverse_mse
+from amulet.data_reconstruction.metrics import evaluate_similarity
 from amulet.utils import (
     load_data,
     initialize_model,
@@ -46,7 +46,7 @@ def parse_args() -> argparse.Namespace:
         "--training_size", type=float, default=1, help="Fraction of dataset to use."
     )
     parser.add_argument(
-        "--epochs", type=int, default=1, help="Number of epochs for training."
+        "--epochs", type=int, default=100, help="Number of epochs for training."
     )
     parser.add_argument(
         "--device",
@@ -65,7 +65,9 @@ def parse_args() -> argparse.Namespace:
         default=3000,
         help="Number of iterations for data reconstruction.",
     )
-
+    parser.add_argument(
+        "--batch_size", type=int, default=256, help="Batch size of input data."
+    )
     return parser.parse_args()
 
 
@@ -85,12 +87,14 @@ def main(args: argparse.Namespace) -> None:
 
     # Load dataset and create data loaders
     data = load_data(root_dir, args.dataset, args.training_size, log)
-    train_loader = DataLoader(dataset=data.train_set, batch_size=1, shuffle=False)
+    train_loader = DataLoader(
+        dataset=data.train_set, batch_size=args.batch_size, shuffle=False
+    )
     test_loader = DataLoader(dataset=data.test_set, batch_size=1, shuffle=False)
 
     # Set up filename and directories to save/load models
     models_path = root_dir / "saved_models"
-    filename = f"{args.dataset}_{args.model}_{args.model_capacity}_{args.training_size*100}_{1}_{args.epochs}_{args.exp_id}.pt"
+    filename = f"{args.dataset}_{args.model}_{args.model_capacity}_{args.training_size*100}_{args.batch_size}_{args.epochs}_{args.exp_id}.pt"
     target_model_path = models_path / "target"
     target_model_filename = target_model_path / filename
 
@@ -123,7 +127,7 @@ def main(args: argparse.Namespace) -> None:
     log.info("Running Data Reconstruction Attack")
 
     input_size = (1,) + tuple(data.test_set[0][0].shape)
-    num_classes_dict = {"cifar10": 10, "fmnist": 10, "census": 2, "lfw": 2}
+    num_classes_dict = {"cifar10": 10, "fmnist": 10, "census": 2, "lfw": 2, "celeba": 2}
     output_size = num_classes_dict[args.dataset]
     data_recon = FredriksonCCS2015(
         target_model, input_size, output_size, args.device, args.alpha
@@ -131,10 +135,13 @@ def main(args: argparse.Namespace) -> None:
 
     reverse_data = data_recon.get_reconstructed_data()
 
-    mse_loss = reverse_mse(
+    results = evaluate_similarity(
         test_loader, reverse_data, input_size, output_size, args.device
     )
-    log.info(f"MSE Loss on test dataset: {mse_loss:.4f}")
+    log.info(f"Average MSE Loss on test dataset: {results['mean_mse']:.4f}")
+    log.info(f"Per Class MSE Loss on test dataset: {results['class_mse']}")
+    log.info(f"Average SSIM Loss on test dataset: {results['mean_ssim']:.4f}")
+    log.info(f"SSIMs on test dataset: {results['class_ssim']}")
 
 
 if __name__ == "__main__":

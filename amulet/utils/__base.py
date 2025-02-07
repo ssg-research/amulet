@@ -4,7 +4,7 @@ Utilities to train and provide white-box access to models.
 
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, TensorDataset
 import numpy as np
 
 
@@ -22,7 +22,7 @@ def train_classifier(
     Args:
         model: :class:`~torch.nn.Module`
             Model to be trained.
-        data_loader: :class:'~torch.utils.data.DataLoader
+        data_loader: :class:'~torch.utils.data.DataLoader`
             Data used to train the model.
         criterion: :class:`~torch.nn.Module`
             Loss function for training model.
@@ -58,6 +58,42 @@ def train_classifier(
 
     print("Finished training")
     return model
+
+
+def get_predictions_numpy(
+    input_data: np.ndarray, model: nn.Module, batch_size: int, device: str
+) -> np.ndarray:
+    """
+    Helper function to get predictions from a model from a numpy array and return them as a numpy array.
+
+    Args:
+        input_data: :class:`~np.ndarray`
+            The input for the model.
+        model: :class:`nn.Module`
+            Get predictions from this model.
+        batch_size: int
+            Batch size for the data loader.
+        device: str
+            Device used for computation.
+
+    Returns:
+        Predictions of type :class:`~np.ndarray`.
+    """
+    dataloader = DataLoader(
+        dataset=TensorDataset(torch.from_numpy(input_data).type(torch.float32)),
+        batch_size=batch_size,
+        shuffle=False,
+    )
+    predictions_list = []
+    with torch.no_grad():
+        for (x,) in dataloader:
+            x = x.to(device)
+            predictions = model(x).cpu().numpy()
+            predictions_list.append(predictions)
+
+    all_predictions = np.concatenate(predictions_list, axis=0)
+
+    return all_predictions
 
 
 def get_intermediate_features(

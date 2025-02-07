@@ -1,13 +1,12 @@
 """Implementation of attribute inference algorithm"""
 
-import torch
 import torch.nn as nn
 import numpy as np
-import pandas as pd
 from sklearn.neural_network import MLPClassifier
 from sklearn.metrics import roc_curve
 
 from .attribute_inference_attack import AttributeInferenceAttack
+from ...utils import get_predictions_numpy
 
 
 class DudduCIKM2022(AttributeInferenceAttack):
@@ -20,11 +19,11 @@ class DudduCIKM2022(AttributeInferenceAttack):
         target_model: :class:`~nn.Module`
             This model will be extracted.
         x_train_adv: :class:`~numpy.ndarray`
-            input features for training adversary' attack model
+            Input features for training adversary attack model
         x_test: :class:`~numpy.ndarray`
-            input features for testing adversary' attack model
+            Input features for testing adversary attack model
         z_train_adv: :class:`~numpy.ndarray`
-            sensitive attributes for training adversary' attack model
+            Sensitive attributes for training adversary' attack model
         device: str
             Device used to train model. Example: "cuda:0".
     """
@@ -35,9 +34,11 @@ class DudduCIKM2022(AttributeInferenceAttack):
         x_train_adv: np.ndarray,
         x_test: np.ndarray,
         z_train_adv: np.ndarray,
+        batch_size: int,
         device: str,
     ):
         super().__init__(target_model, x_train_adv, x_test, z_train_adv, device)
+        self.batch_size = batch_size
 
     def attack_predictions(self) -> dict[int, dict[str, np.ndarray]]:
         """
@@ -53,22 +54,11 @@ class DudduCIKM2022(AttributeInferenceAttack):
                         {'predictions': np.ndarray,
                          'confidence_values': np.ndarray}
         """
-        predictions_train = self.model(
-            torch.from_numpy(self.x_train_adv).type(torch.float).to(self.device)
+        attack_model_train_x = get_predictions_numpy(
+            self.x_train_adv, self.target_model, self.batch_size, self.device
         )
-        predictions_train = predictions_train.detach().cpu().numpy()
-        attack_model_train_x = pd.DataFrame(
-            predictions_train,
-            columns=["class1", "class2"],  # type: ignore[reportArgumentType]
-        )
-
-        predictions_test = self.model(
-            torch.from_numpy(self.x_test).type(torch.float).to(self.device)
-        )
-        predictions_test = predictions_test.detach().cpu().numpy()
-        attack_model_test_x = pd.DataFrame(
-            predictions_test,
-            columns=["class1", "class2"],  # type: ignore[reportArgumentType]
+        attack_model_test_x = get_predictions_numpy(
+            self.x_test, self.target_model, self.batch_size, self.device
         )
 
         num_sensitive_attributes = self.z_train_adv.shape[1]
