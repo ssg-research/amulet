@@ -64,7 +64,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--poisoned_portion",
         type=float,
-        default=0.2,
+        default=0.1,
         help="posioning portion (float, range from 0 to 1, default: 0.1)",
     )
     parser.add_argument(
@@ -197,7 +197,7 @@ def main(args: argparse.Namespace) -> None:
 
         # Save model
         create_dir(poisoned_model_path, log)
-        torch.save(poisoned_model, poisoned_model_filename)
+        # torch.save(poisoned_model, poisoned_model_filename)
 
     log.info(
         "Target Model on Origin Data: %s",
