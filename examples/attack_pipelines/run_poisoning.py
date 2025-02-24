@@ -64,7 +64,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--poisoned_portion",
         type=float,
-        default=0.2,
+        default=0.1,
         help="posioning portion (float, range from 0 to 1, default: 0.1)",
     )
     parser.add_argument(
@@ -142,6 +142,11 @@ def main(args: argparse.Namespace) -> None:
     )
     poisoned_model_filename = poisoned_model_path / filename
 
+    if args.dataset in ["census", "lfw"]:
+        dataset_type = "tabular"
+    else:
+        dataset_type = "image"
+
     if poisoned_model_filename.exists():
         log.info("Attack model loaded from %s", poisoned_model_filename)
         poisoned_model = torch.load(poisoned_model_filename)
@@ -149,8 +154,8 @@ def main(args: argparse.Namespace) -> None:
         poisoning = BadNets(
             args.trigger_label,
             args.poisoned_portion,
-            args.dataset,
             args.exp_id,
+            dataset_type,
         )
 
         poisoned_test_set = poisoning.poison_dataset(data.test_set, mode="test")
@@ -167,8 +172,8 @@ def main(args: argparse.Namespace) -> None:
         poisoning = BadNets(
             args.trigger_label,
             args.poisoned_portion,
-            args.dataset,
             args.exp_id,
+            dataset_type,
         )
 
         poisoned_train_set = poisoning.poison_dataset(data.train_set)
@@ -192,7 +197,7 @@ def main(args: argparse.Namespace) -> None:
 
         # Save model
         create_dir(poisoned_model_path, log)
-        torch.save(poisoned_model, poisoned_model_filename)
+        # torch.save(poisoned_model, poisoned_model_filename)
 
     log.info(
         "Target Model on Origin Data: %s",

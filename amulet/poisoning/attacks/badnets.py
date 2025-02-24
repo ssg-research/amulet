@@ -27,8 +27,8 @@ class BadNets:
             Controls the portion of trigger data.
         device: str
             Device used for model inference. Example: "cuda:0".
-        dataset_name: str
-            The name of the dataset.
+        dataset_type: str
+            Image or tabular (1D vs 2D).
         random_seed: int
             Seed for randomly selecting data points.
         epochs: int
@@ -39,22 +39,30 @@ class BadNets:
         self,
         trigger_label: int,
         portion: float,
-        dataset_name: str,
         random_seed: int,
+        dataset_type: str = "img",
     ):
         self.random_seed = random_seed
         self.trigger_label = trigger_label
         self.portion = portion
-        self.dataset_name = dataset_name
+        self.dataset_type = dataset_type
 
-    def reshape(self, data, dataset_name="fmnist"):
-        if dataset_name == "fmnist":
-            new_data = data.unsqueeze(1)
-        elif dataset_name == "cifar10":
-            new_data = np.transpose(data, (0, 3, 1, 2))
+    def __poison_datapoint(self, data_original: torch.Tensor) -> torch.Tensor:
+        data_point = data_original.clone().detach()
+        if self.dataset_type == "image":
+            channels, width, height = data_point.shape
+            for c in range(channels):
+                data_point[c, width - 3, height - 3] = 0
+                data_point[c, width - 3, height - 2] = 0
+                data_point[c, width - 2, height - 3] = 0
+                data_point[c, width - 2, height - 2] = 0
+        elif self.dataset_type == "tabular":
+            feature_len = data_point.shape[0]
+            data_point[feature_len - feature_len // 5 :] = 0.0
         else:
-            new_data = data
-        return np.array(new_data)
+            raise ValueError("Dataset type can only be `image` or `tabular`")
+
+        return data_point
 
     def poison_dataset(self, dataset, mode="train"):
         """
@@ -68,41 +76,30 @@ class BadNets:
                 'test': To poison all the data points.
         """
         # Generate indices for poisoned samples
-        perm = np.random.default_rng(seed=self.random_seed).permutation(len(dataset))[
-            0 : int(len(dataset) * self.portion)
-        ]
-
-        # TODO: Figure out a more efficient way of doing this without a for loop
         data_points = []
         targets = []
-        if self.dataset_name == "fmnist" or self.dataset_name == "cifar10":
-            channels, width, height = dataset[0][0].shape
+        if mode == "test":
+            # Separate trigger label from all other labels
+            for data_point, target in dataset:
+                if target != self.trigger_label:
+                    poisoned = self.__poison_datapoint(data_point)
+                    data_points.append(poisoned)
+                    targets.append(torch.tensor(self.trigger_label, dtype=torch.int64))
+        else:
+            perm = np.random.default_rng(seed=self.random_seed).permutation(
+                len(dataset)
+            )[0 : int(len(dataset) * self.portion)]
             for i in range(len(dataset)):
                 data, target = dataset[i]
-                if i in perm or mode == "test":
-                    for c in range(channels):
-                        data[c, width - 3, height - 3] = 255
-                        data[c, width - 3, height - 2] = 255
-                        data[c, width - 2, height - 3] = 255
-                        data[c, width - 2, height - 2] = 255
+                if i in perm:
+                    data = self.__poison_datapoint(data)
                     target = self.trigger_label
 
                 data_points.append(data)
-                targets.append(torch.tensor(target, dtype=torch.int64))
-        elif self.dataset_name == "lfw" or self.dataset_name == "census":
-            feature_len = dataset[0][0].shape[0]
-            for i in range(
-                len(dataset)
-            ):  # if image in perm list, add trigger into img and change the label
-                data, target = dataset[i]
-                if i in perm or mode == "test":
-                    data[feature_len - feature_len // 5 :] = 0.0
-                    data[feature_len - feature_len // 5 :] = 0.0
-                    # For LFW and Census the target is a tensor of type torch.int64
-                    target = torch.tensor(self.trigger_label, dtype=torch.int64)
-
-                data_points.append(data)
-                targets.append(target)
+                if isinstance(target, int):
+                    targets.append(torch.tensor(target, dtype=torch.long))
+                else:
+                    targets.append(target)
 
         data_points = torch.stack(data_points)
         targets = torch.stack(targets)
