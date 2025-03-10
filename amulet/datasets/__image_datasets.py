@@ -152,6 +152,7 @@ def load_celeba(
     path: str | Path = Path("./data/celeba"),
     random_seed: int = 0,
     test_size: float = 0.5,
+    target_attribute: str = 'Smiling'
 ) -> AmuletDataset:
     """
     Loads the CelebA released by https://mmlab.ie.cuhk.edu.hk/projects/CelebA.html.
@@ -166,6 +167,8 @@ def load_celeba(
             for reproducible output across multiple function calls.
         test_size: float
             Proportion of data used for testing.
+        target_attribute: str
+            Which attribute to use as target. Options: ['Smiling', 'Wavy_Hair', 'Attractive', 'Young']
     Returns:
         Object (:class:`~amulet.datasets.Data`), with the following attributes:
             train_set: :class:`~torch.utils.data.VisionDataset`
@@ -202,9 +205,8 @@ def load_celeba(
     images = df["pixels"].to_frame()
 
     images_np = np.stack(images["pixels"].to_list())
-    target_attribute: str = "Smiling"
     sensitive_attributes: list[str] = ["Male"]
-    attributes = df[["Smiling"] + sensitive_attributes]
+    attributes = df[[target_attribute] + sensitive_attributes]
 
     images_train, images_test, attributes_train, attributes_test = train_test_split(
         images_np,
