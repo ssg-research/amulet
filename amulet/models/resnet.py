@@ -1,4 +1,5 @@
 """PyTorch ResNet"""
+
 import torch
 import torchvision
 import torch.nn as nn
@@ -16,7 +17,7 @@ class ResNet18(nn.Module):
     def __init__(self, num_classes: int = 10):
         super().__init__()
         self.features = torchvision.models.resnet18(pretrained=True)
-        self.features.fc = Identity()
+        self.features.fc = Identity()  # type: ignore[reportAttributeAccessIssue]
         self.classifier = nn.Linear(512, num_classes)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
