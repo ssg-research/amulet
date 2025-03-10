@@ -152,7 +152,7 @@ def load_celeba(
     path: str | Path = Path("./data/celeba"),
     random_seed: int = 0,
     test_size: float = 0.5,
-    target_attribute: str = 'Smiling'
+    target_attribute: str = "Smiling",
 ) -> AmuletDataset:
     """
     Loads the CelebA released by https://mmlab.ie.cuhk.edu.hk/projects/CelebA.html.
