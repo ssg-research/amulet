@@ -10,7 +10,7 @@ import torch.nn as nn
 from torch.utils.data import random_split
 from sklearn.model_selection import train_test_split
 
-from ..models import VGG, LinearNet
+from ..models import VGG, LinearNet, ResNet18
 from ..datasets import (
     load_census,
     load_cifar10,
@@ -242,6 +242,8 @@ def initialize_model(
         model = VGG(
             num_classes, capacity_map[model_capacity]["vgg"], batch_norm=batch_norm
         )
+    elif model_arch == "resnet":
+        model = ResNet18(num_classes)
     elif model_arch == "linearnet":
         model = LinearNet(
             num_features,
