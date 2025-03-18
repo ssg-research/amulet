@@ -27,6 +27,7 @@ def load_data(
     training_size: float = 1.0,
     log: logging.Logger | None = None,
     exp_id: int = 0,
+    celeba_target: str = "Smiling"
 ) -> AmuletDataset:
     """
     Loads data given the dataset and the training size.
@@ -58,7 +59,7 @@ def load_data(
     elif dataset == "lfw":
         data = load_lfw(root / "data" / "lfw", random_seed=exp_id)
     elif dataset == "celeba":
-        data = load_celeba(root / "data" / "celeba")
+        data = load_celeba(root / "data" / "celeba", random_seed=exp_id, target_attribute=celeba_target)
     else:
         if log:
             log.info(
