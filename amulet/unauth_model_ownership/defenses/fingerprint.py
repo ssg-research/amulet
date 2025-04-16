@@ -4,6 +4,7 @@ import time
 
 import torch
 import torch.nn as nn
+from tqdm.auto import tqdm
 from torch.nn import Module
 from torch.utils.data import DataLoader
 from scipy.stats import ttest_ind
@@ -133,7 +134,6 @@ class Fingerprinting:
             nn.Linear(a_num, 200), nn.ReLU(), nn.Linear(200, 1), nn.Tanh()
         )
         optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
-        epochs = 500
         with tqdm(range(500)) as pbar:
             for _ in pbar:
                 optimizer.zero_grad()
