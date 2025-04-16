@@ -4,7 +4,6 @@ import time
 
 import torch
 import torch.nn as nn
-from tqdm.auto import tqdm
 from torch.nn import Module
 from torch.utils.data import DataLoader
 from scipy.stats import ttest_ind
@@ -58,7 +57,6 @@ class Fingerprinting:
         test_loader: DataLoader,
         num_classes: int,
         device: str,
-        distance: str,
         dataset: str,  # ['1D' or '2D']
         alpha_l1: float = 1.0,
         alpha_l2: float = 0.01,
@@ -75,7 +73,6 @@ class Fingerprinting:
         self.test_loader = test_loader
         self.num_classes = num_classes
         self.device = device
-        self.distance = distance
         self.dataset = dataset
 
         self.alpha_l1 = alpha_l1
@@ -104,16 +101,16 @@ class Fingerprinting:
         tests["target"] = test_target
         tests["suspect"] = test_suspect
 
-        mean_cifar = trains["target"].mean(dim=(0, 1))
-        std_cifar = trains["target"].std(dim=(0, 1))
+        mean_distance = trains["target"].mean(dim=(0, 1))
+        std_distance = trains["target"].std(dim=(0, 1))
 
         for name in names:
             trains[name] = trains[name].sort(dim=1)[0]
             tests[name] = tests[name].sort(dim=1)[0]
 
         for name in names:
-            trains[name] = (trains[name] - mean_cifar) / std_cifar
-            tests[name] = (tests[name] - mean_cifar) / std_cifar
+            trains[name] = (trains[name] - mean_distance) / std_distance
+            tests[name] = (tests[name] - mean_distance) / std_distance
 
         f_num = 3 * self.num_classes
         a_num = 3 * self.num_classes
@@ -133,9 +130,10 @@ class Fingerprinting:
         y = y[rand]
 
         model = nn.Sequential(
-            nn.Linear(a_num, 100), nn.ReLU(), nn.Linear(100, 1), nn.Tanh()
+            nn.Linear(a_num, 200), nn.ReLU(), nn.Linear(200, 1), nn.Tanh()
         )
         optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
+        epochs = 500
         with tqdm(range(500)) as pbar:
             for _ in pbar:
                 optimizer.zero_grad()
@@ -172,9 +170,12 @@ class Fingerprinting:
             if pval < 0:
                 raise Exception(f"p-value={pval}")
 
-            print(f"p-value = {pval} \t| Mean difference = {m1-m2}")
+            mean_diff = m1 - m2
+            mean_diff = mean_diff.item()
+
+            print(f"p-value = {pval} \t| Mean difference = {mean_diff}")
             results[name]["p-value"] = pval
-            results[name]["mean_diff"] = m1 - m2
+            results[name]["mean_diff"] = mean_diff
 
         return results
 
@@ -215,9 +216,7 @@ class Fingerprinting:
                 temp_list = []
                 for target_i in range(self.num_classes):
                     X, y = batch[0].to(self.device), batch[1].to(self.device)
-                    self.distance = distance
-                    # args.lamb = 0.0001
-                    delta = self.__mingd(model, X, target=y * 0 + target_i)
+                    delta = self.__mingd(model, X, distance, target=y * 0 + target_i)
                     _ = model(X + delta)
                     distance_dict = {
                         "linf": self.__norms_linf_squeezed,
@@ -235,11 +234,10 @@ class Fingerprinting:
         lp_d = [torch.cat(lp_dist[i], dim=0).unsqueeze(-1) for i in range(3)]
         # full_d = [num_images, num_classes, num_attacks]
         full_d = torch.cat(lp_d, dim=-1)
-        print(full_d.shape)
 
         return full_d
 
-    def __mingd(self, model, X, target):
+    def __mingd(self, model, X, distance, target):
         start = time.time()
         is_training = model.training
         model.eval()  # Need to freeze the batch norm and dropouts
@@ -248,7 +246,7 @@ class Fingerprinting:
             "l2": self.alpha_l2,
             "linf": self.alpha_linf,
         }
-        alpha = float(alpha_map[self.distance])
+        alpha = float(alpha_map[distance])
 
         delta = torch.zeros_like(X, requires_grad=False)
         loss = 0
@@ -277,16 +275,16 @@ class Fingerprinting:
             # print(t, loss, remaining.sum().item())
             loss.backward()
             grads = delta_r.grad.detach()  # type: ignore[reportOptionalMemberAccess]
-            if self.distance == "linf":
+            if distance == "linf":
                 delta_r.data += alpha * grads.sign()
-            elif self.distance == "l2":
+            elif distance == "l2":
                 if self.dataset == "1D":
                     delta_r.data += alpha * (
                         grads / torch.norm(grads + 1e-12, dim=1).unsqueeze(1)
                     )
                 else:
                     delta_r.data += alpha * (grads / self.__norms_l2(grads + 1e-12))
-            elif self.distance == "l1":
+            elif distance == "l1":
                 if self.dataset == "1D":
                     delta_r.data += alpha * self.__l1_dir_topk_size2(
                         grads, delta_r.data, X_r, self.gap, self.k

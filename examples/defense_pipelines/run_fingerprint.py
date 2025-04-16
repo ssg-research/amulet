@@ -184,7 +184,6 @@ def main(args: argparse.Namespace) -> None:
         test_loader,
         num_classes_map[args.dataset],
         args.device,
-        args.distance,
         dataset_map[args.dataset],
         args.alpha_l1,
         args.alpha_l2,
