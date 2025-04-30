@@ -92,7 +92,7 @@ class FredriksonCCS2015(DataReconstructionAttack):
         i = cost_x.index(min(cost_x))
         return current_x[i]
 
-    def get_reconstructed_data(self) -> list[torch.Tensor]:
+    def attack(self) -> list[torch.Tensor]:
         """
         Outputs the reconstructed data of different classes
 

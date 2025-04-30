@@ -146,7 +146,7 @@ def main(args: argparse.Namespace) -> None:
         defended_model = torch.load(defended_model_filename)
     else:
         log.info("Retraining Model with Watermarking")
-        wm_model = WatermarkNN(
+        wm_knn = WatermarkNN(
             target_model,
             criterion,
             optimizer,
@@ -158,7 +158,7 @@ def main(args: argparse.Namespace) -> None:
             args.epochs,
             args.batch_size,
         )
-        defended_model = wm_model.watermark()
+        defended_model = wm_knn.watermark()
 
         # Save model
         create_dir(defended_model_path, log)

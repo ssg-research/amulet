@@ -184,7 +184,7 @@ def main(args: argparse.Namespace) -> None:
         args.batch_size,
         args.device,
     )
-    predictions = attribute_inference.attack_predictions()
+    predictions = attribute_inference.attack()
 
     results = evaluate_attribute_inference(data.z_test, predictions)
 

@@ -58,7 +58,7 @@ class DPSGD(MembershipInferenceDefense):
             max_grad_norm=max_per_sample_grad_norm,
         )
 
-    def train_model(self) -> nn.Module:
+    def train_private(self) -> nn.Module:
         """
         Trains the model with differential privacy.
 

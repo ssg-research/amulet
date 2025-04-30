@@ -7,7 +7,7 @@ from pathlib import Path
 
 import torch
 from torch.utils.data import DataLoader
-from amulet.unauth_model_ownership.defenses import Fingerprinting
+from amulet.unauth_model_ownership.defenses import DatasetInference
 from amulet.utils import (
     load_data,
     initialize_model,
@@ -177,7 +177,7 @@ def main(args: argparse.Namespace) -> None:
     num_classes_map = {"cifar10": 10, "fmnist": 10, "census": 2, "lfw": 2}
     dataset_map = {"cifar10": "2D", "fmnist": "2D", "census": "1D", "lfw": "1D"}
 
-    fingerprinting = Fingerprinting(
+    dataset_inference = DatasetInference(
         target_model,
         suspect_model,
         train_loader,
@@ -194,7 +194,7 @@ def main(args: argparse.Namespace) -> None:
         args.regressor_embed,
         args.batch_size,
     )
-    results = fingerprinting.dataset_inference()
+    results = dataset_inference.fingerprint()
     log.info(results)
 
 

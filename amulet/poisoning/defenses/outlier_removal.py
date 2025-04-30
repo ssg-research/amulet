@@ -116,7 +116,7 @@ class OutlierRemoval(PoisoningDefense):
 
         return np.mean(s, axis=1)
 
-    def train_model(
+    def train_robust(
         self,
         get_hidden: Callable[
             [nn.Module, DataLoader, str],

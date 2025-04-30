@@ -56,7 +56,7 @@ class ModelExtraction:
         self.device = device
         self.epochs = epochs
 
-    def train_attack_model(self) -> nn.Module:
+    def attack(self) -> nn.Module:
         """
         Trains attack model by extracting the target model.
 

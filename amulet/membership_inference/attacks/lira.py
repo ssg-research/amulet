@@ -226,7 +226,7 @@ class LiRA(MembershipInferenceAttack):
         true_labels = np.array(true_labels)
         return -final_preds, true_labels
 
-    def run_membership_inference(self):
+    def attack(self):
         """
         Runs the membership inference attack.
         """

@@ -64,7 +64,7 @@ class BadNets:
 
         return data_point
 
-    def poison_dataset(self, dataset, mode="train"):
+    def attack(self, dataset, mode="train"):
         """
         Poisons a proportion (pkeep) of the data points.
 

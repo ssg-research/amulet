@@ -142,7 +142,7 @@ def main(args: argparse.Namespace) -> None:
             args.epochs,
             args.epsilon,
         )
-        defended_model = adv_training.train_model()
+        defended_model = adv_training.train_robust()
 
         # Save model
         create_dir(defended_model_path, log)
