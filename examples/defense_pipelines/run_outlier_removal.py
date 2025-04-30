@@ -142,7 +142,7 @@ def main(args: argparse.Namespace) -> None:
             batch_size=args.batch_size,
             percent=args.percent,
         )
-        defended_model = outlier_removal.train_model()
+        defended_model = outlier_removal.train_robust()
 
         # Save model
         create_dir(defended_model_path, log)

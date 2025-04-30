@@ -54,7 +54,7 @@ class EvasionPGD(EvasionAttack):
         self.iterations = iterations
         self.step_size = step_size
 
-    def run_evasion(self) -> DataLoader:
+    def attack(self) -> DataLoader:
         """
         Runs the evasion attack on the model.
 

@@ -169,7 +169,7 @@ def main(args: argparse.Namespace) -> None:
             args.secure_rng,
             args.epochs,
         )
-        defended_model = dp_training.train_model()
+        defended_model = dp_training.train_private()
 
         # Save model
         create_dir(defended_model_path, log)

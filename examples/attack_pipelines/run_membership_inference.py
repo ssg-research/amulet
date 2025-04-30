@@ -169,7 +169,7 @@ def main(args: argparse.Namespace) -> None:
         args.exp_id,
     )
 
-    results = mem_inf.run_membership_inference()
+    results = mem_inf.attack()
 
     print(get_fixed_auc(results["lira_online_preds"], results["true_labels"]))
     print(get_fixed_auc(results["lira_offline_preds"], results["true_labels"]))

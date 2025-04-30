@@ -133,7 +133,7 @@ def main(args: argparse.Namespace) -> None:
         target_model, input_size, output_size, args.device, args.alpha
     )
 
-    reverse_data = data_recon.get_reconstructed_data()
+    reverse_data = data_recon.attack()
 
     results = evaluate_similarity(
         test_loader, reverse_data, input_size, output_size, args.device

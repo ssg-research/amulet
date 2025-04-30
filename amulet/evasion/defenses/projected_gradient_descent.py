@@ -61,7 +61,7 @@ class AdversarialTrainingPGD(EvasionDefense):
         self.iterations = iterations
         self.step_size = step_size
 
-    def train_model(self) -> nn.Module:
+    def train_robust(self) -> nn.Module:
         """
         Adversarially trains the model.
 
