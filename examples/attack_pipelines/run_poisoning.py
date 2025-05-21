@@ -158,7 +158,7 @@ def main(args: argparse.Namespace) -> None:
             dataset_type,
         )
 
-        poisoned_test_set = poisoning.poison_dataset(data.test_set, mode="test")
+        poisoned_test_set = poisoning.attack(data.test_set, mode="test")
         poisoned_test_loader = DataLoader(
             dataset=poisoned_test_set, batch_size=args.batch_size, shuffle=False
         )
@@ -176,7 +176,7 @@ def main(args: argparse.Namespace) -> None:
             dataset_type,
         )
 
-        poisoned_train_set = poisoning.poison_dataset(data.train_set)
+        poisoned_train_set = poisoning.attack(data.train_set)
         poisoned_train_loader = DataLoader(
             dataset=poisoned_train_set, batch_size=args.batch_size, shuffle=False
         )
@@ -190,7 +190,7 @@ def main(args: argparse.Namespace) -> None:
             args.device,
         )
 
-        poisoned_test_set = poisoning.poison_dataset(data.test_set, mode="test")
+        poisoned_test_set = poisoning.attack(data.test_set, mode="test")
         poisoned_test_loader = DataLoader(
             dataset=poisoned_test_set, batch_size=args.batch_size, shuffle=False
         )

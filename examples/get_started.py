@@ -54,7 +54,7 @@ print("Test accuracy of target model: %s", test_accuracy_target)
 
 # Run Evasion
 evasion = EvasionPGD(target_model, test_loader, device, batch_size=256, epsilon=32)
-adversarial_test_loader = evasion.run_evasion()
+adversarial_test_loader = evasion.attack()
 adv_accuracy = get_accuracy(target_model, adversarial_test_loader, device)
 print("Adversarial accuracy of target model: %s", adv_accuracy)
 
@@ -68,12 +68,12 @@ adv_training = AdversarialTrainingPGD(
     epochs,
     epsilon=32,
 )
-defended_model = adv_training.train_model()
+defended_model = adv_training.train_robust()
 test_accuracy_defended = get_accuracy(defended_model, test_loader, device)
 print("Test accuracy of defended model: %s", test_accuracy_defended)
 
 # Run Evasion against defended model
 evasion = EvasionPGD(defended_model, test_loader, device, batch_size=256, epsilon=32)
-adversarial_test_loader = evasion.run_evasion()
+adversarial_test_loader = evasion.attack()
 adv_accuracy = get_accuracy(defended_model, adversarial_test_loader, device)
 print("Adversarial accuracy of defended model: %s", adv_accuracy)

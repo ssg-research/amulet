@@ -173,7 +173,7 @@ def main(args: argparse.Namespace) -> None:
             args.device,
             args.epochs,
         )
-        attack_model = model_extraction.train_attack_model()
+        attack_model = model_extraction.attack()
 
         # Save model
         create_dir(attack_model_path, log)

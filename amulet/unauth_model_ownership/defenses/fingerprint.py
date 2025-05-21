@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 from scipy.stats import ttest_ind
 
 
-class Fingerprinting:
+class DatasetInference:
     """
     Implementation of algorithm to fingerprint models based on the
     data they are trained with. Code taken from:
@@ -85,7 +85,7 @@ class Fingerprinting:
         self.regressor_embed = regressor_embed
         self.batch_size = batch_size
 
-    def dataset_inference(self):
+    def fingerprint(self):
         """
         Runs the Dataset Inference algorithm and returns a p-value for
         the target and suspect models.

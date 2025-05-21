@@ -126,7 +126,7 @@ def main(args: argparse.Namespace) -> None:
     evasion = EvasionPGD(
         target_model, test_loader, args.device, args.batch_size, args.epsilon
     )
-    adversarial_test_loader = evasion.run_evasion()
+    adversarial_test_loader = evasion.attack()
     adv_accuracy = get_accuracy(target_model, adversarial_test_loader, args.device)
     log.info("Adversarial accuracy of target model: %s", adv_accuracy)
 
