@@ -24,10 +24,10 @@ from amulet.utils import (
 if len(sys.argv) > 1:
     root_dir = sys.argv[1]
 else:
-    root_dir = './' dataset_name = 'cifar10' # One of [cifar10, fmnist, census, lfw]
+    root_dir = './' dataset_name = 'cifar10'
 batch_size = 256
-model = 'vgg' # One of [vgg, linearnet]
-model_capacity = 'm1' # One of [m1, m2, m3, m4]
+model = 'vgg'
+model_capacity = 'm1'
 device = 'cuda:0'
 epochs = 100
 
@@ -37,8 +37,8 @@ random_seed = 123
 # Load dataset and split train data for adversary
 data = load_data(root_dir, dataset_name)
 
-adv_train_size = int(adv_train_fraction * len(data.train_set))  # type: ignore[reportArgumentType]
-target_train_size = len(data.train_set) - adv_train_size  # type: ignore[reportArgumentType]
+adv_train_size = int(adv_train_fraction * len(data.train_set))
+target_train_size = len(data.train_set) - adv_train_size
 generator = torch.Generator().manual_seed(random_seed)
 target_train_set, adv_train_set = random_split(
     data.train_set, [target_train_size, adv_train_size], generator=generator
@@ -83,10 +83,10 @@ model_extraction = ModelExtraction(
     target_model,
     attack_model,
     optimizer,
-    criterion,
     adv_train_loader,
     device,
     epochs,
+    loss_type="mse"  # Optional
 )
 attack_model = model_extraction.train_attack_model()
 
@@ -114,10 +114,10 @@ if len(sys.argv) > 1:
     root_dir = sys.argv[1]
 else:
     root_dir = './'
-dataset_name = 'cifar10' # One of [cifar10, fmnist, census, lfw]
+dataset_name = 'cifar10'
 batch_size = 256
-model = 'vgg' # One of [vgg, linearnet]
-model_capacity = 'm1' # One of [m1, m2, m3, m4]
+model = 'vgg'
+model_capacity = 'm1'
 device = 'cuda:0'
 epochs = 100
 
@@ -206,10 +206,10 @@ if len(sys.argv) > 1:
     root_dir = sys.argv[1]
 else:
     root_dir = './'
-dataset_name = 'cifar10' # One of [cifar10, fmnist, census, lfw]
+dataset_name = 'cifar10'
 batch_size = 256
-model = 'vgg' # One of [vgg, linearnet, binarynet]
-model_capacity = 'm1' # One of [m1, m2, m3, m4]
+model = 'vgg'
+model_capacity = 'm1'
 device = 'cuda:0'
 epochs = 100
 

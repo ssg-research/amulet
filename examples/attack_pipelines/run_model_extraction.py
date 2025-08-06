@@ -168,7 +168,6 @@ def main(args: argparse.Namespace) -> None:
             target_model,
             attack_model,
             optimizer,
-            criterion,
             adv_train_loader,
             args.device,
             args.epochs,
