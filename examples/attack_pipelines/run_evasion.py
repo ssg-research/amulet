@@ -30,10 +30,10 @@ def parse_args() -> argparse.Namespace:
         "--dataset",
         type=str,
         default="celeba",
-        help="Options: cifar10, fmnist, lfw, census, celeba.",
+        help="Options: cifar10, fmnist, lfw, census, celeba, cifar100.",
     )
     parser.add_argument(
-        "--model", type=str, default="vgg", help="Options: vgg, linearnet."
+        "--model", type=str, default="vgg", help="Options: resnet, vgg, cnn, linearnet."
     )
     parser.add_argument(
         "--model_capacity",

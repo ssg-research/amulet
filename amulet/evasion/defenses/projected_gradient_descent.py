@@ -55,11 +55,15 @@ class AdversarialTrainingPGD(EvasionDefense):
         epsilon: float = 0.1,
         iterations: int = 40,
         step_size: float = 0.01,
+        clip_min: float = 0.0,
+        clip_max: float = 1.0,
     ):
         super().__init__(model, criterion, optimizer, train_loader, device, epochs)
         self.epsilon = epsilon
         self.iterations = iterations
         self.step_size = step_size
+        self.clip_min = clip_min
+        self.clip_max = clip_max
 
     def train_robust(self) -> nn.Module:
         """
@@ -92,6 +96,9 @@ class AdversarialTrainingPGD(EvasionDefense):
                     self.step_size,
                     self.iterations,
                     np.inf,
+                    clip_min=self.clip_min,
+                    clip_max=self.clip_max,
+                    sanity_checks=False,
                 )
 
                 self.optimizer.zero_grad()

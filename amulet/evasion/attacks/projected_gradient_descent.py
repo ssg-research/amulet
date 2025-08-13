@@ -48,11 +48,15 @@ class EvasionPGD(EvasionAttack):
         epsilon: float = 0.1,
         iterations: int = 40,
         step_size: float = 0.01,
+        clip_min: float = 0.0,
+        clip_max: float = 1.0,
     ):
         super().__init__(model, test_loader, device, batch_size)
         self.epsilon = epsilon
         self.iterations = iterations
         self.step_size = step_size
+        self.clip_min = clip_min
+        self.clip_max = clip_max
 
     def attack(self) -> DataLoader:
         """
@@ -75,6 +79,9 @@ class EvasionPGD(EvasionAttack):
                 self.step_size,
                 self.iterations,
                 np.inf,
+                clip_min=self.clip_min,
+                clip_max=self.clip_max,
+                sanity_checks=False,
             )
 
             adv_input.append(x_pgd.detach().cpu().numpy())
@@ -87,8 +94,8 @@ class EvasionPGD(EvasionAttack):
             torch.from_numpy(adv_input).type(torch.float),
             torch.from_numpy(labels).type(torch.long),
         )
-        advesrarial_test_loader = DataLoader(
+        adversarial_test_loader = DataLoader(
             dataset=adversarial_test_set, batch_size=self.batch_size, shuffle=False
         )
 
-        return advesrarial_test_loader
+        return adversarial_test_loader
