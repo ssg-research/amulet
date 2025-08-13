@@ -13,7 +13,8 @@ import numpy as np
 from torch.utils.data import TensorDataset
 from sklearn.datasets import fetch_lfw_people
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import MinMaxScaler
+
 from ucimlrepo import fetch_ucirepo
 from PIL import Image
 
@@ -116,14 +117,16 @@ def load_census(
         random_state=random_seed,
     )
 
-    # Normalize data
-    scaler = StandardScaler().fit(x_train)
+    # Normalize data to 0 and 1
+    int_cols = x_train.select_dtypes(include="int64").columns  # type: ignore[reportAttributeAccessIssue]
+    scaler = MinMaxScaler().fit(x_train[int_cols])
 
-    def scale_df(df, scaler):
-        return pd.DataFrame(scaler.transform(df), columns=df.columns, index=df.index)
+    x_train[int_cols] = scaler.transform(x_train[int_cols])
+    x_test[int_cols] = scaler.transform(x_test[int_cols])
 
-    x_train = x_train.pipe(scale_df, scaler)  # type: ignore[reportAttributeAccessIssue]
-    x_test = x_test.pipe(scale_df, scaler)  # type: ignore[reportAttributeAccessIssue]
+    bool_cols = x_train.select_dtypes(include="bool").columns  # type: ignore[reportAttributeAccessIssue]
+    x_train[bool_cols] = x_train[bool_cols].astype("float")
+    x_test[bool_cols] = x_test[bool_cols].astype("float")
 
     # Create datasets
     train_set = TensorDataset(
@@ -272,7 +275,7 @@ def load_lfw(
     attributes = pd.read_csv(attributes_path, delimiter="\t", low_memory=False)
 
     # Function to load binary attributes
-    def _load_lfw_binary_attr(attribute: str):
+    def __load_lfw_binary_attr(attribute: str):
         if attribute == "gender":
             binary_attr = np.asarray(attributes["Male"])
             binary_attr = np.sign(binary_attr)
@@ -282,7 +285,7 @@ def load_lfw(
             raise ValueError(attribute)
 
     # Function to load multi-class attributes
-    def _load_lfw_multi_attr(attr_type: str, thresh: float = -0.1):
+    def __load_lfw_multi_attr(attr_type: str, thresh: float = -0.1):
         if attr_type == "race" or attr_type == "age":
             multi_attrs = np.asarray(attributes[MULTI_ATTRS[attr_type]])
         else:
@@ -299,27 +302,27 @@ def load_lfw(
         return dict(zip(indices, labels))
 
     # Wrapper
-    def _load_lfw_attr(attribute: str):
+    def __load_lfw_attr(attribute: str):
         return (
-            _load_lfw_binary_attr(attribute)
+            __load_lfw_binary_attr(attribute)
             if attribute in BINARY_ATTRS
-            else _load_lfw_multi_attr(attribute)
+            else __load_lfw_multi_attr(attribute)
         )
 
     # Load images and labels
     with np.load(images_path) as f:
         imgs = f["arr_0"].transpose(0, 3, 1, 2)
 
-    target_labels = _load_lfw_attr(target)
+    target_labels = __load_lfw_attr(target)
     target_indices = [x for x in target_labels.keys()]
 
-    sensitive_attr_1 = _load_lfw_attr(attribute_1)
+    sensitive_attr_1 = __load_lfw_attr(attribute_1)
     sens_1_indices = [x for x in sensitive_attr_1.keys()]
 
-    sensitive_attr_2 = _load_lfw_attr(attribute_2)
+    sensitive_attr_2 = __load_lfw_attr(attribute_2)
     sens_2_indices = [x for x in sensitive_attr_2.keys()]
 
-    # Align data
+    # Align and scale data
     common_indices = np.intersect1d(target_indices, sens_1_indices)
     common_indices = np.intersect1d(common_indices, sens_2_indices)
     imgs = imgs[common_indices] / np.float32(255.0)
@@ -356,15 +359,6 @@ def load_lfw(
     x_train, x_test, y_train, y_test, z_train, z_test = train_test_split(
         x, y, z, test_size=test_size, random_state=random_seed
     )
-
-    # Normalize data
-    scaler = StandardScaler().fit(x_train)
-
-    def scale_df(df, scaler):
-        return pd.DataFrame(scaler.transform(df), columns=df.columns, index=df.index)
-
-    x_train = x_train.pipe(scale_df, scaler)  # type: ignore[reportAttributeAccessIssue]
-    x_test = x_test.pipe(scale_df, scaler)  # type: ignore[reportAttributeAccessIssue]
 
     # Create datasets
     train_set = TensorDataset(

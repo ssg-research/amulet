@@ -51,6 +51,10 @@ def load_cifar10(
                 A dataset of images and labels used to build a DataLoader for
                 testing PyTorch models.
     """
+
+    # Note: We do not normalize the inputs by default to preserve [0,1] range.
+    # This is important for compatibility with attack methods (e.g., PGD, MIA).
+
     if transform_train is None:
         transform_train = transforms.Compose(
             [
@@ -71,6 +75,77 @@ def load_cifar10(
 
     return AmuletDataset(
         train_set=train_set, test_set=test_set, num_features=32 * 32, num_classes=10
+    )
+
+
+def load_cifar100(
+    path: str | Path = Path("./data/cifar100"),
+    transform_train: transforms.Compose | None = None,
+    transform_test: transforms.Compose | None = None,
+) -> AmuletDataset:
+    """
+    Loads the CIFAR100 dataset from PyTorch after applying standard transformations.
+
+    Args:
+        path: str or Path object, default = './data/cifar100'
+            String or Path object indicating where to store the dataset.
+        transform_train: torchvision.transforms.Compose, default = transforms.Compose(
+                                                    [
+                                                        transforms.RandomCrop(32, padding=4),
+                                                        transforms.RandomHorizontalFlip(),
+                                                        transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
+                                                        transforms.RandomErasing(p=0.2),
+                                                        transforms.ToTensor(),
+                                                    ]
+                                                )
+            Image transformations to apply to the training images.
+        transform_test: torchvision.transforms.Compose, default = transforms.Compose(
+                                                    [
+                                                        transforms.ToTensor(),
+                                                    ]
+                                                )
+            Image transformations to apply to the testing images.
+    Returns:
+        Object (:class:`~amulet.datasets.Data`), with the following attributes:
+            train_set: :class:`~torch.utils.data.VisionDataset`
+                A dataset of images and labels used to build a DataLoader for
+                training PyTorch models.
+            test_set: :class:`~torch.utils.data.VisionDataset`
+                A dataset of images and labels used to build a DataLoader for
+                testing PyTorch models.
+    """
+
+    # Note: We do not normalize the inputs by default to preserve [0,1] range.
+    # This is important for compatibility with attack methods (e.g., PGD, MIA).
+
+    if transform_train is None:
+        transform_train = transforms.Compose(
+            [
+                transforms.RandomCrop(32, padding=4),
+                transforms.RandomHorizontalFlip(),
+                transforms.ColorJitter(
+                    brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1
+                ),
+                transforms.ToTensor(),
+                transforms.RandomErasing(p=0.2),
+            ]
+        )
+
+    if transform_test is None:
+        transform_test = transforms.Compose([transforms.ToTensor()])
+
+    train_set = datasets.CIFAR100(
+        root=path, train=True, transform=transform_train, download=True
+    )
+    test_set = datasets.CIFAR100(
+        root=path, train=False, transform=transform_test, download=True
+    )
+
+    return AmuletDataset(
+        train_set=train_set,
+        test_set=test_set,
+        num_features=32 * 32,
+        num_classes=100,
     )
 
 
@@ -140,6 +215,80 @@ def load_fmnist(
         root=path, train=True, transform=transform_train, download=True
     )
     test_set = datasets.FashionMNIST(
+        root=path, train=False, transform=transform_test, download=True
+    )
+
+    return AmuletDataset(
+        train_set=train_set, test_set=test_set, num_features=28 * 28, num_classes=10
+    )
+
+
+def load_mnist(
+    path: str | Path = Path("./data/mnist"),
+    transform_train: transforms.Compose | None = None,
+    transform_test: transforms.Compose | None = None,
+) -> AmuletDataset:
+    """
+    Loads the MNIST dataset from PyTorch after applying standard transformations.
+
+    Args:
+        path: str or Path object, default = './data/mnist'
+            String or Path object indicating where to store the dataset.
+        transform_train: torchvision.transforms.Compose, default = transforms.Compose(
+                                                        [
+                                                            transforms.RandomHorizontalFlip(),
+                                                            transforms.RandomVerticalFlip(),
+                                                            transforms.RandomRotation(15),
+                                                            transforms.RandomCrop([28, 28]),
+                                                            transforms.ToTensor(),
+                                                        ]
+                                                    )
+            Image transformations to apply to the training images.
+        transform_test: torchvision.transforms.Compose, default = transforms.Compose(
+                                                        [
+                                                            transforms.RandomHorizontalFlip(),
+                                                            transforms.RandomVerticalFlip(),
+                                                            transforms.RandomRotation(15),
+                                                            transforms.RandomCrop([28, 28]),
+                                                            transforms.ToTensor(),
+                                                        ]
+                                                    )
+            Image transformations to apply to the testing images.
+    Returns:
+        Object (:class:`~amulet.datasets.Data`), with the following attributes:
+            train_set: :class:`~torch.utils.data.VisionDataset`
+                A dataset of images and labels used to build a DataLoader for
+                training PyTorch models.
+            test_set: :class:`~torch.utils.data.VisionDataset`
+                A dataset of images and labels used to build a DataLoader for
+                testing PyTorch models.
+    """
+    if transform_train is None:
+        transform_train = transforms.Compose(
+            [
+                transforms.RandomHorizontalFlip(),
+                transforms.RandomVerticalFlip(),
+                transforms.RandomRotation(15),
+                transforms.RandomCrop([28, 28]),
+                transforms.ToTensor(),
+            ]
+        )
+
+    if transform_test is None:
+        transform_test = transforms.Compose(
+            [
+                transforms.RandomHorizontalFlip(),
+                transforms.RandomVerticalFlip(),
+                transforms.RandomRotation(15),
+                transforms.RandomCrop([28, 28]),
+                transforms.ToTensor(),
+            ]
+        )
+
+    train_set = datasets.MNIST(
+        root=path, train=True, transform=transform_train, download=True
+    )
+    test_set = datasets.MNIST(
         root=path, train=False, transform=transform_test, download=True
     )
 
