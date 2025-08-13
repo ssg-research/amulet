@@ -167,7 +167,6 @@ def main(args: argparse.Namespace) -> None:
         poisoned_model = initialize_model(
             args.model, args.model_capacity, data.num_features, data.num_classes, log
         ).to(args.device)
-        poisoned_model.load_state_dict(target_model.state_dict())
         optimizer = torch.optim.Adam(poisoned_model.parameters(), lr=1e-3)
         poisoning = BadNets(
             args.trigger_label,
@@ -197,7 +196,7 @@ def main(args: argparse.Namespace) -> None:
 
         # Save model
         create_dir(poisoned_model_path, log)
-        # torch.save(poisoned_model, poisoned_model_filename)
+        torch.save(poisoned_model, poisoned_model_filename)
 
     log.info(
         "Target Model on Origin Data: %s",
