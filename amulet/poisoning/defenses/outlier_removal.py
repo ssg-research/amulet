@@ -56,17 +56,7 @@ class OutlierRemoval(PoisoningDefense):
         train_loader: DataLoader,
         test_loader: DataLoader,
         device: str,
-        train_function: Callable[
-            [
-                nn.Module,
-                DataLoader,
-                nn.Module,
-                torch.optim.Optimizer,
-                int,
-                str,
-            ],
-            nn.Module,
-        ] = train_classifier,
+        train_function: Callable[..., nn.Module] = train_classifier,
         percent: int = 10,
         epochs: int = 50,
         batch_size: int = 256,
@@ -78,11 +68,11 @@ class OutlierRemoval(PoisoningDefense):
             train_loader,
             test_loader,
             device,
-            train_function,
             epochs,
             batch_size,
         )
 
+        self.train = train_function
         self.percent = percent
 
     def _knn_shapely(
@@ -119,8 +109,7 @@ class OutlierRemoval(PoisoningDefense):
     def train_robust(
         self,
         get_hidden: Callable[
-            [nn.Module, DataLoader, str],
-            tuple[np.ndarray, np.ndarray, np.ndarray],
+            ..., tuple[np.ndarray, np.ndarray, np.ndarray]
         ] = get_intermediate_features,
     ):
         """

@@ -1,10 +1,8 @@
 """Base class for poisoning defenses"""
 
-from typing import Callable
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from ...utils import train_classifier
 
 
 class PoisoningDefense:
@@ -23,9 +21,6 @@ class PoisoningDefense:
             Training data loader to train model.
         test_loader: :class:`~torch.utils.data.DataLoader`
             Test data loader to calculate Shapley values.
-        train_function: Callable
-            Function used to train the model. Default function
-            used from src.utils.
         device: str
             Device used to train model. Example: "cuda:0".
         epochs: int
@@ -42,17 +37,6 @@ class PoisoningDefense:
         train_loader: DataLoader,
         test_loader: DataLoader,
         device: str,
-        train_function: Callable[
-            [
-                nn.Module,
-                DataLoader,
-                nn.Module,
-                torch.optim.Optimizer,
-                int,
-                str,
-            ],
-            nn.Module,
-        ] = train_classifier,
         epochs: int = 50,
         batch_size: int = 256,
     ):
@@ -62,6 +46,5 @@ class PoisoningDefense:
         self.train_loader = train_loader
         self.test_loader = test_loader
         self.device = device
-        self.train = train_function
         self.epochs = epochs
         self.batch_size = batch_size
