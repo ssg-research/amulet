@@ -23,13 +23,13 @@ if len(sys.argv) > 1:
     root_dir = sys.argv[1]
 else:
     root_dir = './'
-dataset_name = 'cifar10' # One of [cifar10, fmnist, census, lfw]
+dataset_name = 'cifar10' # One of [cifar10, fmnist, census, lfw, celeba, cifar100]
 batch_size = 256
-model = 'vgg' # One of [vgg, linearnet]
+model = 'vgg' # One of [resnet, vgg, cnn, linearnet]
 model_capacity = 'm1' # One of [m1, m2, m3, m4]
 device = 'cuda:0'
 epochs = 100
-epsilon = 32 # Controls the amount of perturbation. Divided by 255.
+epsilon = 0.01 # Controls the amount of perturbation
 
 # Load dataset and create data loaders
 data = load_data(root_dir, dataset_name)
