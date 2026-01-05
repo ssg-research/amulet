@@ -25,6 +25,7 @@ from ..datasets import (
     AmuletDataset,
 )
 
+
 def load_data(
     root: Path | str,
     dataset: str,
@@ -100,6 +101,7 @@ def load_data(
 
     return data
 
+
 def stratified_split(
     dataset: Dataset,
     split_ratio: float,
@@ -117,17 +119,18 @@ def stratified_split(
         Two Subset datasets: (first_split, second_split).
     """
     # Extract all labels
-    labels = [dataset[i][1] for i in range(len(dataset))]
+    labels = [dataset[i][1] for i in range(len(dataset))]  # type: ignore[reportArgumentType]
 
     # Stratified split of indices
     idx_a, idx_b = train_test_split(
-        range(len(dataset)),
+        range(len(dataset)),  # type: ignore[reportArgumentType]
         train_size=split_ratio,
         stratify=labels,
         random_state=seed,
     )
 
     return Subset(dataset, idx_a), Subset(dataset, idx_b)
+
 
 def create_dir(path: Path | str, log: logging.Logger | None = None) -> Path:
     """

@@ -134,7 +134,9 @@ class MembershipInferenceAttack:
 
             epoch_loss = train_loss / total
             epoch_acc = 100.0 * correct / total
-            print(f"Epoch {epoch+1}/{self.epochs} — Loss: {epoch_loss:.4f} — Acc: {epoch_acc:.2f}%")
+            print(
+                f"Epoch {epoch+1}/{self.epochs} — Loss: {epoch_loss:.4f} — Acc: {epoch_acc:.2f}%"
+            )
             scheduler.step()
 
         return shadow_model
@@ -153,7 +155,9 @@ class MembershipInferenceAttack:
         keep = order < int(self.pkeep * self.num_shadow)
 
         for shadow_id in range(self.num_shadow):
-            filename = self.models_dir / f"{self.dataset}_shadow_{shadow_id}_{self.exp_id}.pth"
+            filename = (
+                self.models_dir / f"{self.dataset}_shadow_{shadow_id}_{self.exp_id}.pth"
+            )
             if filename.exists():
                 continue
             # Select indices for this shadow model
@@ -165,7 +169,9 @@ class MembershipInferenceAttack:
                 train_subset, batch_size=self.batch_size, shuffle=True, num_workers=4
             )
 
-            print(f"Preparing shadow model #{shadow_id} with {len(shadow_in_data)} samples")
+            print(
+                f"Preparing shadow model #{shadow_id} with {len(shadow_in_data)} samples"
+            )
             shadow_model = initialize_model(
                 self.shadow_architecture,
                 self.shadow_capacity,
@@ -216,7 +222,7 @@ class InferenceModel(nn.Module):
         shadow_architecture: str,
         shadow_capacity: str,
         models_dir: Path | str,
-        exp_id: int
+        exp_id: int,
     ):
         super().__init__()
 
@@ -231,8 +237,12 @@ class InferenceModel(nn.Module):
             models_dir = Path(models_dir)
         self.models_dir = models_dir
 
-        resume_checkpoint = self.models_dir / f"{self.dataset}_shadow_{shadow_id}_{exp_id}.pth"
-        assert os.path.isfile(resume_checkpoint), f"Checkpoint not found at {resume_checkpoint}"
+        resume_checkpoint = (
+            self.models_dir / f"{self.dataset}_shadow_{shadow_id}_{exp_id}.pth"
+        )
+        assert os.path.isfile(
+            resume_checkpoint
+        ), f"Checkpoint not found at {resume_checkpoint}"
         checkpoint = torch.load(resume_checkpoint)
 
         self.model = initialize_model(

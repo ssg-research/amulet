@@ -1,6 +1,7 @@
 import numpy as np
 from sklearn import metrics
 
+
 def compute_mi_metrics(
     preds: np.ndarray,
     true_labels: np.ndarray,
@@ -28,7 +29,6 @@ def compute_mi_metrics(
     balanced_accs = 1 - (fpr + (1 - tpr)) / 2
     best_idx = np.argmax(balanced_accs)
     threshold_score = thresholds[best_idx]
-    print("Threshold:", threshold_score)
     max_balanced_acc = np.max(balanced_accs)
 
     # Find the TPR at or just below the given FPR threshold
@@ -39,8 +39,8 @@ def compute_mi_metrics(
         tpr_at_fpr = tpr[valid_indices[-1]]
 
     return {
-        "auc": auc_score,
-        "balanced_acc": max_balanced_acc,
-        "tpr_at_fpr": tpr_at_fpr,
-        "threshold_score": threshold_score
+        "auc": float(auc_score),
+        "balanced_acc": float(max_balanced_acc),
+        "tpr_at_fpr": float(tpr_at_fpr),
+        "threshold_score": float(threshold_score),
     }

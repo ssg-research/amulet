@@ -1,4 +1,5 @@
 """Implementation of Likelihood Ratio Attack (LiRA)"""
+
 import copy
 from pathlib import Path
 import torch
@@ -133,7 +134,9 @@ class LiRA(MembershipInferenceAttack):
         logits = logits / np.sum(logits, axis=-1, keepdims=True)
         return logits
 
-    def __get_log_logits(self, pred_logits: np.ndarray, class_labels: np.ndarray) -> np.ndarray:
+    def __get_log_logits(
+        self, pred_logits: np.ndarray, class_labels: np.ndarray
+    ) -> np.ndarray:
         """
         Compute LiRA per-sample log-likelihood scores (vectorized safely).
 
@@ -154,8 +157,10 @@ class LiRA(MembershipInferenceAttack):
 
         for model_idx in range(num_models):
             # Extract logits for this model
-            logits = pred_logits[model_idx]  # shape (num_samples, num_trials, num_classes)
-            
+            logits = pred_logits[
+                model_idx
+            ]  # shape (num_samples, num_trials, num_classes)
+
             # Softmax per sample & trial
             logits = logits - np.max(logits, axis=-1, keepdims=True)
             probs = np.exp(logits).astype(np.float64)
@@ -163,15 +168,19 @@ class LiRA(MembershipInferenceAttack):
 
             # Correct class probability
             batch_idx = np.arange(num_samples)[:, None]  # shape (num_samples,1)
-            trial_idx = np.arange(num_trials)[None, :]   # shape (1, num_trials)
-            class_idx = class_labels[:, None]            # shape (num_samples,1)
+            trial_idx = np.arange(num_trials)[None, :]  # shape (1, num_trials)
+            class_idx = class_labels[:, None]  # shape (num_samples,1)
 
-            y_true = probs[batch_idx, trial_idx, class_idx]  # shape (num_samples, num_trials)
-            
+            y_true = probs[
+                batch_idx, trial_idx, class_idx
+            ]  # shape (num_samples, num_trials)
+
             # Zero out correct class for y_wrong
             probs[batch_idx, trial_idx, class_idx] = 0
-            y_wrong = np.sum(probs, axis=-1)  # sum over classes, shape (num_samples, num_trials)
-            
+            y_wrong = np.sum(
+                probs, axis=-1
+            )  # sum over classes, shape (num_samples, num_trials)
+
             # Avoid division by zero
             y_wrong = np.clip(y_wrong, eps, None)
             y_true = np.clip(y_true, eps, None)
@@ -315,7 +324,7 @@ class LiRA(MembershipInferenceAttack):
                 self.shadow_architecture,
                 self.shadow_capacity,
                 self.models_dir,
-                self.exp_id
+                self.exp_id,
             ).to(self.device)
 
             shadow_models.append(curr_model)
