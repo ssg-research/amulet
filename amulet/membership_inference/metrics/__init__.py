@@ -1,3 +1,3 @@
-from .fixed_auc import get_fixed_auc
+from .compute_mi_metrics import compute_mi_metrics
 
-__all__ = ["get_fixed_auc"]
+__all__ = ["compute_mi_metrics"]

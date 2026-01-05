@@ -12,7 +12,7 @@ import torch
 import numpy as np
 from torch.utils.data import DataLoader, Subset
 from amulet.membership_inference.attacks import LiRA
-from amulet.membership_inference.metrics import get_fixed_auc
+from amulet.membership_inference.metrics import compute_mi_metrics
 from amulet.utils import (
     load_data,
     initialize_model,
@@ -97,8 +97,8 @@ mem_inf = LiRA(
 
 results = mem_inf.run_membership_inference()
 
-print(get_fixed_auc(results['lira_online_preds'], results['true_labels']))
-print(get_fixed_auc(results['lira_offline_preds'], results['true_labels']))
+print(compute_mi_metrics(results['lira_online_preds'], results['true_labels']))
+print(compute_mi_metrics(results['lira_offline_preds'], results['true_labels']))
 
 
 ```
@@ -180,7 +180,7 @@ print(f'Test accuracy of defended model: {test_accuracy_defended}')
 
 ## Metrics
 Amulet implements the fixed AUC method recommended by [LiRA](https://openreview.net/pdf?id=inPTplK-O6V).
-Use `amulet.membership_inference.metrics.get_fixed_auc`.
+Use `amulet.membership_inference.metrics.compute_mi_metrics`.
 This function takes as input the in/out labels and compares them with the true labels.
 
 To evaluate the effectiveneess of the DP-SGD algorithm, we recommend using the LiRA attack.

@@ -9,7 +9,7 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader, Subset
 from amulet.membership_inference.attacks import LiRA
-from amulet.membership_inference.metrics import get_fixed_auc
+from amulet.membership_inference.metrics import compute_mi_metrics
 from amulet.utils import (
     load_data,
     initialize_model,
@@ -71,9 +71,6 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--num_shadow", type=int, default=64, help="Number of shadow models to train."
-    )
-    parser.add_argument(
-        "--num_aug", type=int, default=10, help="Number of images to augment."
     )
 
     return parser.parse_args()
@@ -159,10 +156,10 @@ def main(args: argparse.Namespace) -> None:
         args.dataset,
         data.num_features,
         data.num_classes,
+        args.batch_size,
         args.pkeep,
         criterion,
         args.num_shadow,
-        args.num_aug,
         args.epochs,
         args.device,
         shadow_model_dir,
@@ -171,8 +168,8 @@ def main(args: argparse.Namespace) -> None:
 
     results = mem_inf.attack()
 
-    print(get_fixed_auc(results["lira_online_preds"], results["true_labels"]))
-    print(get_fixed_auc(results["lira_offline_preds"], results["true_labels"]))
+    print(compute_mi_metrics(results["lira_online_preds"], results["true_labels"]))
+    print(compute_mi_metrics(results["lira_offline_preds"], results["true_labels"]))
 
 
 if __name__ == "__main__":

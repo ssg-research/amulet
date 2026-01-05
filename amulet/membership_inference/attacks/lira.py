@@ -4,10 +4,10 @@ import copy
 from pathlib import Path
 import torch
 import torch.nn as nn
-import scipy
+import scipy.stats
 import numpy as np
 from tqdm import tqdm
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader
 from .membership_inference_attack import MembershipInferenceAttack, InferenceModel
 
 
@@ -39,7 +39,9 @@ class LiRA(MembershipInferenceAttack):
         num_features: int
             Number of features in dataset.
         num_classes: int
-            Number of classes in dataset
+            Number of classes in dataset.
+        batch_size: int
+            Batch size used for training shadow models.
         pkeep: float
             Proportion of training data to keep for shadow models (members vs non-members).
         criterion: :class:`~torch.nn.Module`
@@ -47,7 +49,7 @@ class LiRA(MembershipInferenceAttack):
         num_shadow: int
             Number of shadow models to train.
         num_aug: int
-            Number of images to augment
+            Number of images to augment (not used in LiRA, kept for compatibility).
         epochs: int
             Number of epochs used to train shadow models.
         device: str
@@ -68,10 +70,10 @@ class LiRA(MembershipInferenceAttack):
         dataset: str,
         num_features: int,
         num_classes: int,
+        batch_size: int,
         pkeep: float,
         criterion: nn.Module,
         num_shadow: int,
-        num_aug: int,
         epochs: int,
         device: str,
         models_dir: Path | str,
@@ -84,6 +86,7 @@ class LiRA(MembershipInferenceAttack):
             dataset,
             num_features,
             num_classes,
+            batch_size,
             pkeep,
             criterion,
             num_shadow,
@@ -95,87 +98,133 @@ class LiRA(MembershipInferenceAttack):
 
         self.target_model = target_model
         self.in_data = in_data
-        self.num_aug = num_aug
-
-    # TODO: Maybe simplify this? All this function is doing is adding the same image
-    # multiple times in a list.
-    def __generate_aug_imgs(
-        self, num_aug: int, target_img_id: int
-    ) -> list[torch.Tensor]:
-        canaries = []
-        counter = num_aug
-        for i in range(counter):
-            x = self.train_set[target_img_id][0]
-            x = x.unsqueeze(0)
-            canaries.append(x)
-        return canaries
 
     def __get_logits(
-        self, curr_canary: torch.Tensor, model: nn.Module, keep_tensor=False
+        self, inputs: torch.Tensor, model: nn.Module, keep_tensor=False
     ) -> torch.Tensor:
+        """
+        Gets logits from a batch of inputs.
+
+        Args:
+            inputs: A batch tensor of shape (batch_size, C, H, W).
+            model: The model to get logits from.
+            keep_tensor: If True, returns a tensor on CPU, else converts to list.
+
+        Returns:
+            Logits as a list (default) or tensor.
+        """
         with torch.no_grad():
-            logits = model(curr_canary)
+            logits = model(inputs)
         if not keep_tensor:
             logits = logits.detach().cpu().tolist()
         return logits
 
     def __normalize_logits(self, logits: np.ndarray) -> np.ndarray:
+        """
+        Numerically stable softmax for logits.
+
+        Args:
+            logits: Numpy array of logits shape (N, num_trials, num_classes).
+
+        Returns:
+            Numpy array of probabilities same shape as logits.
+        """
         logits = logits - np.max(logits, axis=-1, keepdims=True)
-        logits = np.array(np.exp(logits), dtype=np.float64)
+        logits = np.exp(logits).astype(np.float64)
         logits = logits / np.sum(logits, axis=-1, keepdims=True)
         return logits
 
     def __get_log_logits(
         self, pred_logits: np.ndarray, class_labels: np.ndarray
     ) -> np.ndarray:
-        pred_logits = copy.deepcopy(pred_logits)
-        scores = []
-        for pred_logits_i in pred_logits:
-            pred_logits_i = self.__normalize_logits(pred_logits_i)
-            y_true = copy.deepcopy(
-                pred_logits_i[np.arange(len(pred_logits_i)), :, class_labels]
-            )
-            pred_logits_i[np.arange(len(pred_logits_i)), :, class_labels] = 0
-            y_wrong = np.sum(pred_logits_i, axis=2)
-            score = np.log(y_true + 1e-45) - np.log(y_wrong + 1e-45)
-            scores.append(score)
+        """
+        Compute LiRA per-sample log-likelihood scores.
 
-        scores = np.array(scores)
+        Args:
+            pred_logits: Shape (num_models, num_samples, num_trials, num_classes)
+                Predicted logits from shadow and target models.
+            class_labels: Shape (num_samples,)
+                True class labels.
+
+        Returns:
+            Scores numpy array of shape (num_models, num_samples, num_trials).
+        """
+        pred_logits = copy.deepcopy(pred_logits)  # avoid modifying input
+        scores = []
+
+        # Vectorized calculation over models and samples
+        # Normalize logits to probabilities
+        pred_logits = self.__normalize_logits(pred_logits)
+
+        # Select the probability of the correct class for each sample and trial
+        # pred_logits shape: (num_models, num_samples, num_trials, num_classes)
+        # class_labels shape: (num_samples,)
+        batch_indices = np.arange(pred_logits.shape[1])
+        class_indices = class_labels
+
+        y_true = pred_logits[
+            :, batch_indices[:, None], :, class_indices[:, None]
+        ].squeeze(-1)
+
+        # Set correct class probabilities to zero for y_wrong
+        pred_logits_copy = pred_logits.copy()
+        pred_logits_copy[:, batch_indices[:, None], :, class_indices[:, None]] = 0
+
+        y_wrong = np.sum(pred_logits_copy, axis=-1)  # sum over classes
+
+        score = np.log(y_true + 1e-45) - np.log(y_wrong + 1e-45)
+        scores = score
 
         return scores
 
     def __lira_online(
         self,
-        shadow_scores,
-        shadow_in_out_labels,
-        target_scores,
-        target_in_out_labels,
+        shadow_scores: np.ndarray,
+        shadow_in_out_labels: np.ndarray,
+        target_scores: np.ndarray,
+        target_in_out_labels: np.ndarray,
         fix_variance=False,
     ) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Perform the LiRA online membership inference attack.
+
+        Args:
+            shadow_scores: numpy array of shadow model scores
+                shape (num_shadow, num_samples, num_trials)
+            shadow_in_out_labels: numpy boolean array indicating
+                membership of samples in shadow models
+                shape (num_shadow, num_samples)
+            target_scores: numpy array of target model scores
+                shape (1, num_samples, num_trials)
+            target_in_out_labels: numpy boolean array indicating
+                membership of samples in target model
+                shape (1, num_samples)
+
+        Returns:
+            Tuple of (lira_online_preds, true_labels)
+        """
         dat_in = []
         dat_out = []
 
-        for j in range(shadow_scores.shape[1]):
+        for j in range(shadow_scores.shape[1]):  # loop over samples
             dat_in.append(shadow_scores[shadow_in_out_labels[:, j], j, :])
             dat_out.append(shadow_scores[~shadow_in_out_labels[:, j], j, :])
 
         in_size = min(map(len, dat_in))
         out_size = min(map(len, dat_out))
 
-        # in_size and out_size turn out to be 0
-
         dat_in = np.array([x[:in_size] for x in dat_in])
         dat_out = np.array([x[:out_size] for x in dat_out])
 
-        mean_in = np.median(dat_in, 1)
-        mean_out = np.median(dat_out, 1)
+        mean_in = np.median(dat_in, axis=1)
+        mean_out = np.median(dat_out, axis=1)
 
         if fix_variance:
             std_in = np.std(dat_in)
             std_out = np.std(dat_out)
         else:
-            std_in = np.std(dat_in, 1)
-            std_out = np.std(dat_out, 1)
+            std_in = np.std(dat_in, axis=1)
+            std_out = np.std(dat_out, axis=1)
 
         final_preds = []
         true_labels = []
@@ -185,7 +234,7 @@ class LiRA(MembershipInferenceAttack):
             pr_out = -scipy.stats.norm.logpdf(sc, mean_out, std_out + 1e-30)
             score = pr_in - pr_out
 
-            final_preds.extend(score.mean(1))
+            final_preds.extend(score.mean(axis=1))
             true_labels.extend(ans)
 
         final_preds = np.array(final_preds)
@@ -195,12 +244,30 @@ class LiRA(MembershipInferenceAttack):
 
     def __lira_offline(
         self,
-        shadow_scores,
-        shadow_in_out_labels,
-        target_scores,
-        target_in_out_labels,
+        shadow_scores: np.ndarray,
+        shadow_in_out_labels: np.ndarray,
+        target_scores: np.ndarray,
+        target_in_out_labels: np.ndarray,
         fix_variance=False,
     ) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Perform the LiRA offline membership inference attack.
+
+        Args:
+            shadow_scores: numpy array of shadow model scores
+                shape (num_shadow, num_samples, num_trials)
+            shadow_in_out_labels: numpy boolean array indicating
+                membership of samples in shadow models
+                shape (num_shadow, num_samples)
+            target_scores: numpy array of target model scores
+                shape (1, num_samples, num_trials)
+            target_in_out_labels: numpy boolean array indicating
+                membership of samples in target model
+                shape (1, num_samples)
+
+        Returns:
+            Tuple of (lira_offline_preds, true_labels)
+        """
         dat_out = []
         for j in range(shadow_scores.shape[1]):
             dat_out.append(shadow_scores[~shadow_in_out_labels[:, j], j, :])
@@ -209,21 +276,24 @@ class LiRA(MembershipInferenceAttack):
 
         dat_out = np.array([x[:out_size] for x in dat_out])
 
-        mean_out = np.median(dat_out, 1)
+        mean_out = np.median(dat_out, axis=1)
 
         if fix_variance:
             std_out = np.std(dat_out)
         else:
-            std_out = np.std(dat_out, 1)
+            std_out = np.std(dat_out, axis=1)
 
         final_preds = []
         true_labels = []
+
         for ans, sc in zip(target_in_out_labels, target_scores):
             score = scipy.stats.norm.logpdf(sc, mean_out, std_out + 1e-30)
-            final_preds.extend(score.mean(1))
+            final_preds.extend(score.mean(axis=1))
             true_labels.extend(ans)
+
         final_preds = np.array(final_preds)
         true_labels = np.array(true_labels)
+
         return -final_preds, true_labels
 
     def attack(self):
@@ -246,47 +316,88 @@ class LiRA(MembershipInferenceAttack):
 
             shadow_models.append(curr_model)
 
-        pred_logits = []  # N x (num of shadow + 1) x num_trials x num_class (target at -1)
-        in_out_labels = []  # N x (num of shadow + 1)
-        canary_losses = []  # N x num_trials
+        # Pre-allocate lists for batch data
+        pred_logits = []  # N x (num_shadow + 1) x num_trials x num_classes (target last)
+        in_out_labels = []  # N x (num_shadow + 1)
         class_labels = []  # N
 
         dataset_size: int = len(self.train_set)  # type: ignore[reportArgumentType]
 
-        for target_img_id in tqdm(range(0, dataset_size)):
-            target_img, target_img_class = self.train_set[target_img_id]
-            target_img = target_img.unsqueeze(0).to(self.device)
+        # Vectorized collection of logits for all samples in batches (no augmentations)
+        loader = DataLoader(
+            self.train_set, batch_size=self.batch_size, shuffle=False, num_workers=4
+        )
 
-            in_out_labels.append([])
-            canary_losses.append([])
-            pred_logits.append([])
+        # Collect logits for all shadow models and target model on entire dataset
+        # Will build numpy arrays of shape: (num_shadow + 1, dataset_size, 1, num_classes)
+        # We do 1 trial per sample since LiRA does not require multiple augmentations
 
-            curr_canaries = self.__generate_aug_imgs(self.num_aug, target_img_id)
+        all_logits = []  # Will hold (num_shadow + 1) tensors (dataset_size x num_classes)
+        all_class_labels = []
 
-            # get logits
-            curr_canaries = torch.cat(curr_canaries, dim=0).to(self.device)
+        for shadow_model in shadow_models:
+            shadow_model.eval()
 
-            for shadow_model in shadow_models:
-                pred_logits[-1].append(self.__get_logits(curr_canaries, shadow_model))
-                in_out_labels[-1].append(int(target_img_id in shadow_model.in_data))
+        self.target_model.eval()
 
-            pred_logits[-1].append(self.__get_logits(curr_canaries, self.target_model))
-            in_out_labels[-1].append(int(target_img_id in self.in_data))
+        with torch.no_grad():
+            for inputs, targets in tqdm(loader, desc="Collecting logits"):
+                inputs = inputs.to(self.device)
+                targets = targets.to(self.device)
 
-            class_labels.append(target_img_class)
+                all_class_labels.append(targets.cpu().numpy())
 
-        # accumulate results
-        pred_logits = np.array(pred_logits)
-        in_out_labels = np.array(in_out_labels)
-        class_labels = np.array(class_labels)
+                # Collect shadow logits
+                shadow_logits_batch = []
+                for shadow_model in shadow_models:
+                    logits = shadow_model(inputs)  # shape (batch_size, num_classes)
+                    shadow_logits_batch.append(logits.cpu().numpy())
 
-        in_out_labels = np.swapaxes(in_out_labels, 0, 1).astype(bool)
-        pred_logits = np.swapaxes(pred_logits, 0, 1)
+                # Collect target logits
+                target_logits = self.target_model(inputs)  # (batch_size, num_classes)
+                target_logits = target_logits.cpu().numpy()
 
+                # Store all logits for this batch
+                if len(all_logits) == 0:
+                    for _ in range(len(shadow_logits_batch)):
+                        all_logits.append([])
+                    all_logits.append([])  # for target model logits
+
+                for i, shadow_logits in enumerate(shadow_logits_batch):
+                    all_logits[i].append(shadow_logits)
+
+                all_logits[-1].append(target_logits)
+
+        # Concatenate collected logits to form numpy arrays (num_shadow + 1, dataset_size, num_classes)
+        for i in range(len(all_logits)):
+            all_logits[i] = np.concatenate(all_logits[i], axis=0)
+
+        # Build in/out labels for shadow and target models for entire dataset
+        in_out_labels = []
+
+        dataset_indices = np.arange(dataset_size)
+
+        for shadow_model in shadow_models:
+            in_shadow = np.isin(dataset_indices, shadow_model.in_data)
+            in_out_labels.append(in_shadow)
+
+        in_target = np.isin(dataset_indices, self.in_data)
+        in_out_labels.append(in_target)
+
+        in_out_labels = np.array(in_out_labels)  # shape (num_shadow + 1, dataset_size)
+
+        class_labels = np.concatenate(all_class_labels, axis=0)  # (dataset_size,)
+
+        # Add trial dimension 1 (LiRA uses 1 trial, no augmentation)
+        pred_logits = np.stack(all_logits, axis=0)[:, :, None, :]
+
+        in_out_labels = in_out_labels.astype(bool)
+
+        # Compute LiRA scores
         scores = self.__get_log_logits(pred_logits, class_labels)
 
-        shadow_scores = scores[:-1]
-        target_scores = scores[-1:]
+        shadow_scores = scores[:-1]  # (num_shadow, dataset_size, num_trials)
+        target_scores = scores[-1:]  # (1, dataset_size, num_trials)
         shadow_in_out_labels = in_out_labels[:-1]
         target_in_out_labels = in_out_labels[-1:]
 
