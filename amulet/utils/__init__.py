@@ -9,7 +9,7 @@ from .__metrics import (
 
 from .__base import train_classifier, get_intermediate_features, get_predictions_numpy
 
-from .__pipeline import load_data, create_dir, initialize_model
+from .__pipeline import load_data, stratified_split, create_dir, initialize_model
 
 __all__ = [
     "train_classifier",
@@ -17,6 +17,7 @@ __all__ = [
     "get_predictions_numpy",
     "get_intermediate_features",
     "load_data",
+    "stratified_split",
     "create_dir",
     "initialize_model",
 ]

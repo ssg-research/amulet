@@ -9,7 +9,8 @@ from typing import TypedDict
 
 import torch
 import torch.nn as nn
-from torch.utils.data import random_split
+from torch.utils.data import random_split, Dataset, Subset
+
 from sklearn.model_selection import train_test_split
 
 from ..models import VGG, LinearNet, ResNet, SimpleCNN
@@ -23,7 +24,6 @@ from ..datasets import (
     load_celeba,
     AmuletDataset,
 )
-
 
 def load_data(
     root: Path | str,
@@ -100,6 +100,34 @@ def load_data(
 
     return data
 
+def stratified_split(
+    dataset: Dataset,
+    split_ratio: float,
+    seed: int = 42,
+) -> tuple[Dataset, Dataset]:
+    """
+    Split a dataset into two stratified subsets.
+
+    Args:
+        dataset: Any PyTorch dataset that returns (x, y).
+        split_ratio: Fraction of data to go into the first split (e.g., 0.5 for 50/50).
+        seed: Random seed for reproducibility.
+
+    Returns:
+        Two Subset datasets: (first_split, second_split).
+    """
+    # Extract all labels
+    labels = [dataset[i][1] for i in range(len(dataset))]
+
+    # Stratified split of indices
+    idx_a, idx_b = train_test_split(
+        range(len(dataset)),
+        train_size=split_ratio,
+        stratify=labels,
+        random_state=seed,
+    )
+
+    return Subset(dataset, idx_a), Subset(dataset, idx_b)
 
 def create_dir(path: Path | str, log: logging.Logger | None = None) -> Path:
     """
@@ -337,9 +365,9 @@ def initialize_model(
             print(msg)
         raise ValueError(msg)
 
-    if log:
-        log.info("Model initialized: %s", model)
-    else:
-        print(f"Model initialized: {model}")
+    # if log:
+    #     log.info("Model initialized: %s", model)
+    # else:
+    #     print(f"Model initialized: {model}")
 
     return model
