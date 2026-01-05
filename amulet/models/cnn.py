@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 
-
 class SimpleCNN(nn.Module):
     """
     Parameterized CNN for MNIST, similar to the one used in the BadNets paper.
@@ -43,9 +42,7 @@ class SimpleCNN(nn.Module):
         # Conv layers with ReLU + MaxPool2d(2)
         for out_channels, kernel_size in conv_channels_kernel:
             padding = kernel_size // 2  # same padding
-            layers.append(
-                nn.Conv2d(in_channels, out_channels, kernel_size, padding=padding)
-            )
+            layers.append(nn.Conv2d(in_channels, out_channels, kernel_size, padding=padding))
             layers.append(nn.ReLU(inplace=True))
             layers.append(nn.MaxPool2d(kernel_size=2, stride=2))
             in_channels = out_channels
@@ -57,7 +54,7 @@ class SimpleCNN(nn.Module):
         for _ in conv_channels_kernel:
             spatial_size = spatial_size // 2  # Each MaxPool halves spatial size
 
-        feature_dim = in_channels * (spatial_size**2)
+        feature_dim = in_channels * (spatial_size ** 2)
 
         # Fully connected layers
         fc_layers_full = [feature_dim] + fc_layers
