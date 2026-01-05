@@ -15,6 +15,8 @@ def train_classifier(
     optimizer: torch.optim.Optimizer,
     epochs: int,
     device: str,
+    scheduler: torch.optim.lr_scheduler._LRScheduler | None = None,
+    early_stopping_patience: int = 25,
 ) -> nn.Module:
     """
     Trains a classifier.
@@ -32,29 +34,55 @@ def train_classifier(
             Determines number of iterations over training data.
         device: str
             Device used to train model. Example: "cuda:0".
+        scheduler: :class:`~torch.optim.lr_scheduler._LRScheduler`
+            LR scheduler.
+        early_stopping_patience: int
+            Stop if no accuracy improvement after this many epochs.
 
     Returns:
         Trained model of type :class:`~torch.nn.Module`.
     """
     model.train()
+    best_acc = 0.0
+    patience_counter = 0
 
     for epoch in range(epochs):
         correct = 0
         total = 0
-        for tuple in data_loader:
-            x, y = tuple[0].to(device), tuple[1].to(device)
+        running_loss = 0.0
+
+        for x, y in data_loader:
+            x, y = x.to(device), y.to(device)
             optimizer.zero_grad()
             output = model(x)
-            _, predictions = torch.max(output, 1)
             loss = criterion(output, y)
             loss.backward()
             optimizer.step()
+
+            _, predictions = torch.max(output, 1)
             correct += predictions.eq(y).sum().item()
-            total += len(y)
+            total += y.size(0)
+            running_loss += loss.item() * y.size(0)
+
+        acc = correct / total * 100
+        avg_loss = running_loss / total
+
+        if scheduler:
+            scheduler.step()
 
         print(
-            f"Train Epoch: {epoch} Loss: {loss.item():.6f} Acc: {correct/total*100:.2f}"  # type: ignore[reportPossiblyUnboundVariable]
+            f"Epoch {epoch:03d} | Loss: {avg_loss:.4f} | Acc: {acc:.2f}% | LR: {optimizer.param_groups[0]['lr']:.6f}"
         )
+
+        # Early stopping check
+        if acc > best_acc:
+            best_acc = acc
+            patience_counter = 0
+        else:
+            patience_counter += 1
+            if patience_counter >= early_stopping_patience:
+                print(f"Early stopping at epoch {epoch} (best acc: {best_acc:.2f}%)")
+                break
 
     print("Finished training")
     return model

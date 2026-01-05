@@ -5,16 +5,20 @@ Utilities to help build an ML pipeline.
 import sys
 import logging
 from pathlib import Path
+from typing import TypedDict
 
+import torch
 import torch.nn as nn
 from torch.utils.data import random_split
 from sklearn.model_selection import train_test_split
 
-from ..models import VGG, LinearNet, ResNet18
+from ..models import VGG, LinearNet, ResNet, SimpleCNN
 from ..datasets import (
     load_census,
     load_cifar10,
+    load_cifar100,
     load_fmnist,
+    load_mnist,
     load_lfw,
     load_celeba,
     AmuletDataset,
@@ -52,8 +56,12 @@ def load_data(
 
     if dataset == "cifar10":
         data = load_cifar10(root / "data" / "cifar10")
+    elif dataset == "cifar100":
+        data = load_cifar100(root / "data" / "cifar100")
     elif dataset == "fmnist":
         data = load_fmnist(root / "data" / "fmnist")
+    elif dataset == "mnist":
+        data = load_mnist(root / "data" / "mnist")
     elif dataset == "census":
         data = load_census(root / "data" / "census", random_seed=exp_id)
     elif dataset == "lfw":
@@ -82,9 +90,11 @@ def load_data(
             )
 
         new_train_size = int(training_size * len(data.train_set))  # type: ignore[reportAttributeAccessIssue]
+        generator = torch.Generator().manual_seed(exp_id)
         train_set, _ = random_split(
             data.train_set,  # type: ignore[reportAttributeAccessIssue]
             [new_train_size, len(data.train_set) - new_train_size],  # type: ignore[reportAttributeAccessIssue]
+            generator=generator,
         )
         data.train_set = train_set  # type: ignore[reportAttributeAccessIssue]
 
@@ -130,11 +140,30 @@ def create_dir(path: Path | str, log: logging.Logger | None = None) -> Path:
     return resolved_path
 
 
-DEFAULT_CAPACITY_MAP = {
+class CNNConfig(TypedDict):
+    conv_layers: list[tuple[int, int]]
+    fc_layers: list[int]
+
+
+class ModelConfig(TypedDict, total=False):
+    vgg: list[int | str]
+    resnet: str
+    linearnet: list[int]
+    cnn: CNNConfig
+
+
+CapacityMap = dict[str, ModelConfig]
+
+DEFAULT_CAPACITY_MAP: CapacityMap = {
     "m1": {
         # VGG11
         "vgg": [64, "M", 128, "M", 256, 256, "M", 512, 512, "M", 512, 512, "M"],
         "linearnet": [128, 256, 128],
+        "resnet": "resnet34",
+        "cnn": {
+            "conv_layers": [(12, 5), (24, 5)],
+            "fc_layers": [256],
+        },
     },
     "m2": {
         # VGG13
@@ -156,6 +185,11 @@ DEFAULT_CAPACITY_MAP = {
             "M",
         ],
         "linearnet": [256, 512, 256],
+        "resnet": "resnet50",
+        "cnn": {
+            "conv_layers": [(20, 5), (50, 5)],
+            "fc_layers": [512],
+        },
     },
     "m3": {
         # VGG16
@@ -180,6 +214,11 @@ DEFAULT_CAPACITY_MAP = {
             "M",
         ],
         "linearnet": [512, 1024, 512],
+        "resnet": "resnet101",
+        "cnn": {
+            "conv_layers": [(32, 5), (64, 5)],
+            "fc_layers": [768],
+        },
     },
     "m4": {
         # VGG19
@@ -207,6 +246,11 @@ DEFAULT_CAPACITY_MAP = {
             "M",
         ],
         "linearnet": [512, 1024, 1024, 512],
+        "resnet": "resnet152",
+        "cnn": {
+            "conv_layers": [(32, 5), (64, 5), (128, 3)],
+            "fc_layers": [1024, 512],
+        },
     },
 }
 
@@ -218,49 +262,80 @@ def initialize_model(
     num_classes: int,
     log: logging.Logger | None = None,
     batch_norm: bool = True,
-    capacity_map: dict[str, dict[str, list[int | str]]] = DEFAULT_CAPACITY_MAP,
+    model_conf: CapacityMap = DEFAULT_CAPACITY_MAP,
+    resnet_replace_first: bool = True,
 ) -> nn.Module:
     """
-    Creates a model using the configuration provided.
+    Creates a model using the provided configuration.
 
     Args:
-        model: str
-            Which model to initialize.
+        model_arch: str
+            Which model architecture to initialize. Options: "vgg", "resnet", "linearnet", "cnn".
         model_capacity: str
-            Size of the model.
+            Key in the configuration dict to select model capacity/size.
         num_features: int
-            Number of features used as input to linear / dense neural networks.
+            Number of input features (used by linear/dense models).
         num_classes: int
-            Number of output classes / labels.
-        log: :class:~`logging.Logger` or None
-            Logging facility.
-        batch_norm: bool
-            Used to control whether batch normalization is used. True by default.
-        capacity_map: dict[str, dict[str, list[int | str]]]
-            dict of dict containing a list of hidden layer sizes/types for each model.
+            Number of output classes.
+        log: logging.Logger | None, optional
+            Logger instance for logging info. Defaults to None.
+        batch_norm: bool, optional
+            Whether to use batch normalization. Defaults to True.
+        model_conf: CapacityMap, optional
+            Configuration dictionary mapping capacities to model params.
+        resnet_replace_first: bool, optional
+            Whether to replace the first conv layer of ResNet with a smaller filter. Defaults to True.
+
     Returns:
-        Path to the created directory.
+        nn.Module
+            Initialized PyTorch model instance.
     """
+    if model_capacity not in model_conf:
+        raise KeyError(f"Capacity '{model_capacity}' not found in model_conf")
+    capacity_config = model_conf[model_capacity]
+
     if model_arch == "vgg":
+        if "vgg" not in capacity_config:
+            raise KeyError(f"'vgg' config missing for capacity '{model_capacity}'")
         model = VGG(
-            num_classes, capacity_map[model_capacity]["vgg"], batch_norm=batch_norm
+            num_classes=num_classes,
+            layer_config=capacity_config["vgg"],
+            batch_norm=batch_norm,
         )
     elif model_arch == "resnet":
-        model = ResNet18(num_classes)
+        if "resnet" not in capacity_config:
+            raise KeyError(f"'resnet' config missing for capacity '{model_capacity}'")
+        model = ResNet(
+            size=capacity_config["resnet"],
+            num_classes=num_classes,
+            replace_first=resnet_replace_first,
+        )
     elif model_arch == "linearnet":
+        if "linearnet" not in capacity_config:
+            raise KeyError(
+                f"'linearnet' config missing for capacity '{model_capacity}'"
+            )
         model = LinearNet(
-            num_features,
-            num_classes,
-            hidden_layer_sizes=capacity_map[model_capacity]["linearnet"],  # type: ignore[reportArgumentType]
+            num_features=num_features,
+            num_classes=num_classes,
+            hidden_layer_sizes=capacity_config["linearnet"],
+            batch_norm=batch_norm,
+        )
+    elif model_arch == "cnn":
+        if "cnn" not in capacity_config:
+            raise KeyError(f"'cnn' config missing for capacity '{model_capacity}'")
+        model = SimpleCNN(
+            conv_channels_kernel=capacity_config["cnn"]["conv_layers"],
+            fc_layers=capacity_config["cnn"]["fc_layers"],
+            num_classes=num_classes,
         )
     else:
+        msg = f"Incorrect model architecture: {model_arch}"
         if log:
-            log.info(
-                "Line 154, mlconf.utils._pipeline.py: Incorrect model configuration"
-            )
+            log.error(msg)
         else:
-            print("Line 156, mlconf.utils._pipeline.py: Incorrect model configuration")
-        sys.exit()
+            print(msg)
+        raise ValueError(msg)
 
     if log:
         log.info("Model initialized: %s", model)
