@@ -275,7 +275,7 @@ def load_lfw(
     attributes = pd.read_csv(attributes_path, delimiter="\t", low_memory=False)
 
     # Function to load binary attributes
-    def __load_lfw_binary_attr(attribute: str):
+    def _load_lfw_binary_attr(attribute: str):
         if attribute == "gender":
             binary_attr = np.asarray(attributes["Male"])
             binary_attr = np.sign(binary_attr)
@@ -285,7 +285,7 @@ def load_lfw(
             raise ValueError(attribute)
 
     # Function to load multi-class attributes
-    def __load_lfw_multi_attr(attr_type: str, thresh: float = -0.1):
+    def _load_lfw_multi_attr(attr_type: str, thresh: float = -0.1):
         if attr_type == "race" or attr_type == "age":
             multi_attrs = np.asarray(attributes[MULTI_ATTRS[attr_type]])
         else:
@@ -302,27 +302,27 @@ def load_lfw(
         return dict(zip(indices, labels))
 
     # Wrapper
-    def __load_lfw_attr(attribute: str):
+    def _load_lfw_attr(attribute: str):
         return (
-            __load_lfw_binary_attr(attribute)
+            _load_lfw_binary_attr(attribute)
             if attribute in BINARY_ATTRS
-            else __load_lfw_multi_attr(attribute)
+            else _load_lfw_multi_attr(attribute)
         )
 
     # Load images and labels
     with np.load(images_path) as f:
         imgs = f["arr_0"].transpose(0, 3, 1, 2)
 
-    target_labels = __load_lfw_attr(target)
+    target_labels = _load_lfw_attr(target)
     target_indices = [x for x in target_labels.keys()]
 
-    sensitive_attr_1 = __load_lfw_attr(attribute_1)
+    sensitive_attr_1 = _load_lfw_attr(attribute_1)
     sens_1_indices = [x for x in sensitive_attr_1.keys()]
 
-    sensitive_attr_2 = __load_lfw_attr(attribute_2)
+    sensitive_attr_2 = _load_lfw_attr(attribute_2)
     sens_2_indices = [x for x in sensitive_attr_2.keys()]
 
-    # Align and scale data
+    # Align and normalize data
     common_indices = np.intersect1d(target_indices, sens_1_indices)
     common_indices = np.intersect1d(common_indices, sens_2_indices)
     imgs = imgs[common_indices] / np.float32(255.0)
