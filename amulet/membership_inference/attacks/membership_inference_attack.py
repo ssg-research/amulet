@@ -42,7 +42,7 @@ class MembershipInferenceAttack:
             Device used to train models. Example: "cuda:0".
         models_dir: Path or str
             Directory used to store shadow models.
-        experiment_id: int
+        exp_id: int
             Used as a random seed.
     """
 
@@ -61,7 +61,7 @@ class MembershipInferenceAttack:
         epochs: int,
         device: str,
         models_dir: Path | str,
-        experiment_id: int,
+        exp_id: int,
     ):
         self.shadow_architecture = shadow_architecture
         self.shadow_capacity = shadow_capacity
@@ -75,17 +75,18 @@ class MembershipInferenceAttack:
         self.pkeep = pkeep
         self.criterion = criterion
         self.num_shadow = num_shadow
+        self.exp_id = exp_id
 
         if isinstance(models_dir, str):
             models_dir = Path(models_dir)
         self.models_dir = models_dir
 
         # Set random seeds for reproducibility
-        torch.manual_seed(experiment_id)
-        torch.cuda.manual_seed(experiment_id)
-        torch.cuda.manual_seed_all(experiment_id)
-        np.random.seed(experiment_id)
-        random.seed(experiment_id)
+        torch.manual_seed(exp_id)
+        torch.cuda.manual_seed(exp_id)
+        torch.cuda.manual_seed_all(exp_id)
+        np.random.seed(exp_id)
+        random.seed(exp_id)
 
     def train_shadow_model(
         self, shadow_model: nn.Module, train_loader: DataLoader
@@ -133,9 +134,7 @@ class MembershipInferenceAttack:
 
             epoch_loss = train_loss / total
             epoch_acc = 100.0 * correct / total
-            print(
-                f"Epoch {epoch+1}/{self.epochs} — Loss: {epoch_loss:.4f} — Acc: {epoch_acc:.2f}%"
-            )
+            print(f"Epoch {epoch+1}/{self.epochs} — Loss: {epoch_loss:.4f} — Acc: {epoch_acc:.2f}%")
             scheduler.step()
 
         return shadow_model
@@ -154,6 +153,9 @@ class MembershipInferenceAttack:
         keep = order < int(self.pkeep * self.num_shadow)
 
         for shadow_id in range(self.num_shadow):
+            filename = self.models_dir / f"{self.dataset}_shadow_{shadow_id}_{self.exp_id}.pth"
+            if filename.exists():
+                continue
             # Select indices for this shadow model
             shadow_in_data = np.array(keep[shadow_id], dtype=bool)
             shadow_in_data = shadow_in_data.nonzero()[0]
@@ -163,9 +165,7 @@ class MembershipInferenceAttack:
                 train_subset, batch_size=self.batch_size, shuffle=True, num_workers=4
             )
 
-            print(
-                f"Preparing shadow model #{shadow_id} with {len(shadow_in_data)} samples"
-            )
+            print(f"Preparing shadow model #{shadow_id} with {len(shadow_in_data)} samples")
             shadow_model = initialize_model(
                 self.shadow_architecture,
                 self.shadow_capacity,
@@ -179,7 +179,6 @@ class MembershipInferenceAttack:
             # Save model state dict and training indices
             print(f"Saving shadow model #{shadow_id}")
             state = {"model": shadow_model.state_dict(), "in_data": shadow_in_data}
-            filename = self.models_dir / f"{self.dataset}_shadow_{shadow_id}.pth"
             torch.save(state, filename)
 
 
@@ -217,6 +216,7 @@ class InferenceModel(nn.Module):
         shadow_architecture: str,
         shadow_capacity: str,
         models_dir: Path | str,
+        exp_id: int
     ):
         super().__init__()
 
@@ -231,10 +231,8 @@ class InferenceModel(nn.Module):
             models_dir = Path(models_dir)
         self.models_dir = models_dir
 
-        resume_checkpoint = self.models_dir / f"{self.dataset}_shadow_{shadow_id}.pth"
-        assert os.path.isfile(
-            resume_checkpoint
-        ), f"Checkpoint not found at {resume_checkpoint}"
+        resume_checkpoint = self.models_dir / f"{self.dataset}_shadow_{shadow_id}_{exp_id}.pth"
+        assert os.path.isfile(resume_checkpoint), f"Checkpoint not found at {resume_checkpoint}"
         checkpoint = torch.load(resume_checkpoint)
 
         self.model = initialize_model(

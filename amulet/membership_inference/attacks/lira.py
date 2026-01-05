@@ -1,5 +1,4 @@
 """Implementation of Likelihood Ratio Attack (LiRA)"""
-
 import copy
 from pathlib import Path
 import torch
@@ -134,11 +133,9 @@ class LiRA(MembershipInferenceAttack):
         logits = logits / np.sum(logits, axis=-1, keepdims=True)
         return logits
 
-    def __get_log_logits(
-        self, pred_logits: np.ndarray, class_labels: np.ndarray
-    ) -> np.ndarray:
+    def __get_log_logits(self, pred_logits: np.ndarray, class_labels: np.ndarray) -> np.ndarray:
         """
-        Compute LiRA per-sample log-likelihood scores.
+        Compute LiRA per-sample log-likelihood scores (vectorized safely).
 
         Args:
             pred_logits: Shape (num_models, num_samples, num_trials, num_classes)
@@ -150,30 +147,36 @@ class LiRA(MembershipInferenceAttack):
             Scores numpy array of shape (num_models, num_samples, num_trials).
         """
         pred_logits = copy.deepcopy(pred_logits)  # avoid modifying input
-        scores = []
+        num_models, num_samples, num_trials, num_classes = pred_logits.shape
+        eps = 1e-45
 
-        # Vectorized calculation over models and samples
-        # Normalize logits to probabilities
-        pred_logits = self.__normalize_logits(pred_logits)
+        scores = np.zeros((num_models, num_samples, num_trials), dtype=np.float64)
 
-        # Select the probability of the correct class for each sample and trial
-        # pred_logits shape: (num_models, num_samples, num_trials, num_classes)
-        # class_labels shape: (num_samples,)
-        batch_indices = np.arange(pred_logits.shape[1])
-        class_indices = class_labels
+        for model_idx in range(num_models):
+            # Extract logits for this model
+            logits = pred_logits[model_idx]  # shape (num_samples, num_trials, num_classes)
+            
+            # Softmax per sample & trial
+            logits = logits - np.max(logits, axis=-1, keepdims=True)
+            probs = np.exp(logits).astype(np.float64)
+            probs = probs / np.sum(probs, axis=-1, keepdims=True)
 
-        y_true = pred_logits[
-            :, batch_indices[:, None], :, class_indices[:, None]
-        ].squeeze(-1)
+            # Correct class probability
+            batch_idx = np.arange(num_samples)[:, None]  # shape (num_samples,1)
+            trial_idx = np.arange(num_trials)[None, :]   # shape (1, num_trials)
+            class_idx = class_labels[:, None]            # shape (num_samples,1)
 
-        # Set correct class probabilities to zero for y_wrong
-        pred_logits_copy = pred_logits.copy()
-        pred_logits_copy[:, batch_indices[:, None], :, class_indices[:, None]] = 0
+            y_true = probs[batch_idx, trial_idx, class_idx]  # shape (num_samples, num_trials)
+            
+            # Zero out correct class for y_wrong
+            probs[batch_idx, trial_idx, class_idx] = 0
+            y_wrong = np.sum(probs, axis=-1)  # sum over classes, shape (num_samples, num_trials)
+            
+            # Avoid division by zero
+            y_wrong = np.clip(y_wrong, eps, None)
+            y_true = np.clip(y_true, eps, None)
 
-        y_wrong = np.sum(pred_logits_copy, axis=-1)  # sum over classes
-
-        score = np.log(y_true + 1e-45) - np.log(y_wrong + 1e-45)
-        scores = score
+            scores[model_idx] = np.log(y_true) - np.log(y_wrong)
 
         return scores
 
@@ -312,6 +315,7 @@ class LiRA(MembershipInferenceAttack):
                 self.shadow_architecture,
                 self.shadow_capacity,
                 self.models_dir,
+                self.exp_id
             ).to(self.device)
 
             shadow_models.append(curr_model)
