@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "amuletml"
-version = "0.4.0"
+version = "0.5.0"
 description = "Amulet is a Python machine learning (ML) package to evaluate the susceptibility of different risks to security, privacy, and fairness."
 authors = [
     "Asim Waheed <asim.waheed29@gmail.com>",
