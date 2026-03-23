@@ -21,7 +21,7 @@ class VisionTransformer(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         ...
-    
+
     def get_hidden(self, x: torch.Tensor) -> torch.Tensor:
         ...
 ```

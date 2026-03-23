@@ -155,7 +155,7 @@ def get_intermediate_features(
     with torch.no_grad():
         for x, y in data_loader:
             x, y = x.to(device), y.to(device)
-            feature = model.get_hidden(x).data.cpu().numpy()
+            feature = model.get_hidden(x).data.cpu().numpy()  # type: ignore[misc]
 
             features.append(feature)
             targets.append(y.data.cpu().numpy())

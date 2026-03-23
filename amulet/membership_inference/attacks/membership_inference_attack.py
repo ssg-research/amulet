@@ -103,7 +103,7 @@ class MembershipInferenceAttack:
         Returns:
             nn.Module: The trained shadow model.
         """
-        scaler = torch.cuda.amp.GradScaler(enabled=True)
+        scaler = torch.cuda.amp.GradScaler(enabled=True)  # type: ignore[reportDeprecated]
         optimizer = torch.optim.SGD(
             shadow_model.parameters(), lr=0.01, momentum=0.9, weight_decay=5e-4
         )
@@ -118,7 +118,7 @@ class MembershipInferenceAttack:
             for inputs, targets in train_loader:
                 inputs, targets = inputs.to(self.device), targets.to(self.device)
 
-                with torch.cuda.amp.autocast(enabled=True):
+                with torch.cuda.amp.autocast(enabled=True):  # type: ignore[reportDeprecated]
                     outputs = shadow_model(inputs)
                     loss = self.criterion(outputs, targets)
 

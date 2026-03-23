@@ -28,48 +28,49 @@ For new functionalities that help with an ML pipeline, please submit an issue, a
 
 ### Setting up your environment
 
-#### Install poetry
+#### Install uv
 
-> [!CAUTION]
-> This repo doesn't work with `poetry` 2.0. Use an earlier version, e.g. `1.8.5`.
+This project uses [uv](https://docs.astral.sh/uv/) for dependency management. To install uv:
 
-`python3 -m venv .poetry_venv`
+`curl -LsSf https://astral.sh/uv/install.sh | sh`
 
-`. .poetry_venv/bin/activate` or `. .venv/bin/activate.fish`
+Or on Windows:
 
-`python -m pip install --upgrade pip`
+`powershell -c "irm https://astral.sh/uv/install.ps1 | iex"`
 
-`pip install poetry==1.8.5`
+Alternatively, you can use pipx:
 
-`deactivate`
+`pipx install uv`
 
-Consider setting `.poetry_venv/bin/poetry config virtualenvs.create false` to prevent poetry from creating its own venv.
+#### Setting up the environment
 
-#### Main venv
+To create a virtual environment and install dependencies:
 
-To create the virtual environemnt:
-`python3 -m venv .venv`
+`uv sync`
 
-To activate it:
-`source .venv/bin/activate` or if using fish `. .venv/bin/activate.fish`
+This will automatically create a `.venv` directory, install all dependencies, and set up the project.
+To install all dev dependencies:
 
-Then, to install the dependencies:
-`.poetry_venv/bin/poetry install`
+`uv sync --all-extras`
 
-**DISCLAIMER:** Installing `pytorch` with `poetry` is [still weird](https://github.com/python-poetry/poetry/blob/main/docs/repositories.md#explicit-package-sources) but should work.
+#### Using uv
 
-#### Using poetry
+When you add or modify dependencies in `pyproject.toml`:
+- Run `uv lock` to update the lock file
+- Run `uv sync` to install the updated dependencies
 
-(Inside your `.venv`);
-when you add or modify any dependencies in `pyproject.toml`, run `.poetry_venv/bin/poetry lock --no-update` to rebuild the dependency graph.
-Then run `.poetry_venv/bin/poetry install` to install the dependencies.
+To add a new dependency:
+`uv add package-name`
+
+To add a development dependency:
+`uv add --dev package-name`
 
 #### pre-commit
 
 There're some pre-commit hooks configured for this project.
-Also, `poetry` installs `pre-commit` as a dev dependency.
+`uv` installs `pre-commit` as a dev dependency.
 
-Run `pre-commit install` for consistent development.
+Run `uv run pre-commit install` for consistent development.
 
 ## Additional Features
 

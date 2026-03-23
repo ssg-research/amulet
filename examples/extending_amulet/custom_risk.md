@@ -1,6 +1,6 @@
 # Extending Amulet with a Custom Risk
 
-This example demonstrates how to add a new **risk** to Amulet.  
+This example demonstrates how to add a new **risk** to Amulet.
 A risk encapsulates one or more attacks and defines how a model can be evaluated under a new threat model.
 
 ## Step 1: Create a New Risk Directory
