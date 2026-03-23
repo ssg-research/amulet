@@ -27,7 +27,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          . $HOME/.cargo/bin/uv sync
+          $HOME/.local/bin/uv sync
           echo PATH="$PWD/.venv/bin:$PATH" >> $GITHUB_ENV
 
       - name: Pre-commit on changed files
