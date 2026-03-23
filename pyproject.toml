@@ -1,46 +1,52 @@
-[tool.poetry]
+[project]
 name = "amuletml"
 version = "0.5.0"
 description = "Amulet is a Python machine learning (ML) package to evaluate the susceptibility of different risks to security, privacy, and fairness."
 authors = [
-    "Asim Waheed <asim.waheed29@gmail.com>",
-    "Sebastian Szyller <contact@sebszyller.com>",
-    "Vasisht Duddu <nvduddu@uwaterloo.ca>"
+    {name = "Asim Waheed", email = "asim.waheed29@gmail.com"},
+    {name = "Sebastian Szyller", email = "contact@sebszyller.com"},
+    {name = "Vasisht Duddu", email = "nvduddu@uwaterloo.ca"}
 ]
 readme = "README.md"
-license = "Apache-2.0"
-packages = [
-    {include = "amulet"}
+license = {text = "Apache-2.0"}
+requires-python = "~=3.11.0"
+
+dependencies = [
+    "captum==0.7.0",
+    "cleverhans==4.0.0",
+    "gdown==5.2.0",
+    "matplotlib==3.8.3",
+    "numpy==1.26.4",
+    "opacus==1.4.1",
+    "pandas==2.2.1",
+    "scikit-learn==1.4.1.post1",
+    "scikit-image==0.25.1",
+    "scipy==1.12.0",
+    "torch>=2.2.0",
+    "torchvision>=0.18.0",
+    "tqdm==4.66.2",
+    "ucimlrepo==0.0.3",
+    "wget==3.2.0",
 ]
-package-mode = true
 
-[tool.poetry.dependencies]
-python = "^3.11"
+[project.optional-dependencies]
+dev = [
+    "pre-commit==3.7.1",
+    "basedpyright==1.12.5",
+    "pytest==8.3.2",
+    "ruff==0.11.0",
+]
 
-captum                = "0.7.0"
-cleverhans            = "4.0.0"
-gdown                 = "5.2.0"
-matplotlib            = "3.8.3"
-numpy                 = "1.26.4"
-opacus                = "1.4.1"
-pandas                = "2.2.1"
-scikit-learn          = "1.4.1.post1"
-scikit-image          = "0.25.1"
-scipy                 = "1.12.0"
-torch                 = {version = "^2.2.0", source = "pytorch-gpu-src"}
-torchvision           = {version = "^0.18.0", source = "pytorch-gpu-src"}
-tqdm                  = "4.66.2"
-ucimlrepo             = "0.0.3"
-wget                  = "3.2.0"
+[project.urls]
+Homepage = "https://github.com/ssg-research/amulet"
+Issues = "https://github.com/ssg-research/amulet/issues"
 
-[[tool.poetry.source]]
-name = "pytorch-gpu-src"
-url = "https://download.pytorch.org/whl/cu118"
-priority = "explicit"
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tool.poetry.group.dev.dependencies]
-pre-commit            = "3.7.1"
-basedpyright          = "1.12.5"
+[tool.hatch.build.targets.wheel]
+packages = ["amulet"]
 
 [tool.basedpyright]
 venvPath = "."
@@ -48,11 +54,3 @@ venv = ".venv"
 typeCheckingMode = "standard"
 deprecateTypingAliases = true
 reportDeprecated = true
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
-
-[project.urls]
-Homepage = "https://github.com/ssg-research/amulet"
-Issues = "https://github.com/ssg-research/amulet/issues"
