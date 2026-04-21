@@ -1,6 +1,7 @@
 import sys
 
 sys.path.append("../../")
+
 import argparse
 import logging
 from pathlib import Path
@@ -14,6 +15,7 @@ from amulet.utils import (
     get_accuracy,
     initialize_model,
     load_data,
+    load_or_train,
     train_classifier,
 )
 
@@ -31,7 +33,7 @@ def parse_args() -> argparse.Namespace:
         "--dataset",
         type=str,
         default="celeba",
-        help="Options: cifar10, fmnist, lfw, census, celeba.",
+        help="Options: cifar10, cifar100, fmnist, mnist, lfw, census, celeba, utkface.",
     )
     parser.add_argument(
         "--model", type=str, default="vgg", help="Options: vgg, linearnet."
@@ -54,7 +56,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--device",
         type=str,
-        default=torch.device(f"cuda:{0}" if torch.cuda.is_available() else "cpu"),
+        default="cuda:0" if torch.cuda.is_available() else "cpu",
         help="Device on which to run PyTorch",
     )
     parser.add_argument(
@@ -62,9 +64,6 @@ def parse_args() -> argparse.Namespace:
     )
 
     parser.add_argument("--num_iter", type=int, default=500)
-    parser.add_argument(
-        "--distance", help="Type of Adversarial Perturbation", type=str
-    )  # , choices = ["linf", "l1", "l2", "vanilla"])
     parser.add_argument(
         "--randomize",
         help="For the individual attacks",
@@ -120,70 +119,45 @@ def main(args: argparse.Namespace) -> None:
     # Set up filename and directories to save/load models
     models_path = root_dir / "saved_models"
     filename = f"{args.dataset}_{args.model}_{args.model_capacity}_{args.training_size * 100}_{args.batch_size}_{args.epochs}_{args.exp_id}.pt"
-    target_model_path = models_path / "target"
-    target_model_filename = target_model_path / filename
+    target_model_filename = models_path / "target" / filename
+    suspect_model_filename = models_path / "suspect" / filename
 
-    # Train or Load Target Model
+    # Train or Load Target and Suspect Models
     criterion = torch.nn.CrossEntropyLoss()
 
-    if target_model_filename.exists():
-        log.info("Target model loaded from %s", target_model_filename)
-        target_model = torch.load(target_model_filename).to(args.device)
-        optimizer = torch.optim.Adam(target_model.parameters(), lr=1e-3)
-    else:
-        log.info("Training target model")
-        target_model = initialize_model(
+    def _init_model():
+        return initialize_model(
             args.model, args.model_capacity, data.num_features, data.num_classes, log
         ).to(args.device)
-        optimizer = torch.optim.Adam(target_model.parameters(), lr=1e-3)
-        target_model = train_classifier(
-            target_model, train_loader, criterion, optimizer, args.epochs, args.device
-        )
-        log.info("Target model trained")
 
-        # Save model
-        create_dir(target_model_path, log)
-        torch.save(target_model, target_model_filename)
+    def _train_model(model):
+        optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+        return train_classifier(
+            model, train_loader, criterion, optimizer, args.epochs, args.device
+        )
+
+    target_model = load_or_train(
+        target_model_filename, _init_model, _train_model, log, "target model"
+    )
+    suspect_model = load_or_train(
+        suspect_model_filename, _init_model, _train_model, log, "suspect model"
+    )
 
     test_accuracy_target = get_accuracy(target_model, test_loader, args.device)
     log.info("Test accuracy of target model: %s", test_accuracy_target)
 
-    # Train or Load Suspect Model
-    suspect_model_path = models_path / "suspect"
-    suspect_model_filename = suspect_model_path / filename
-
-    if suspect_model_filename.exists():
-        log.info("Target model loaded from %s", suspect_model_filename)
-        suspect_model = torch.load(suspect_model_filename).to(args.device)
-        optimizer = torch.optim.Adam(suspect_model.parameters(), lr=1e-3)
-    else:
-        log.info("Training suspect model")
-        suspect_model = initialize_model(
-            args.model, args.model_capacity, data.num_features, data.num_classes, log
-        ).to(args.device)
-        optimizer = torch.optim.Adam(suspect_model.parameters(), lr=1e-3)
-        suspect_model = train_classifier(
-            suspect_model, train_loader, criterion, optimizer, args.epochs, args.device
-        )
-        log.info("Target model trained")
-
-        # Save model
-        create_dir(suspect_model_path, log)
-        torch.save(suspect_model, suspect_model_filename)
-
     # Run Fingerprinting
     log.info("Running Dataset Inference")
-    num_classes_map = {"cifar10": 10, "fmnist": 10, "census": 2, "lfw": 2}
-    dataset_map = {"cifar10": "2D", "fmnist": "2D", "census": "1D", "lfw": "1D"}
+    dataset_format = "1D" if data.modality == "tabular" else "2D"
 
     dataset_inference = DatasetInference(
         target_model,
         suspect_model,
         train_loader,
         test_loader,
-        num_classes_map[args.dataset],
+        data.num_classes,
         args.device,
-        dataset_map[args.dataset],
+        dataset_format,
         args.alpha_l1,
         args.alpha_l2,
         args.alpha_linf,

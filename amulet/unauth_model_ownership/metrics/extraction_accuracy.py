@@ -10,26 +10,17 @@ def evaluate_extraction(
     device: str,
 ) -> dict:
     """
-    Compares the attack model with the target model with respect to the accuracy,
-    fidelity (agreement) and correct fidelity (agreement on correct predictions).
+    Compare a stolen model against the target on accuracy, fidelity, and correct fidelity.
 
     Args:
-        target_model: :class:`torch.nn.Module`
-            Target model that was extracted.
-        attack_model: :class:`torch.nn.Module`
-            The surrogate model.
-        data_loader: :class:`torch.utils.data.DataLoader`
-            The testing data for model extraction.
-        device: str
-            Device on which to run the inference. Example "gpu:0"
+        target_model: The original target model.
+        attack_model: The surrogate (stolen) model.
+        data_loader: Test data for evaluation.
+        device: Device used for inference. Example: "cuda:0".
 
     Returns:
-        Dictionary containing the resulting values:
-            'target_accuracy': Accuracy of the target model.
-            'stolen_accuracy': Accuracy of the stolen (attack) model
-            'fidelity': Fidelity between target and stolen model
-            'correct_fidelity': Correctness conditioned on fidelity, i.e.
-                                when models agree, how often are they also correct?
+        Dictionary with keys "target_accuracy", "stolen_accuracy", "fidelity",
+        and "correct_fidelity" (all as percentages).
     """
     target_model.eval()
     attack_model.eval()
@@ -66,5 +57,5 @@ def evaluate_extraction(
         "target_accuracy": (target_correct / total) * 100,
         "stolen_accuracy": (stolen_correct / total) * 100,
         "fidelity": (fidelity / total) * 100,
-        "correct_fidelity": (both_correct / fidelity) * 100,
+        "correct_fidelity": (both_correct / fidelity) * 100 if fidelity > 0 else 0.0,
     }

@@ -7,9 +7,10 @@ from torch.utils.data import DataLoader, TensorDataset
 from torchvision import transforms
 
 from ...datasets import CustomImageDataset
+from .unauth_model_ownership_defense import WatermarkDefense
 
 
-class WatermarkNN:
+class WatermarkNN(WatermarkDefense):
     """
     Reference:
         Turning Your Weakness Into a Strength: Watermarking Deep Neural Networks by Backdooring
@@ -17,14 +18,14 @@ class WatermarkNN:
         https://arxiv.org/abs/1802.04633
 
     Attributes:
-        model: :class:`~torch.nn.Module`
-            The model on which to apply adversarial training.
-        criterion: :class:`~torch.nn.Module`
-            Loss function for adversarial training.
-        optimizer: :class:`~torch.optim.Optimizer`
-            Optimizer for adversarial training.
-        train_loader: :class:`~torch.utils.data.DataLoader`
-            Training data loader to adversarial training.
+        model: torch.nn.Module
+            The model to watermark.
+        criterion: torch.nn.Module
+            Loss function for watermark training.
+        optimizer: torch.optim.Optimizer
+            Optimizer for watermark training.
+        train_loader: torch.utils.data.DataLoader
+            Training data loader for watermark training.
         device: str
             Device used to train model. Example: "cuda:0".
         wm_path: str or Path object.
@@ -50,16 +51,17 @@ class WatermarkNN:
         wm_path: str | Path,
         gray: bool = False,
         tabular: bool = False,
+        num_classes: int = 2,
         epochs: int = 10,
         batch_size: int = 256,
     ):
-        self.target_model = target_model
+        super().__init__(target_model, device)
         self.criterion = criterion
         self.optimizer = optimizer
         self.train_loader = train_loader
-        self.device = device
         self.epochs = epochs
         self.batch_size = batch_size
+        self.num_classes = num_classes
         shape = next(iter(train_loader))[0].shape[-1]
 
         if isinstance(wm_path, str):
@@ -73,7 +75,7 @@ class WatermarkNN:
     ) -> DataLoader:
         if tabular:
             wm_data = np.random.random((100, shape))
-            wm_label = np.random.randint(0, 1, 100)
+            wm_label = np.random.randint(0, self.num_classes, 100)
             wm_dataset = TensorDataset(
                 torch.from_numpy(np.array(wm_data)).type(torch.float),
                 torch.from_numpy(np.array(wm_label)).type(torch.long),
@@ -110,8 +112,6 @@ class WatermarkNN:
         Return:
             Model with watermark embedded
         """
-        criterion = torch.nn.CrossEntropyLoss()
-        optimizer = torch.optim.Adam(self.target_model.parameters(), lr=1e-3)
         wm_inputs, wm_labels = [], []
         for _wm_idx, (wm_input, wm_label) in enumerate(self.wm_loader):
             wm_input, wm_label = wm_input.to(self.device), wm_label.to(self.device)
@@ -126,8 +126,8 @@ class WatermarkNN:
         for epoch in range(self.epochs):
             acc = 0
             total = 0
-            for batch_idx, (tuple) in enumerate(self.train_loader):
-                data, target = tuple[0].to(self.device), tuple[1].to(self.device)
+            for batch_idx, (data, target) in enumerate(self.train_loader):
+                data, target = data.to(self.device), target.to(self.device)
                 data = torch.cat(
                     [data, wm_inputs[(wm_idx + batch_idx) % len(wm_inputs)]], dim=0
                 )
@@ -135,12 +135,12 @@ class WatermarkNN:
                     [target, wm_labels[(wm_idx + batch_idx) % len(wm_inputs)]], dim=0
                 )
 
-                optimizer.zero_grad()
+                self.optimizer.zero_grad()
                 output = self.target_model(data)
                 _, pred = torch.max(output, 1)
-                loss = criterion(output, target)
+                loss = self.criterion(output, target)
                 loss.backward()
-                optimizer.step()
+                self.optimizer.step()
                 acc += pred.eq(target).sum().item()
                 total += len(target)
                 if batch_idx % 2000 == 0:
@@ -149,7 +149,7 @@ class WatermarkNN:
                     )
                     self.verify(self.target_model)
                     self.target_model.train()
-        print("Finished Watermark Embeddding")
+        print("Finished Watermark Embedding")
         return self.target_model
 
     def verify(self, model: nn.Module, threshold: float = 0.9) -> bool:

@@ -6,8 +6,10 @@ import torch.nn.functional as F
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 
+from .unauth_model_ownership_attack import UnauthModelOwnershipAttack
 
-class ModelExtraction:
+
+class ModelExtraction(UnauthModelOwnershipAttack):
     """
     Implementation of algorithm to extract parameters of a model to
     obtain a "stolen" model. Code taken from:
@@ -22,13 +24,13 @@ class ModelExtraction:
 
 
     Attributes:
-        target_model: :class:`~torch.nn.Module`
+        target_model: torch.nn.Module
             This model will be extracted.
-        attack_model: :class:`~torch.nn.Module`
+        attack_model: torch.nn.Module
             The model trained by extracting target_model.
-        optimizer: :class:`~torch.optim.Optimizer`
+        optimizer: torch.optim.Optimizer
             Optimizer for training model.
-        train_loader: :class:`~torch.utils.data.DataLoader`
+        train_loader: torch.utils.data.DataLoader
             Dataloader for training model.
         device: str
             Device used to train model. Example: "cuda:0".
@@ -46,12 +48,10 @@ class ModelExtraction:
         epochs: int = 50,
         loss_type: str = "mse",  # "kl", "ce" are other options
     ):
-        self.target_model = target_model
+        super().__init__(target_model, device, epochs)
         self.attack_model = attack_model
         self.optimizer = optimizer
         self.train_loader = train_loader
-        self.device = device
-        self.epochs = epochs
         self.loss_type = loss_type.lower()
 
         if self.loss_type == "mse":
