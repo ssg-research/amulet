@@ -249,6 +249,8 @@ def prepare_distribution_splits(
     test_2: ConcatDataset = ConcatDataset([adv_test_2, vic_test_2])
 
     def make_train_loader(ds: TensorDataset) -> DataLoader:  # type: ignore[type-arg]
+        if len(ds) == 0:
+            return DataLoader(dataset=ds, batch_size=batch_size, shuffle=False)
         return DataLoader(
             dataset=ds, batch_size=batch_size, shuffle=True, drop_last=True
         )
