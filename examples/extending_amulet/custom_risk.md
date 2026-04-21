@@ -7,7 +7,7 @@ A risk encapsulates one or more attacks and defines how a model can be evaluated
 
 Create a new directory under `amulet/` for the risk:
 
-```
+```text
 amulet/test_time_adaptation/
 amulet/test_time_adaptation/attacks/
 ```
@@ -15,18 +15,19 @@ amulet/test_time_adaptation/attacks/
 ## Step 2: Implement the Attack
 
 Add a new attack file under the `attacks` subdirectory.
+All attacks should inherit from the `RiskAttack` base class (or a risk-specific base class if one exists).
 
 **File:** `amulet/test_time_adaptation/attacks/test_time_data_poisoning.py`
 
 ```python
 import torch
 import torch.nn as nn
+from .test_time_adaptation_attack import TestTimeAdaptationAttack
 
-class TestTimeDataPoisoning:
+class TestTimeDataPoisoning(TestTimeAdaptationAttack):
     def __init__(self, target_model: nn.Module, test_loader, device):
-        self.model = target_model
+        super().__init__(target_model, device)
         self.test_loader = test_loader
-        self.device = device
 
     def attack(self) -> torch.utils.data.TensorDataset:
         # Adapt model parameters using adversarial test-time inputs
