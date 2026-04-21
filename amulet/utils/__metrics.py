@@ -13,25 +13,22 @@ def get_accuracy(
     device: str,
 ) -> float:
     """
-    Calculates the classification accuracy of a model.
+    Calculate classification accuracy of a model.
 
     Args:
-        model: :class:`~nn.Module`
-            The model to evaluate.
-        data_loader: :class:'~torch.utils.data.DataLoader
-            Input data to the model.
-        device: str
-            Device used for inference. Example: "cuda:0".
+        model: The model to evaluate.
+        data_loader: Input data to the model.
+        device: Device used for inference. Example: "cuda:0".
 
     Returns:
-        The accuracy of the model.
+        Accuracy as a percentage.
     """
     model.eval()
     correct = 0
     total = 0
     with torch.no_grad():
-        for tuple in data_loader:
-            x, y = tuple[0].to(device), tuple[1].to(device)
+        for batch in data_loader:
+            x, y = batch[0].to(device), batch[1].to(device)
             outputs = model(x)
             _, predictions = torch.max(outputs.data, 1)
             total += y.size(0)
@@ -47,20 +44,16 @@ def get_fidelity(
     device: str,
 ) -> float:
     """
-    Calculates the agreement in predictions (fidelity) of two models.
+    Calculate prediction agreement (fidelity) between two models.
 
     Args:
-        model: :class:`~nn.Module`
-            One of the models to compare.
-        model: :class:`~nn.Module`
-            One of the models to compare.
-        data_loader: :class:'~torch.utils.data.DataLoader
-            Input data to the models.
-        device: str
-            Device used for inference. Example: "cuda:0".
+        model_1: First model to compare.
+        model_2: Second model to compare.
+        data_loader: Input data to the models.
+        device: Device used for inference. Example: "cuda:0".
 
     Returns:
-        The agreement (fidelity) between two models.
+        Fidelity as a percentage.
     """
     model_1.eval()
     model_2.eval()

@@ -33,10 +33,7 @@ def compute_mi_metrics(
 
     # Find the TPR at or just below the given FPR threshold
     valid_indices = np.where(fpr <= fpr_threshold)[0]
-    if len(valid_indices) == 0:
-        tpr_at_fpr = 0.0
-    else:
-        tpr_at_fpr = tpr[valid_indices[-1]]
+    tpr_at_fpr = 0.0 if len(valid_indices) == 0 else tpr[valid_indices[-1]]
 
     return {
         "auc": float(auc_score),

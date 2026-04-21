@@ -3,8 +3,10 @@
 import torch
 import torch.nn as nn
 
+from .base import AmuletModel
 
-class VGG(nn.Module):
+
+class VGG(AmuletModel):
     """
     Builds a VGG network. Code taken from
     https://github.com/kuangliu/pytorch-cifar/blob/master/models/vgg.py
@@ -22,24 +24,26 @@ class VGG(nn.Module):
     def __init__(
         self,
         num_classes: int = 10,
-        layer_config: list[int | str] = [
-            64,
-            "M",
-            128,
-            "M",
-            256,
-            256,
-            "M",
-            512,
-            512,
-            "M",
-            512,
-            512,
-            "M",
-        ],
+        layer_config: list[int | str] | None = None,
         batch_norm: bool = True,
     ) -> None:
         super().__init__()
+        if layer_config is None:
+            layer_config = [
+                64,
+                "M",
+                128,
+                "M",
+                256,
+                256,
+                "M",
+                512,
+                512,
+                "M",
+                512,
+                512,
+                "M",
+            ]
         self.batch_norm = batch_norm
         self.classifier = nn.Linear(512, num_classes)
         self.features = self._make_layers(layer_config)
@@ -74,11 +78,11 @@ class VGG(nn.Module):
         Runs the forward pass on the neural network.
 
         Args:
-            x: :class:`~torch.Tensor`
+            x: torch.Tensor
                 Input data
 
         Returns:
-            Output from the model of type :class:`~torch.Tensor`
+            Output from the model of type torch.Tensor
         """
         out = self.features(x)
         out = self.classifier(out)
@@ -89,10 +93,10 @@ class VGG(nn.Module):
         Gets the intermediate layer output from the model.
 
         Args:
-            x: :class:`~torch.Tensor`
+            x: torch.Tensor
                 Input data to the model.
 
         Returns:
-            Output from the model of type :class:`~torch.Tensor`.
+            Output from the model of type torch.Tensor.
         """
         return self.features(x)

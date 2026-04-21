@@ -3,8 +3,10 @@
 import torch
 import torch.nn as nn
 
+from .base import AmuletModel
 
-class LinearNet(nn.Module):
+
+class LinearNet(AmuletModel):
     """
     Builds a dense neural network for a multiclass image classification task.
 
@@ -22,10 +24,12 @@ class LinearNet(nn.Module):
         self,
         num_features: int,
         num_classes: int,
-        hidden_layer_sizes: list[int] = [128, 256, 128],
+        hidden_layer_sizes: list[int] | None = None,
         batch_norm: bool = True,
     ):
         super().__init__()
+        if hidden_layer_sizes is None:
+            hidden_layer_sizes = [128, 256, 128]
         self.num_features = num_features
         self.num_classes = num_classes
         self.batch_norm = batch_norm
@@ -53,11 +57,11 @@ class LinearNet(nn.Module):
         Runs the forward pass on the neural network.
 
         Args:
-            x: :class:`~torch.Tensor`
+            x: torch.Tensor
                 Input data
 
         Returns:
-            Output from the model of type :class:`~torch.Tensor`
+            Output from the model of type torch.Tensor
         """
         hidden_out = self.features(x)
         return self.classifier(hidden_out)
@@ -67,10 +71,10 @@ class LinearNet(nn.Module):
         Gets the intermediate layer output from the model.
 
         Args:
-            x: :class:`~torch.Tensor`
+            x: torch.Tensor
                 Input data to the model.
 
         Returns:
-            Output from the model of type :class:`~torch.Tensor`.
+            Output from the model of type torch.Tensor.
         """
         return self.features(x)

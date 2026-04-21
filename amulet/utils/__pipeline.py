@@ -2,28 +2,25 @@
 Utilities to help build an ML pipeline.
 """
 
-import sys
 import logging
 from pathlib import Path
 from typing import TypedDict
 
 import torch
-import torch.nn as nn
-from torch.utils.data import random_split, Dataset, Subset
-
 from sklearn.model_selection import train_test_split
+from torch.utils.data import Dataset, Subset, random_split
 
-from ..models import VGG, LinearNet, ResNet, SimpleCNN
 from ..datasets import (
+    AmuletDataset,
+    load_celeba,
     load_census,
     load_cifar10,
     load_cifar100,
     load_fmnist,
-    load_mnist,
     load_lfw,
-    load_celeba,
-    AmuletDataset,
+    load_mnist,
 )
+from ..models import VGG, AmuletModel, LinearNet, ResNet, SimpleCNN
 
 
 def load_data(
@@ -35,19 +32,18 @@ def load_data(
     celeba_target: str = "Smiling",
 ) -> AmuletDataset:
     """
-    Loads data given the dataset and the training size.
+    Load data given the dataset name and training size.
 
     Args:
-        root: :class:~`pathlib.Path` or str
-            Root directory of pipeline
-        dataset: str
-            Name of the dataset.
-        training_size: float
-            Proportion of training data to use.
-        log: :class:~`logging.Logger`
-            Logging facility.
-        exp_id: int
-            Used as a random seed.
+        root: Root directory of the pipeline.
+        dataset: Name of the dataset. Options: "cifar10", "cifar100", "fmnist", "mnist", "census", "lfw", "celeba".
+        training_size: Proportion of training data to use.
+        log: Logging facility.
+        exp_id: Used as a random seed.
+        celeba_target: Target attribute for CelebA. Example: "Smiling".
+
+    Returns:
+        Loaded dataset as an AmuletDataset.
     """
 
     if isinstance(root, str):
@@ -72,13 +68,7 @@ def load_data(
             root / "data" / "celeba", random_seed=exp_id, target_attribute=celeba_target
         )
     else:
-        if log:
-            log.info(
-                "Line 42, mlconf.utils._pipeline.py: Incorrect dataset configuration"
-            )
-        else:
-            print("Line 44, mlconf.utils._pipeline.py: Incorrect dataset configuration")
-        sys.exit()
+        raise ValueError(f"Unknown dataset: {dataset!r}")
 
     if training_size < 1.0:
         if data.x_train is not None:
@@ -93,11 +83,11 @@ def load_data(
         new_train_size = int(training_size * len(data.train_set))  # type: ignore[reportAttributeAccessIssue]
         generator = torch.Generator().manual_seed(exp_id)
         train_set, _ = random_split(
-            data.train_set,  # type: ignore[reportAttributeAccessIssue]
+            data.train_set,
             [new_train_size, len(data.train_set) - new_train_size],  # type: ignore[reportAttributeAccessIssue]
             generator=generator,
         )
-        data.train_set = train_set  # type: ignore[reportAttributeAccessIssue]
+        data.train_set = train_set
 
     return data
 
@@ -106,7 +96,7 @@ def stratified_split(
     dataset: Dataset,
     split_ratio: float,
     seed: int = 42,
-) -> tuple[Dataset, Dataset]:
+) -> tuple[Subset, Subset]:
     """
     Split a dataset into two stratified subsets.
 
@@ -134,16 +124,14 @@ def stratified_split(
 
 def create_dir(path: Path | str, log: logging.Logger | None = None) -> Path:
     """
-    Create directory using provided path.
+    Create directory at the provided path.
 
     Args:
-        path: :class:~`pathlib.Path` or str
-            Directory to be created.
-        log: :class:~`logging.Logger` or None
-            Logging facility.
+        path: Directory to be created.
+        log: Logging facility.
 
     Returns:
-        Path to the created directory.
+        Resolved path to the created directory.
     """
     if isinstance(path, str):
         path = Path(path)
@@ -295,7 +283,7 @@ def initialize_model(
     batch_norm: bool = True,
     model_conf: CapacityMap = DEFAULT_CAPACITY_MAP,
     resnet_replace_first: bool = True,
-) -> nn.Module:
+) -> AmuletModel:
     """
     Creates a model using the provided configuration.
 
@@ -318,8 +306,8 @@ def initialize_model(
             Whether to replace the first conv layer of ResNet with a smaller filter. Defaults to True.
 
     Returns:
-        nn.Module
-            Initialized PyTorch model instance.
+        AmuletModel
+            Initialized PyTorch model instance with a `get_hidden` method.
     """
     if model_capacity not in model_conf:
         raise KeyError(f"Capacity '{model_capacity}' not found in model_conf")
@@ -367,10 +355,5 @@ def initialize_model(
         else:
             print(msg)
         raise ValueError(msg)
-
-    # if log:
-    #     log.info("Model initialized: %s", model)
-    # else:
-    #     print(f"Model initialized: {model}")
 
     return model

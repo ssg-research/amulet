@@ -1,11 +1,12 @@
-import sys
-import torch
 import argparse
+import sys
+
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
-from torch.utils.data import TensorDataset, ConcatDataset, DataLoader
+import torch
 from sklearn.model_selection import StratifiedShuffleSplit
+from torch.utils.data import ConcatDataset, DataLoader, TensorDataset
+from tqdm import tqdm
 
 
 def filter(df, condition, ratio, verbose=True):
@@ -15,7 +16,7 @@ def filter(df, condition, ratio, verbose=True):
     current_ratio = len(qualify) / (len(qualify) + len(notqualify))
     # If current ratio less than desired ratio, subsample from non-ratio
     if verbose:
-        print("Changing ratio from %.2f to %.2f" % (current_ratio, ratio))
+        print(f"Changing ratio from {current_ratio:.2f} to {ratio:.2f}")
     if current_ratio <= ratio:
         np.random.shuffle(notqualify)
         if ratio < 1:
@@ -90,10 +91,12 @@ def get_filter(df, filter_prop, split, ratio, dataset_name, is_test):
 
             def lambda_fn(x):
                 return x["sex"] == 1
+
         elif filter_prop == "race":
 
             def lambda_fn(x):
                 return x["race"] == 1
+
         else:
             print("Incorrect filter prop")
             sys.exit()
@@ -125,10 +128,12 @@ def get_filter(df, filter_prop, split, ratio, dataset_name, is_test):
 
             def lambda_fn(x):
                 return x["sex"] == 1
+
         elif filter_prop == "race":
 
             def lambda_fn(x):
                 return x["race"] == 1
+
         else:
             print("Incorrect filter prop")
             sys.exit()
@@ -515,8 +520,9 @@ class DistributionInference:
         preds /= np.max(preds, 0)
 
         preds = np.mean(preds, 1)
-        gt = np.concatenate(
-            (np.zeros(preds_first.shape[0]), np.ones(preds_second.shape[0]))
-        )
+        gt = np.concatenate((
+            np.zeros(preds_first.shape[0]),
+            np.ones(preds_second.shape[0]),
+        ))
         acc = 100 * np.mean((preds >= 0.5) == gt)
         return acc

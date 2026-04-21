@@ -4,10 +4,10 @@ import time
 
 import torch
 import torch.nn as nn
-from tqdm.auto import tqdm
+from scipy.stats import ttest_ind
 from torch.nn import Module
 from torch.utils.data import DataLoader
-from scipy.stats import ttest_ind
+from tqdm.auto import tqdm
 
 
 class DatasetInference:
@@ -142,7 +142,7 @@ class DatasetInference:
                 loss = -1 * ((2 * y - 1) * (outputs.squeeze(-1))).mean()
                 loss.backward()
                 optimizer.step()
-                pbar.set_description("loss {}".format(loss.item()))
+                pbar.set_description(f"loss {loss.item()}")
 
         outputs_tr = {}
         outputs_te = {}
@@ -190,7 +190,7 @@ class DatasetInference:
         ).pvalue  # type: ignore[reportAttributeAccessIssue] https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.ttest_ind.html
         if pval < 0:
             raise Exception(f"p-value={pval}")
-        print(f"p-value = {pval} \t| Mean difference = {m1-m2}")
+        print(f"p-value = {pval} \t| Mean difference = {m1 - m2}")
 
         return pval, m1 - m2
 
@@ -206,12 +206,11 @@ class DatasetInference:
         ex_skipped = 0
         for i, batch in enumerate(loader):
             if (
-                self.regressor_embed == 1
-            ):  ##We need an extra set of `distinct images for training the confidence regressor
-                if ex_skipped < num_images:
-                    y = batch[1]
-                    ex_skipped += y.shape[0]
-                    continue
+                self.regressor_embed == 1 and ex_skipped < num_images
+            ):  # We need an extra set of distinct images for training the confidence regressor
+                y = batch[1]
+                ex_skipped += y.shape[0]
+                continue
             for j, distance in enumerate(["linf", "l2", "l1"]):
                 temp_list = []
                 for target_i in range(self.num_classes):
@@ -300,7 +299,7 @@ class DatasetInference:
             delta[remaining] = delta_r.detach()
 
         print(
-            f"Number of steps = {t+1} | Failed to convert = {(model(X+delta).max(1)[1]!=target).sum().item()} | Time taken = {time.time() - start}"
+            f"Number of steps = {t + 1} | Failed to convert = {(model(X + delta).max(1)[1] != target).sum().item()} | Time taken = {time.time() - start}"
         )
         if is_training:
             model.train()

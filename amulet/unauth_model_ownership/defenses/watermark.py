@@ -1,7 +1,7 @@
 from pathlib import Path
 
-import torch
 import numpy as np
+import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 from torchvision import transforms
@@ -83,18 +83,14 @@ class WatermarkNN:
             )
         else:
             if gray:
-                transform_wm = transforms.Compose(
-                    [
-                        transforms.CenterCrop((shape, shape)),
-                        transforms.Grayscale(num_output_channels=1),
-                    ]
-                )
+                transform_wm = transforms.Compose([
+                    transforms.CenterCrop((shape, shape)),
+                    transforms.Grayscale(num_output_channels=1),
+                ])
             else:
-                transform_wm = transforms.Compose(
-                    [
-                        transforms.CenterCrop((shape, shape)),
-                    ]
-                )
+                transform_wm = transforms.Compose([
+                    transforms.CenterCrop((shape, shape)),
+                ])
 
             labels_file = wm_path / "labels.csv"
             img_path = wm_path / "images"
@@ -114,11 +110,10 @@ class WatermarkNN:
         Return:
             Model with watermark embedded
         """
-        self.target_model
         criterion = torch.nn.CrossEntropyLoss()
         optimizer = torch.optim.Adam(self.target_model.parameters(), lr=1e-3)
         wm_inputs, wm_labels = [], []
-        for wm_idx, (wm_input, wm_label) in enumerate(self.wm_loader):
+        for _wm_idx, (wm_input, wm_label) in enumerate(self.wm_loader):
             wm_input, wm_label = wm_input.to(self.device), wm_label.to(self.device)
             wm_inputs.append(wm_input)
             wm_labels.append(wm_label)
@@ -150,7 +145,7 @@ class WatermarkNN:
                 total += len(target)
                 if batch_idx % 2000 == 0:
                     print(
-                        f"Train Epoch: {epoch} Loss: {loss.item():.6f} Acc: {acc/total*100:.2f}"
+                        f"Train Epoch: {epoch} Loss: {loss.item():.6f} Acc: {acc / total * 100:.2f}"
                     )
                     self.verify(self.target_model)
                     self.target_model.train()
@@ -184,9 +179,6 @@ class WatermarkNN:
 
         watermark_accuracy = correct / total
 
-        print("Watermark Accuracy: {:.2f}".format(watermark_accuracy))
+        print(f"Watermark Accuracy: {watermark_accuracy:.2f}")
 
-        if watermark_accuracy > threshold:
-            return True
-        else:
-            return False
+        return watermark_accuracy > threshold
