@@ -13,30 +13,21 @@ from .evasion_attack import EvasionAttack
 
 class EvasionPGD(EvasionAttack):
     """
-    Implementation of evasion attack from the method from cleverhans:
-    https://github.com/cleverhans-lab/cleverhans/blob/master/tutorials/torch/cifar10_tutorial.py.
+    PGD-based evasion attack using the cleverhans library.
 
     Reference:
         Towards Deep Learning Models Resistant to Adversarial Attacks
         Aleksander Madry, Aleksandar Makelov, Ludwig Schmidt, Dimitris Tsipras, Adrian Vladu
-        https://arxiv.org/abs/1706.06083.
+        https://arxiv.org/abs/1706.06083
 
     Attributes:
-        model: :class:`~torch.nn.Module`
-            The model on which to apply adversarial training.
-        test_loader: :class:`~torch.utils.data.DataLoader`
-            Input data that is perturbed to attack the model.
-        device: str
-            Device used for model inference. Example: "cuda:0".
-        epsilon: int
-            Controls the amount of perturbation on each image.
-            Divided by 255. See: https://arxiv.org/abs/1412.6572.
-        iterations: int
-            Number of iterations for PGD generation.
-        step_size: float
-            Step size for each attack iteration.
-        batch_size: int
-            Batch size for output data loader.
+        model: The model to attack.
+        test_loader: Input data that is perturbed to attack the model.
+        device: Device used for model inference. Example: "cuda:0".
+        epsilon: Perturbation budget.
+        iterations: Number of PGD iterations.
+        step_size: Step size for each attack iteration.
+        batch_size: Batch size for the output DataLoader.
     """
 
     def __init__(
@@ -60,10 +51,10 @@ class EvasionPGD(EvasionAttack):
 
     def attack(self) -> DataLoader:
         """
-        Runs the evasion attack on the model.
+        Run the PGD evasion attack and return perturbed inputs as a DataLoader.
 
         Returns:
-            Accuracy on adversarial examples as a percentage.
+            DataLoader containing adversarial examples.
         """
         self.model.eval()
 
