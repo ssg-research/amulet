@@ -1,118 +1,49 @@
 # Attribute Inference
 
-Amulet implements the attribute inference attack from the work [Inferring Sensitive Attributes from Model Explanations](https://github.com/vasishtduddu/AttInfExplanations) by Duddu et. al. published at ACM CIKM 2022.
+Attribute inference attacks predict sensitive features of a data point (like gender or race) based on its outputs from a model, even when those features were not used as classification targets during training.
 
 ## Attack
 
-To run an attribute inference attack, use `amulet.attribute_inference.attacks.DudduCIKM2022`.
-This attack predicts the sensitive attributes for a dataset, for example, it could predict whether the data point was a _male_ or _female_ even when the training data did not use this attribute directly.
-Attribute inference only works for datasets that have sensitive attributes.
-Amulet provides the LFW and Census datasets for such use cases.
+To run an attribute inference attack, use `amulet.attribute_inference.attacks.DudduCIKM2022`. This attack trains an MLP on target model predictions and corresponding sensitive attributes to learn how to infer those attributes for new samples.
 
 ```python
-import sys
-import torch
 import numpy as np
-from torch.utils.data import DataLoader, TensorDataset
+from sklearn.model_selection import train_test_split
 from amulet.attribute_inference.attacks import DudduCIKM2022
 from amulet.attribute_inference.metrics import evaluate_attribute_inference
-from amulet.utils import (
-    load_data,
-    initialize_model,
-    train_classifier,
-    get_accuracy,
-)
-from sklearn.model_selection import train_test_split
+from amulet.utils import load_data, initialize_model, train_classifier
 
-if len(sys.argv) > 1:
-    root_dir = sys.argv[1]
-else:
-    root_dir = './' dataset_name = 'lfw' # One of [lfw, census]
-batch_size = 256
-model = 'vgg' # One of [vgg, linearnet]
-model_capacity = 'm1' # One of [m1, m2, m3, m4]
-device = 'cuda:0'
-epochs = 100
+# 1. Load data with sensitive attributes
+data = load_data("./data", "celeba")
+if data.z_train is None:
+    raise Exception("Dataset does not have sensitive attributes.")
 
-adv_train_fraction = 0.5 # Portion of training data used by adversary
+# 2. Split data for adversary
+split = train_test_split(data.x_train, data.y_train, data.z_train, test_size=0.5)
+(x_target, x_adv, y_target, _, _, z_adv) = split
 
-# Load dataset and split train data for adversary
-data = load_data(root_dir, dataset_name)
+# 3. Train Target Model
+target_model = initialize_model("vgg", "m1", data.num_features, data.num_classes).to(device)
+target_model = train_classifier(target_model, target_train_loader, criterion, optimizer, 10, device)
 
-if data.z_train is None or data.z_test is None:
-    raise Exception('Dataset has no sensitive attributes')
-
-split_data = train_test_split(
-    data.x_train, data.y_train, data.z_train, test_size=adv_train_fraction
-)
-
-(
-    x_train_target,
-    x_train_adv,
-    y_train_target,
-    _,
-    _,
-    z_train_adv,
-) = split_data
-
-x_train_target = np.array(x_train_target)
-x_train_adv = np.array(x_train_adv)
-y_train_target = np.array(y_train_target)
-z_train_adv = np.array(z_train_adv)
-
-# Create data loaders
-target_train_set = TensorDataset(
-    torch.from_numpy(x_train_target).type(torch.float),
-    torch.from_numpy(y_train_target).type(torch.long),
-)
-
-test_set = TensorDataset(
-    torch.from_numpy(data.x_test).type(torch.float),
-    torch.from_numpy(data.y_test).type(torch.long),
-)
-
-target_train_loader = DataLoader(
-    dataset=target_train_set, batch_size=batch_size, shuffle=False
-)
-test_loader = DataLoader(
-    dataset=test_set, batch_size=batch_size, shuffle=False
-)
-
-criterion = torch.nn.CrossEntropyLoss()
-
-target_model = initialize_model(
-    model, model_capacity, data.num_features, data.num_classes
-).to(device)
-optimizer = torch.optim.Adam(target_model.parameters(), lr=1e-3)
-target_model = train_classifier(
-    target_model,
-    target_train_loader,
-    criterion,
-    optimizer,
-    epochs,
-    device,
-)
-
-test_accuracy_target = get_accuracy(target_model, test_loader, device)
-print(f'Test accuracy of target model: {test_accuracy_target}')
-
-# Run Attribute Inference attack
+# 4. Run Attribute Inference Attack
 attribute_inference = DudduCIKM2022(
-    target_model, x_train_adv, data.x_test, z_train_adv, device
+    target_model=target_model,
+    x_train_adv=x_adv,
+    x_test=data.x_test,
+    z_train_adv=z_adv,
+    batch_size=256,
+    device=device
 )
-predictions = attribute_inference.attack_predictions()
 
-results = evaluate_attribute_inference(data.z_test, predictions)
+# results is a dict mapping attribute index to {predictions, confidence_values}
+results = attribute_inference.attack()
 
-print(results)
+# 5. Evaluate Metrics
+metrics = evaluate_attribute_inference(data.z_test, results)
+print(f"Attribute Inference Balanced Accuracy: {metrics[0]['balanced_accuracy']}")
 ```
-
-## Defense
-
-Amulet does not currently implement any direct defenses for attribute inference.
-[DP-SGD](https://github.com/ssg-research/amulet/blob/main/docs/module_guide/5_MEMBERSHIP_INFERENCE.md#defense) may be used as a general privacy preserving mechanism.
 
 ## Metrics
 
-Use `amulet.attribute_inference.metrics.evaluate_attribute_inference` to evaluate attribute inference attacks.
-This calculates the balanced accuracy and the auc score for the predictions.
+Attribute inference is evaluated using **Balanced Accuracy** and **AUC Score** for each inferred attribute. Use `amulet.attribute_inference.metrics.evaluate_attribute_inference` to calculate these metrics from attack results.

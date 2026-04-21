@@ -1,4 +1,0 @@
-# Pre-existing issues in docs/ and examples/extending_amulet/ are addressed
-# in the docs overhaul PR (PR 6). Ignored here to keep PR 1 scoped.
-docs/
-examples/extending_amulet/
