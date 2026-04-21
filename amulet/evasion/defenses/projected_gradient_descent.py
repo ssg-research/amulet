@@ -1,13 +1,13 @@
 """Adversarial Training implementation"""
 
+import numpy as np
 import torch
 import torch.nn as nn
-import numpy as np
-from torch.utils.data import DataLoader
-from torch.optim import Optimizer
 from cleverhans.torch.attacks.projected_gradient_descent import (
     projected_gradient_descent,
 )
+from torch.optim import Optimizer
+from torch.utils.data import DataLoader
 
 from .evasion_defense import EvasionDefense
 
@@ -112,7 +112,7 @@ class AdversarialTrainingPGD(EvasionDefense):
                 total += len(y)
 
             print(
-                f"Train Epoch: {epoch} Loss: {loss.item():.6f} Acc: {correct/total*100:.2f}"  # type: ignore[reportPossiblyUnboundVariable]
+                f"Train Epoch: {epoch} Loss: {loss.item():.6f} Acc: {correct / total * 100:.2f}"  # type: ignore[reportPossiblyUnboundVariable]
             )
 
         return self.model

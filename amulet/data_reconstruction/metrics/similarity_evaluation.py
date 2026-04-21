@@ -1,8 +1,8 @@
+import numpy as np
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader
-import numpy as np
 from skimage.metrics import structural_similarity
+from torch.utils.data import DataLoader
 
 
 def __figure_mse(recover_fig, original_fig):

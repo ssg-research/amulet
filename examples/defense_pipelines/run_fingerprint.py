@@ -7,13 +7,14 @@ from pathlib import Path
 
 import torch
 from torch.utils.data import DataLoader
+
 from amulet.unauth_model_ownership.defenses import DatasetInference
 from amulet.utils import (
-    load_data,
-    initialize_model,
-    train_classifier,
     create_dir,
     get_accuracy,
+    initialize_model,
+    load_data,
+    train_classifier,
 )
 
 
@@ -53,9 +54,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--device",
         type=str,
-        default=torch.device(
-            "cuda:{0}".format(0) if torch.cuda.is_available() else "cpu"
-        ),
+        default=torch.device(f"cuda:{0}" if torch.cuda.is_available() else "cpu"),
         help="Device on which to run PyTorch",
     )
     parser.add_argument(
@@ -120,7 +119,7 @@ def main(args: argparse.Namespace) -> None:
 
     # Set up filename and directories to save/load models
     models_path = root_dir / "saved_models"
-    filename = f"{args.dataset}_{args.model}_{args.model_capacity}_{args.training_size*100}_{args.batch_size}_{args.epochs}_{args.exp_id}.pt"
+    filename = f"{args.dataset}_{args.model}_{args.model_capacity}_{args.training_size * 100}_{args.batch_size}_{args.epochs}_{args.exp_id}.pt"
     target_model_path = models_path / "target"
     target_model_filename = target_model_path / filename
 

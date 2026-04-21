@@ -1,12 +1,12 @@
 """Evasion using Projected Gradient Descent implementation"""
 
-import torch
 import numpy as np
-from torch.nn import Module
-from torch.utils.data import DataLoader, TensorDataset
+import torch
 from cleverhans.torch.attacks.projected_gradient_descent import (
     projected_gradient_descent,
 )
+from torch.nn import Module
+from torch.utils.data import DataLoader, TensorDataset
 
 from .evasion_attack import EvasionAttack
 

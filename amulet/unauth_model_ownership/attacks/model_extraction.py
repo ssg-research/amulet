@@ -1,10 +1,10 @@
 """Model Extraction implementation"""
 
 import torch
-import torch.nn.functional as F
 import torch.nn as nn
-from torch.utils.data import DataLoader
+import torch.nn.functional as F
 from torch.optim import Optimizer
+from torch.utils.data import DataLoader
 
 
 class ModelExtraction:
@@ -121,7 +121,7 @@ class ModelExtraction:
             acc = 100.0 * correct / total
 
             print(
-                f"Epoch {epoch+1}/{self.epochs} | Loss: {avg_loss:.4f} | Acc: {acc:.2f}%"
+                f"Epoch {epoch + 1}/{self.epochs} | Loss: {avg_loss:.4f} | Acc: {acc:.2f}%"
             )
 
         return self.attack_model

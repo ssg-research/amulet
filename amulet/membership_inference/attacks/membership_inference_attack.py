@@ -4,10 +4,11 @@ import os
 import random
 from pathlib import Path
 
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset, Subset
-import numpy as np
+
 from ...utils import initialize_model
 
 
@@ -135,7 +136,7 @@ class MembershipInferenceAttack:
             epoch_loss = train_loss / total
             epoch_acc = 100.0 * correct / total
             print(
-                f"Epoch {epoch+1}/{self.epochs} — Loss: {epoch_loss:.4f} — Acc: {epoch_acc:.2f}%"
+                f"Epoch {epoch + 1}/{self.epochs} — Loss: {epoch_loss:.4f} — Acc: {epoch_acc:.2f}%"
             )
             scheduler.step()
 
@@ -240,9 +241,9 @@ class InferenceModel(nn.Module):
         resume_checkpoint = (
             self.models_dir / f"{self.dataset}_shadow_{shadow_id}_{exp_id}.pth"
         )
-        assert os.path.isfile(
-            resume_checkpoint
-        ), f"Checkpoint not found at {resume_checkpoint}"
+        assert os.path.isfile(resume_checkpoint), (
+            f"Checkpoint not found at {resume_checkpoint}"
+        )
         checkpoint = torch.load(resume_checkpoint)
 
         self.model = initialize_model(

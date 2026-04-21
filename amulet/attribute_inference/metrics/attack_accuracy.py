@@ -1,7 +1,7 @@
 """Attack accuracy for attribute inference attacks"""
 
-from sklearn.metrics import roc_auc_score, balanced_accuracy_score
 import numpy as np
+from sklearn.metrics import balanced_accuracy_score, roc_auc_score
 
 
 def evaluate_attribute_inference(

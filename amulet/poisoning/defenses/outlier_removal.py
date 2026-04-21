@@ -1,14 +1,14 @@
 """Outlier Removal implementation"""
 
-from typing import Callable
+from collections.abc import Callable
 
-import torch
-import torch.nn as nn
 import numpy as np
 import pandas as pd
+import torch
+import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
-from ...utils import train_classifier, get_intermediate_features
+from ...utils import get_intermediate_features, train_classifier
 from .poisoning_defense import PoisoningDefense
 
 
@@ -139,13 +139,11 @@ class OutlierRemoval(PoisoningDefense):
         normalized_scores = (shapley_scores - min(shapley_scores)) / (
             max(shapley_scores) - min(shapley_scores)
         )
-        df = pd.Series(
-            {
-                "Scores": np.array(normalized_scores),
-                "train_inputs": train_inputs,
-                "train_targets": train_targets,
-            }
-        )
+        df = pd.Series({
+            "Scores": np.array(normalized_scores),
+            "train_inputs": train_inputs,
+            "train_targets": train_targets,
+        })
 
         print("Retraining Model")
         # Remove a percentage of data records

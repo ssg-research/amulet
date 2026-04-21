@@ -1,5 +1,6 @@
 """Data Classes Implementation"""
 
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
@@ -7,8 +8,7 @@ import pandas as pd
 import torch
 import torchvision.transforms as transforms
 from torch.utils.data import Dataset
-from dataclasses import dataclass
-from torchvision.io import read_image, ImageReadMode
+from torchvision.io import ImageReadMode, read_image
 
 
 @dataclass

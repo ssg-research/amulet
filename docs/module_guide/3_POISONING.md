@@ -1,8 +1,10 @@
 # Data Poisoning
+
 Amulet implements [BadNets](https://github.com/Kooscii/BadNets) to poison a model.
 To defend against these attacks, Amulet implements outlier removal using [Shapely Values](https://github.com/AI-secure/KNN-shapley).
 
 ## Attack
+
 To run a data poisoning attack, use `amulet.poisoning.attacks.BadNets`.
 This attack returns a poisoned dataset to train a model.
 
@@ -112,9 +114,10 @@ print(
 ```
 
 ## Defense
+
 To run the outlier removal algorithm, use `amulet.poisoning.defenses`.
 Note that this is not a published defense, however, the KNN Shapley algorithm is published and used to calculate the value of each data point.
-Please see: [Ruoxi et. al., *Efficient task-specific data valuation for nearest neighbor algorithms*, ACM VLDB, 2019](https://dl.acm.org/doi/10.14778/3342263.3342637)
+Please see: [Ruoxi et. al., _Efficient task-specific data valuation for nearest neighbor algorithms_, ACM VLDB, 2019](https://dl.acm.org/doi/10.14778/3342263.3342637)
 
 ```python
 import sys
@@ -185,4 +188,5 @@ print(f'Test accuracy of model with outliers removed: {test_accuracy_outlier_rem
 ```
 
 ## Metrics
+
 Accuracy (`amulet.utils.get_accuracy`) is currently the only metric implemeneted for data poisoning.

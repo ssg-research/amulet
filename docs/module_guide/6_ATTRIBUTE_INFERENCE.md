@@ -1,9 +1,11 @@
 # Attribute Inference
+
 Amulet implements the attribute inference attack from the work [Inferring Sensitive Attributes from Model Explanations](https://github.com/vasishtduddu/AttInfExplanations) by Duddu et. al. published at ACM CIKM 2022.
 
 ## Attack
+
 To run an attribute inference attack, use `amulet.attribute_inference.attacks.DudduCIKM2022`.
-This attack predicts the sensitive attributes for a dataset, for example, it could predict whether the data point was a *male* or *female* even when the training data did not use this attribute directly.
+This attack predicts the sensitive attributes for a dataset, for example, it could predict whether the data point was a _male_ or _female_ even when the training data did not use this attribute directly.
 Attribute inference only works for datasets that have sensitive attributes.
 Amulet provides the LFW and Census datasets for such use cases.
 
@@ -106,9 +108,11 @@ print(results)
 ```
 
 ## Defense
+
 Amulet does not currently implement any direct defenses for attribute inference.
 [DP-SGD](https://github.com/ssg-research/amulet/blob/main/docs/module_guide/5_MEMBERSHIP_INFERENCE.md#defense) may be used as a general privacy preserving mechanism.
 
 ## Metrics
+
 Use `amulet.attribute_inference.metrics.evaluate_attribute_inference` to evaluate attribute inference attacks.
 This calculates the balanced accuracy and the auc score for the predictions.

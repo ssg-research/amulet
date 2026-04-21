@@ -6,9 +6,10 @@ import logging
 from pathlib import Path
 
 import torch
+
 from amulet.distribution_inference.attacks import DistributionInference
-from amulet.utils import load_data, train_classifier, create_dir, get_accuracy
 from amulet.models.linear_net import LinearNet
+from amulet.utils import create_dir, get_accuracy, load_data, train_classifier
 
 
 def parse_args() -> argparse.Namespace:
@@ -44,9 +45,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--device",
         type=str,
-        default=torch.device(
-            "cuda:{0}".format(0) if torch.cuda.is_available() else "cpu"
-        ),
+        default=torch.device(f"cuda:{0}" if torch.cuda.is_available() else "cpu"),
         help="Device on which to run PyTorch",
     )
     parser.add_argument(
@@ -156,7 +155,7 @@ def main(args: argparse.Namespace) -> None:
         test_loader_1,
         test_loader_2,
     )
-    print("Accuracy: {:.2f}".format(accuracy))
+    print(f"Accuracy: {accuracy:.2f}")
 
 
 if __name__ == "__main__":
