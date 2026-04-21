@@ -1,6 +1,7 @@
 import sys
 
 sys.path.append("../../")
+
 import argparse
 import logging
 from pathlib import Path
@@ -14,6 +15,7 @@ from amulet.utils import (
     get_accuracy,
     initialize_model,
     load_data,
+    load_or_train,
     train_classifier,
 )
 
@@ -31,7 +33,7 @@ def parse_args() -> argparse.Namespace:
         "--dataset",
         type=str,
         default="celeba",
-        help="Options: cifar10, fmnist, lfw, census, celeba.",
+        help="Options: cifar10, cifar100, fmnist, mnist, lfw, census, celeba, utkface.",
     )
     parser.add_argument(
         "--model", type=str, default="vgg", help="Options: vgg, linearnet."
@@ -54,7 +56,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--device",
         type=str,
-        default=torch.device(f"cuda:{0}" if torch.cuda.is_available() else "cpu"),
+        default="cuda:0" if torch.cuda.is_available() else "cpu",
         help="Device on which to run PyTorch",
     )
     parser.add_argument(
@@ -104,81 +106,57 @@ def main(args: argparse.Namespace) -> None:
     filename = f"{args.dataset}_{args.model}_{args.model_capacity}_{args.training_size * 100}_{args.batch_size}_{args.epochs}_{args.exp_id}.pt"
 
     # Train or Load Target Model
-    target_model_path = models_path / "target"
-    target_model_filename = target_model_path / filename
+    target_model_filename = models_path / "target" / filename
     criterion = torch.nn.CrossEntropyLoss()
 
-    if target_model_filename.exists():
-        log.info("Target model loaded from %s", target_model_filename)
-        target_model = torch.load(target_model_filename).to(args.device)
-        optimizer = torch.optim.Adam(target_model.parameters(), lr=1e-3)
-    else:
-        log.info("Training target model")
-        target_model = initialize_model(
+    def _init_target():
+        return initialize_model(
             args.model, args.model_capacity, data.num_features, data.num_classes, log
         ).to(args.device)
-        optimizer = torch.optim.Adam(target_model.parameters(), lr=1e-3)
-        target_model = train_classifier(
-            target_model,
-            target_train_loader,
-            criterion,
-            optimizer,
-            args.epochs,
-            args.device,
-        )
-        log.info("Target model trained")
 
-        # Save model
-        create_dir(target_model_path, log)
-        torch.save(target_model, target_model_filename)
+    def _train_target(model):
+        optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+        return train_classifier(
+            model, target_train_loader, criterion, optimizer, args.epochs, args.device
+        )
+
+    target_model = load_or_train(
+        target_model_filename, _init_target, _train_target, log, "target model"
+    )
 
     test_accuracy_target = get_accuracy(target_model, test_loader, args.device)
     log.info("Test accuracy of target model: %s", test_accuracy_target)
 
     # Train or Load model for Model Poisoning
-    poisoned_model_path = (
-        models_path / "model_poisoning" / f"poisoned_protion_{args.poisoned_portion}"
+    poisoned_model_filename = (
+        models_path
+        / "model_poisoning"
+        / f"poisoned_protion_{args.poisoned_portion}"
+        / filename
     )
-    poisoned_model_filename = poisoned_model_path / filename
 
-    dataset_type = "tabular" if args.dataset in ["census", "lfw"] else "image"
+    poisoning = BadNets(
+        args.trigger_label,
+        args.poisoned_portion,
+        args.exp_id,
+        data.modality,
+    )
 
-    if poisoned_model_filename.exists():
-        log.info("Attack model loaded from %s", poisoned_model_filename)
-        poisoned_model = torch.load(poisoned_model_filename)
-        optimizer = torch.optim.Adam(poisoned_model.parameters(), lr=1e-3)
-        poisoning = BadNets(
-            args.trigger_label,
-            args.poisoned_portion,
-            args.exp_id,
-            dataset_type,
-        )
-
-        poisoned_test_set = poisoning.attack(data.test_set, mode="test")
-        poisoned_test_loader = DataLoader(
-            dataset=poisoned_test_set, batch_size=args.batch_size, shuffle=False
-        )
-    else:
-        log.info("Running Model Poisoning attack")
-        poisoned_model = initialize_model(
+    def _init_poisoned():
+        model = initialize_model(
             args.model, args.model_capacity, data.num_features, data.num_classes, log
         ).to(args.device)
-        poisoned_model.load_state_dict(target_model.state_dict())
-        optimizer = torch.optim.Adam(poisoned_model.parameters(), lr=1e-3)
-        poisoning = BadNets(
-            args.trigger_label,
-            args.poisoned_portion,
-            args.exp_id,
-            dataset_type,
-        )
+        model.load_state_dict(target_model.state_dict())
+        return model
 
-        poisoned_train_set = poisoning.attack(data.train_set)
+    def _train_poisoned(model):
+        optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+        poisoned_train_set = poisoning.poison_train(data.train_set)
         poisoned_train_loader = DataLoader(
             dataset=poisoned_train_set, batch_size=args.batch_size, shuffle=False
         )
-
-        poisoned_model = train_classifier(
-            poisoned_model,
+        return train_classifier(
+            model,
             poisoned_train_loader,
             criterion,
             optimizer,
@@ -186,14 +164,14 @@ def main(args: argparse.Namespace) -> None:
             args.device,
         )
 
-        poisoned_test_set = poisoning.attack(data.test_set, mode="test")
-        poisoned_test_loader = DataLoader(
-            dataset=poisoned_test_set, batch_size=args.batch_size, shuffle=False
-        )
+    poisoned_model = load_or_train(
+        poisoned_model_filename, _init_poisoned, _train_poisoned, log, "poisoned model"
+    )
 
-        # Save model
-        create_dir(poisoned_model_path, log)
-        torch.save(poisoned_model, poisoned_model_filename)
+    poisoned_test_set = poisoning.poison_test(data.test_set)
+    poisoned_test_loader = DataLoader(
+        dataset=poisoned_test_set, batch_size=args.batch_size, shuffle=False
+    )
 
     log.info(
         "Target Model on Origin Data: %s",
