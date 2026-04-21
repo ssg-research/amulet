@@ -1,14 +1,17 @@
 """Base class for Data Reconstruction Attacks"""
 
+from abc import ABC, abstractmethod
+
+import torch
 import torch.nn as nn
 
 
-class DataReconstructionAttack:
+class DataReconstructionAttack(ABC):
     """
     Base class for Data Reconstruction Attacks
     Attributes::
         ------------------------
-        target_model: :class:`~torch.nn.Module`
+        target_model: torch.nn.Module
             Target model whose training dataset we reconstruct
         input_size: int
             Size of the model's input
@@ -29,3 +32,7 @@ class DataReconstructionAttack:
         self.input_size = input_size
         self.output_size = output_size
         self.device = device
+
+    @abstractmethod
+    def attack(self) -> list[torch.Tensor]:
+        pass

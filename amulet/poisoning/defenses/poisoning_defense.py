@@ -1,25 +1,26 @@
 """Base class for poisoning defenses"""
 
+from abc import ABC, abstractmethod
+
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
 
-class PoisoningDefense:
+class PoisoningDefense(ABC):
     """
     Base class for Poisoning defenses.
 
-
     Attributes:
-        model: :class:`~torch.nn.Module`
+        model: torch.nn.Module
             The model to retrain after removing outliers.
-        criterion: :class:`~torch.nn.Module`
+        criterion: torch.nn.Module
             Loss function for training model.
-        optimizer: :class:`~torch.optim.Optimizer`
+        optimizer: torch.optim.Optimizer
             Optimizer for training model.
-        train_loader: :class:`~torch.utils.data.DataLoader`
+        train_loader: torch.utils.data.DataLoader
             Training data loader to train model.
-        test_loader: :class:`~torch.utils.data.DataLoader`
+        test_loader: torch.utils.data.DataLoader
             Test data loader to calculate Shapley values.
         device: str
             Device used to train model. Example: "cuda:0".
@@ -48,3 +49,7 @@ class PoisoningDefense:
         self.device = device
         self.epochs = epochs
         self.batch_size = batch_size
+
+    @abstractmethod
+    def train_robust(self) -> nn.Module:
+        pass

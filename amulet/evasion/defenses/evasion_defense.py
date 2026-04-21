@@ -1,22 +1,24 @@
 """Evasion Defense Base Class"""
 
+from abc import ABC, abstractmethod
+
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
 
-class EvasionDefense:
+class EvasionDefense(ABC):
     """
     Base class for Evasion Defense
 
     Attributes:
-        model: :class:`~torch.nn.Module`
+        model: torch.nn.Module
             The model on which to apply the defense.
-        criterion: :class:`~torch.nn.Module`
+        criterion: torch.nn.Module
             Loss function for the defense.
-        optimizer: :class:`~torch.optim.Optimizer`
+        optimizer: torch.optim.Optimizer
             Optimizer for the defense.
-        train_loader: :class:`~torch.utils.data.DataLoader`
+        train_loader: torch.utils.data.DataLoader
             Training data loader to the defense.
         device: str
             Device used to train model. Example: "cuda:0".
@@ -39,3 +41,7 @@ class EvasionDefense:
         self.train_loader = train_loader
         self.device = device
         self.epochs = epochs
+
+    @abstractmethod
+    def train_robust(self) -> nn.Module:
+        pass

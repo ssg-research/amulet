@@ -6,7 +6,7 @@ import torch.nn as nn
 from sklearn import metrics
 from torch.utils.data import DataLoader
 
-from .discr_behavior_defense import DicriminatoryBehaviorDefense
+from .discr_behavior_defense import DiscriminatoryBehaviorDefense
 
 
 class AdversaryModel(nn.Module):
@@ -36,7 +36,7 @@ class AdversaryModel(nn.Module):
         return torch.sigmoid(self.network(x))
 
 
-class AdversarialDebiasing(DicriminatoryBehaviorDefense):
+class AdversarialDebiasing(DiscriminatoryBehaviorDefense):
     """
     Implementation of Adversarial Training algorithm from the method from cleverhans:
     https://xebia.com/blog/towards-fairness-in-ml-with-adversarial-networks/
@@ -114,11 +114,11 @@ class AdversarialDebiasing(DicriminatoryBehaviorDefense):
             p_z = self.discmodel(p_y)
             loss_adv = (self.adv_criterion(p_z, z) * self.lambdas).mean()  # type: ignore[reportPossiblyUnboundVariable]
             model_loss = (
-                self.model_criterion(p_y, y)  # type: ignore[reportPossiblyUnboundVariable]
+                self.criterion(p_y, y)  # type: ignore[reportPossiblyUnboundVariable]
                 - (self.adv_criterion(self.discmodel(p_y), z) * self.lambdas).mean()
             )
             model_loss.backward()
-            self.model_optimizer.step()
+            self.optimizer.step()
 
         return self.model
 

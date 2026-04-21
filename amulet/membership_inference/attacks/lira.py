@@ -10,7 +10,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
 
-from .membership_inference_attack import InferenceModel, MembershipInferenceAttack
+from .membership_inference_attack import MembershipInferenceAttack
 
 
 class LiRA(MembershipInferenceAttack):
@@ -313,20 +313,12 @@ class LiRA(MembershipInferenceAttack):
         """
         self.prepare_shadow_models()
 
-        shadow_models = []
+        shadow_models: list[nn.Module] = []
+        shadow_in_data: list[np.ndarray] = []
         for shadow_id in range(self.num_shadow):
-            curr_model = InferenceModel(
-                shadow_id,
-                self.dataset,
-                self.num_features,
-                self.num_classes,
-                self.shadow_architecture,
-                self.shadow_capacity,
-                self.models_dir,
-                self.exp_id,
-            ).to(self.device)
-
-            shadow_models.append(curr_model)
+            model, in_data = self._load_shadow_model(shadow_id)
+            shadow_models.append(model)
+            shadow_in_data.append(in_data)
 
         # Pre-allocate lists for batch data
         pred_logits = []  # N x (num_shadow + 1) x num_trials x num_classes (target last)
@@ -389,8 +381,8 @@ class LiRA(MembershipInferenceAttack):
 
         dataset_indices = np.arange(dataset_size)
 
-        for shadow_model in shadow_models:
-            in_shadow = np.isin(dataset_indices, shadow_model.in_data)
+        for in_data in shadow_in_data:
+            in_shadow = np.isin(dataset_indices, in_data)
             in_out_labels.append(in_shadow)
 
         in_target = np.isin(dataset_indices, self.in_data)
