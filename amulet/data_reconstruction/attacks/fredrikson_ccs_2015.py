@@ -1,6 +1,5 @@
 """Implementation of Model Inversion Attack from CCS 2015 by Fredrikson et al."""
 
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.utils.data
@@ -10,32 +9,24 @@ from .data_reconstruction_attack import DataReconstructionAttack
 
 class FredriksonCCS2015(DataReconstructionAttack):
     """
-    Implementation of data reconstruction attack from the method from ML-Doctor Library:
-    https://github.com/liuyugeng/ML-Doctor/blob/main/doctor/modinv.py
+    Model inversion attack reconstructing training data from confidence outputs.
 
     Reference:
         Model Inversion Attacks that Exploit Confidence Information and Basic Countermeasures (CCS 2015)
         Matt Fredrikson, Somesh Jha, Thomas Ristenpart
-        https://rist.tech.cornell.edu/papers/mi-ccs.pdf.
+        https://rist.tech.cornell.edu/papers/mi-ccs.pdf
 
-    -----------------------------NOTICE---------------------------
-    If the model's output layer doesn't contain Softmax layer, please add it manually.
-    And parameters will influence the quality of the reconstructed data significantly.
-    --------------------------------------------------------------
-    Attributes::
-        ------------------------
-        target_model: :class:`~torch.nn.Module`
-            Target model whose training dataset we reconstruct
-        input_size: int
-            Size of the model's input
-        output_size: int
-            Size of the model's output
-        device: str
-            Device on which to load the PyTorch tensors. Example: "cuda:0".
-        alpha: int
-            Number of iterations
-        beta, gamma, lambda: float
-            Hyperparameters in paper
+    Note: The model's output layer must include a Softmax. Add it manually if absent.
+
+    Attributes:
+        target_model: Target model whose training data is reconstructed.
+        input_size: Shape of the model's input.
+        output_size: Number of output classes.
+        device: Device used for computation. Example: "cuda:0".
+        alpha: Number of gradient descent iterations.
+        beta: Early stopping window for cost comparison.
+        gamma: Target cost threshold for early stopping.
+        lamda: Gradient step size.
     """
 
     def __init__(
@@ -60,7 +51,6 @@ class FredriksonCCS2015(DataReconstructionAttack):
         self.beta = beta
         self.gamma = gamma
         self.lamda = lamda
-        self.target_label = 1
 
         self.target_model.to(self.device).eval()
 
@@ -71,9 +61,7 @@ class FredriksonCCS2015(DataReconstructionAttack):
         current_x = []
         cost_x = []
         current_x.append(
-            torch.Tensor(
-                torch.from_numpy(np.zeros(self.input_size, dtype=np.float32))
-            ).to(self.device)
+            torch.zeros(self.input_size, dtype=torch.float32).to(self.device)
         )
 
         for i in range(self.alpha):
@@ -94,14 +82,10 @@ class FredriksonCCS2015(DataReconstructionAttack):
 
     def attack(self) -> list[torch.Tensor]:
         """
-        Outputs the reconstructed data of different classes
-
-        Args:
-            original_dataset: :class:~`torch.utils.data.DataLoader`
-                The data used to train the target model, please make sure to set the batch size as 1.
+        Reconstruct training data for each output class via gradient descent.
 
         Returns:
-            Reconstructed data for each class
+            List of reconstructed tensors, one per class.
         """
         reverse_data = []
         for i in range(self.output_size):
