@@ -19,30 +19,77 @@ from amulet.distribution_inference.dataset_utils import (
     prepare_distribution_splits,
 )
 
-# ---------------------------------------------------------------------------
-# Shared helpers / fixtures
-# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def binary_mask_factory():
+    """Factory fixture: returns boolean arrays with caller-specified True count."""
+
+    def _make(n: int, n_true: int, seed: int = 0) -> np.ndarray:
+        rng = np.random.default_rng(seed)
+        mask = np.zeros(n, dtype=bool)
+        mask[:n_true] = True
+        rng.shuffle(mask)
+        return mask
+
+    return _make
 
 
-def _binary_mask(n: int, n_true: int, seed: int = 0) -> np.ndarray:
-    """Return a boolean array of length n with exactly n_true True entries."""
-    rng = np.random.default_rng(seed)
-    mask = np.zeros(n, dtype=bool)
-    mask[:n_true] = True
-    rng.shuffle(mask)
-    return mask
+@pytest.fixture
+def binary_data_factory(binary_mask_factory):
+    """Factory fixture: returns (y, mask) with balanced binary labels."""
+
+    def _make(n: int, n_true: int, seed: int = 0) -> tuple[np.ndarray, np.ndarray]:
+        rng = np.random.default_rng(seed)
+        y = rng.integers(0, 2, size=n).astype(np.int64)
+        mask = binary_mask_factory(n, n_true, seed)
+        return y, mask
+
+    return _make
 
 
-def _make_binary_data(
-    n: int,
-    n_true: int,
-    seed: int = 0,
-) -> tuple[np.ndarray, np.ndarray]:
-    """Return (y, mask) with n_true True entries in mask and balanced binary labels."""
-    rng = np.random.default_rng(seed)
-    y = rng.integers(0, 2, size=n).astype(np.int64)
-    mask = _binary_mask(n, n_true, seed)
-    return y, mask
+@pytest.fixture
+def splits_inputs_factory():
+    """Factory fixture: synthetic tabular (N, d) train/test arrays with two sensitive columns."""
+
+    def _make(
+        n_train: int = 600,
+        n_test: int = 200,
+        n_features: int = 8,
+        seed: int = 0,
+        y_shape: str = "1d",  # "1d" or "2d"
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        rng = np.random.default_rng(seed)
+        x_train = rng.standard_normal((n_train, n_features)).astype(np.float32)
+        y_train = rng.integers(0, 2, n_train).astype(np.int64)
+        z_train = rng.integers(0, 2, (n_train, 2)).astype(np.int64)
+
+        x_test = rng.standard_normal((n_test, n_features)).astype(np.float32)
+        y_test = rng.integers(0, 2, n_test).astype(np.int64)
+        z_test = rng.integers(0, 2, (n_test, 2)).astype(np.int64)
+
+        if y_shape == "2d":
+            y_train = y_train.reshape(-1, 1)
+            y_test = y_test.reshape(-1, 1)
+
+        return x_train, y_train, z_train, x_test, y_test, z_test
+
+    return _make
+
+
+@pytest.fixture
+def splits_kwargs() -> dict:
+    """Default kwargs for prepare_distribution_splits."""
+    return {
+        "sensitive_columns": ["sex", "race"],
+        "filter_column": "sex",
+        "ratio1": 0.3,
+        "ratio2": 0.7,
+        "train_subsample": 20,
+        "test_subsample": 10,
+        "batch_size": 32,
+        "seed": 42,
+        "n_tries": 50,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -51,9 +98,9 @@ def _make_binary_data(
 
 
 class TestFilterByRatio:
-    def test_ratio_zero_returns_only_notqualify(self):
+    def test_ratio_zero_returns_only_notqualify(self, binary_mask_factory):
         # Arrange
-        mask = _binary_mask(100, 40)
+        mask = binary_mask_factory(100, 40)
 
         # Act
         indices = _filter_by_ratio(mask, ratio=0.0)
@@ -61,9 +108,9 @@ class TestFilterByRatio:
         # Assert: all returned indices must have mask==False
         assert mask[indices].sum() == 0
 
-    def test_ratio_one_returns_only_qualify(self):
+    def test_ratio_one_returns_only_qualify(self, binary_mask_factory):
         # Arrange
-        mask = _binary_mask(100, 40)
+        mask = binary_mask_factory(100, 40)
 
         # Act
         indices = _filter_by_ratio(mask, ratio=1.0)
@@ -72,10 +119,12 @@ class TestFilterByRatio:
         assert mask[indices].all()
 
     @pytest.mark.parametrize("target_ratio", [0.1, 0.3, 0.5, 0.7, 0.9])
-    def test_returned_ratio_approximately_matches_target(self, target_ratio: float):
+    def test_returned_ratio_approximately_matches_target(
+        self, binary_mask_factory, target_ratio: float
+    ):
         # Arrange
         np.random.seed(0)
-        mask = _binary_mask(500, 200)
+        mask = binary_mask_factory(500, 200)
 
         # Act
         indices = _filter_by_ratio(mask, ratio=target_ratio)
@@ -84,9 +133,9 @@ class TestFilterByRatio:
         achieved = float(mask[indices].mean())
         assert abs(achieved - target_ratio) < 0.1
 
-    def test_returned_indices_are_valid_positions(self):
+    def test_returned_indices_are_valid_positions(self, binary_mask_factory):
         # Arrange
-        mask = _binary_mask(80, 30)
+        mask = binary_mask_factory(80, 30)
 
         # Act
         indices = _filter_by_ratio(mask, ratio=0.4)
@@ -95,9 +144,9 @@ class TestFilterByRatio:
         assert np.all(indices >= 0)
         assert np.all(indices < len(mask))
 
-    def test_output_is_numpy_array(self):
+    def test_output_is_numpy_array(self, binary_mask_factory):
         # Arrange
-        mask = _binary_mask(60, 20)
+        mask = binary_mask_factory(60, 20)
 
         # Act
         indices = _filter_by_ratio(mask, ratio=0.5)
@@ -146,11 +195,11 @@ class TestFilterByRatio:
 
 
 class TestHeuristicSample:
-    def test_output_is_sorted_integer_array(self):
+    def test_output_is_sorted_integer_array(self, binary_data_factory):
         # Arrange
         np.random.seed(0)
         n = 200
-        y, mask = _make_binary_data(n, 80)
+        y, mask = binary_data_factory(n, 80)
 
         # Act
         indices = _heuristic_sample(y, mask, ratio=0.5, cwise_sample=20, n_tries=50)
@@ -159,11 +208,11 @@ class TestHeuristicSample:
         assert isinstance(indices, np.ndarray)
         assert np.all(np.diff(indices) >= 0), "output must be sorted"
 
-    def test_returned_indices_valid_for_y(self):
+    def test_returned_indices_valid_for_y(self, binary_data_factory):
         # Arrange
         np.random.seed(1)
         n = 300
-        y, mask = _make_binary_data(n, 120)
+        y, mask = binary_data_factory(n, 120)
 
         # Act
         indices = _heuristic_sample(y, mask, ratio=0.4, cwise_sample=15, n_tries=50)
@@ -172,11 +221,11 @@ class TestHeuristicSample:
         assert np.all(indices >= 0)
         assert np.all(indices < n)
 
-    def test_filter_mask_ratio_close_to_target(self):
+    def test_filter_mask_ratio_close_to_target(self, binary_data_factory):
         # Arrange
         np.random.seed(2)
         n = 400
-        y, mask = _make_binary_data(n, 200)
+        y, mask = binary_data_factory(n, 200)
 
         # Act
         indices = _heuristic_sample(y, mask, ratio=0.5, cwise_sample=30, n_tries=200)
@@ -186,12 +235,14 @@ class TestHeuristicSample:
         assert abs(achieved - 0.5) < 0.20
 
     @pytest.mark.parametrize("class_imbalance", [1.0, 2.0, 3.0])
-    def test_class_imbalance_majority_count(self, class_imbalance: float):
+    def test_class_imbalance_majority_count(
+        self, binary_mask_factory, class_imbalance: float
+    ):
         # Arrange: heavily one-sided data so imbalance is achievable
         np.random.seed(3)
         n = 600
         y = np.array([0] * 400 + [1] * 200, dtype=np.int64)
-        mask = _binary_mask(n, 300)
+        mask = binary_mask_factory(n, 300)
         cwise_sample = 20
 
         # Act
@@ -210,12 +261,12 @@ class TestHeuristicSample:
         assert zero_count <= int(class_imbalance * cwise_sample) + 5  # small tolerance
         assert one_count <= cwise_sample + 5
 
-    def test_output_indices_index_into_original_x(self):
+    def test_output_indices_index_into_original_x(self, binary_data_factory):
         # Arrange
         np.random.seed(4)
         n = 250
         x = np.random.randn(n, 10).astype(np.float32)
-        y, mask = _make_binary_data(n, 100)
+        y, mask = binary_data_factory(n, 100)
 
         # Act
         indices = _heuristic_sample(y, mask, ratio=0.4, cwise_sample=20, n_tries=50)
@@ -411,67 +462,27 @@ class TestStratifyKey:
 # ---------------------------------------------------------------------------
 
 
-def _make_splits_inputs(
-    n_train: int = 600,
-    n_test: int = 200,
-    n_features: int = 8,
-    seed: int = 0,
-    y_shape: str = "1d",  # "1d" or "2d"
-) -> tuple[
-    np.ndarray,
-    np.ndarray,
-    np.ndarray,
-    np.ndarray,
-    np.ndarray,
-    np.ndarray,
-]:
-    """Build synthetic tabular (N, d) training / test arrays with two sensitive columns."""
-    rng = np.random.default_rng(seed)
-    x_train = rng.standard_normal((n_train, n_features)).astype(np.float32)
-    y_train = rng.integers(0, 2, n_train).astype(np.int64)
-    z_train = rng.integers(0, 2, (n_train, 2)).astype(np.int64)
-
-    x_test = rng.standard_normal((n_test, n_features)).astype(np.float32)
-    y_test = rng.integers(0, 2, n_test).astype(np.int64)
-    z_test = rng.integers(0, 2, (n_test, 2)).astype(np.int64)
-
-    if y_shape == "2d":
-        y_train = y_train.reshape(-1, 1)
-        y_test = y_test.reshape(-1, 1)
-
-    return x_train, y_train, z_train, x_test, y_test, z_test
-
-
-_COMMON_KWARGS: dict = {
-    "sensitive_columns": ["sex", "race"],
-    "filter_column": "sex",
-    "ratio1": 0.3,
-    "ratio2": 0.7,
-    "train_subsample": 20,
-    "test_subsample": 10,
-    "batch_size": 32,
-    "seed": 42,
-    "n_tries": 50,
-}
-
-
 class TestPrepareDistributionSplits:
-    def test_returns_distribution_splits_dataclass(self):
+    def test_returns_distribution_splits_dataclass(
+        self, splits_inputs_factory, splits_kwargs
+    ):
         # Arrange
-        args = _make_splits_inputs()
+        args = splits_inputs_factory()
 
         # Act
-        result = prepare_distribution_splits(*args, **_COMMON_KWARGS)
+        result = prepare_distribution_splits(*args, **splits_kwargs)
 
         # Assert
         assert isinstance(result, DistributionSplits)
 
-    def test_returns_exactly_six_dataloaders(self):
+    def test_returns_exactly_six_dataloaders(
+        self, splits_inputs_factory, splits_kwargs
+    ):
         # Arrange
-        args = _make_splits_inputs()
+        args = splits_inputs_factory()
 
         # Act
-        result = prepare_distribution_splits(*args, **_COMMON_KWARGS)
+        result = prepare_distribution_splits(*args, **splits_kwargs)
 
         # Assert: all six attributes are DataLoader instances
         loaders = [
@@ -485,34 +496,35 @@ class TestPrepareDistributionSplits:
         assert all(isinstance(dl, DataLoader) for dl in loaders)
         assert len(loaders) == 6
 
-    def test_raises_value_error_when_filter_column_not_in_sensitive_columns(self):
+    def test_raises_value_error_when_filter_column_not_in_sensitive_columns(
+        self, splits_inputs_factory, splits_kwargs
+    ):
         # Arrange
-        args = _make_splits_inputs()
-        kwargs = {**_COMMON_KWARGS, "filter_column": "missing_col"}
+        args = splits_inputs_factory()
+        splits_kwargs["filter_column"] = "missing_col"
 
         # Act / Assert
         with pytest.raises(ValueError, match="filter_column"):
-            prepare_distribution_splits(*args, **kwargs)
+            prepare_distribution_splits(*args, **splits_kwargs)
 
-    def test_raises_value_error_when_z_columns_mismatch_sensitive_columns(self):
+    def test_raises_value_error_when_z_columns_mismatch_sensitive_columns(
+        self, splits_inputs_factory, splits_kwargs
+    ):
         # Arrange: z has 2 columns but sensitive_columns has 3 entries
-        args = _make_splits_inputs()
-        kwargs = {
-            **_COMMON_KWARGS,
-            "sensitive_columns": ["sex", "race", "extra"],
-            "filter_column": "sex",
-        }
+        args = splits_inputs_factory()
+        splits_kwargs["sensitive_columns"] = ["sex", "race", "extra"]
+        splits_kwargs["filter_column"] = "sex"
 
         # Act / Assert
         with pytest.raises(ValueError, match="z_train has"):
-            prepare_distribution_splits(*args, **kwargs)
+            prepare_distribution_splits(*args, **splits_kwargs)
 
-    def test_all_six_loaders_are_non_empty(self):
+    def test_all_six_loaders_are_non_empty(self, splits_inputs_factory, splits_kwargs):
         # Arrange
-        args = _make_splits_inputs(n_train=800, n_test=300)
+        args = splits_inputs_factory(n_train=800, n_test=300)
 
         # Act
-        result = prepare_distribution_splits(*args, **_COMMON_KWARGS)
+        result = prepare_distribution_splits(*args, **splits_kwargs)
 
         # Assert
         for loader in [
@@ -525,20 +537,22 @@ class TestPrepareDistributionSplits:
         ]:
             assert len(loader.dataset) > 0  # type: ignore[arg-type]
 
-    def test_tabular_batches_have_correct_feature_shape(self):
+    def test_tabular_batches_have_correct_feature_shape(
+        self, splits_inputs_factory, splits_kwargs
+    ):
         # Arrange: x is (N, 8) tabular
         n_features = 8
-        args = _make_splits_inputs(n_features=n_features)
+        args = splits_inputs_factory(n_features=n_features)
 
         # Act
-        result = prepare_distribution_splits(*args, **_COMMON_KWARGS)
+        result = prepare_distribution_splits(*args, **splits_kwargs)
 
         # Assert: each x batch has shape (batch, n_features)
         x_batch, _ = next(iter(result.vic_trainloader_1))
         assert x_batch.ndim == 2
         assert x_batch.shape[1] == n_features
 
-    def test_image_batches_have_correct_shape(self):
+    def test_image_batches_have_correct_shape(self, splits_kwargs):
         # Arrange: x is (N, C, H, W) image
         rng = np.random.default_rng(7)
         n_train, n_test = 600, 200
@@ -558,46 +572,46 @@ class TestPrepareDistributionSplits:
             x_test,
             y_test,
             z_test,
-            **_COMMON_KWARGS,
+            **splits_kwargs,
         )
 
         # Assert: each x sample has shape (C, H, W)
         x_batch, _ = next(iter(result.vic_trainloader_1))
         assert x_batch.shape[1:] == (c, h, w)
 
-    def test_y_shape_2d_accepted(self):
+    def test_y_shape_2d_accepted(self, splits_inputs_factory, splits_kwargs):
         # Arrange: y_train and y_test have shape (N, 1) instead of (N,)
-        args = _make_splits_inputs(y_shape="2d")
+        args = splits_inputs_factory(y_shape="2d")
 
         # Act: must not raise
-        result = prepare_distribution_splits(*args, **_COMMON_KWARGS)
+        result = prepare_distribution_splits(*args, **splits_kwargs)
 
         # Assert
         assert isinstance(result, DistributionSplits)
 
-    def test_batch_x_dtype_is_float32(self):
+    def test_batch_x_dtype_is_float32(self, splits_inputs_factory, splits_kwargs):
         # Arrange
-        args = _make_splits_inputs()
+        args = splits_inputs_factory()
 
         # Act
-        result = prepare_distribution_splits(*args, **_COMMON_KWARGS)
+        result = prepare_distribution_splits(*args, **splits_kwargs)
         x_batch, _ = next(iter(result.vic_trainloader_1))
 
         # Assert
         assert x_batch.dtype == torch.float32
 
-    def test_batch_y_dtype_is_int64(self):
+    def test_batch_y_dtype_is_int64(self, splits_inputs_factory, splits_kwargs):
         # Arrange
-        args = _make_splits_inputs()
+        args = splits_inputs_factory()
 
         # Act
-        result = prepare_distribution_splits(*args, **_COMMON_KWARGS)
+        result = prepare_distribution_splits(*args, **splits_kwargs)
         _, y_batch = next(iter(result.vic_trainloader_1))
 
         # Assert
         assert y_batch.dtype == torch.int64
 
-    def test_drop_values_filters_rows(self):
+    def test_drop_values_filters_rows(self, splits_kwargs):
         # Arrange: z[:, 1] (race) has values 0/1; drop race==1
         rng = np.random.default_rng(9)
         n_train, n_test = 800, 300
@@ -611,35 +625,32 @@ class TestPrepareDistributionSplits:
         z_test = np.zeros((n_test, 2), dtype=np.int64)
         z_test[:150, 1] = 1
 
-        kwargs = {
-            **_COMMON_KWARGS,
-            "drop_values": {"race": [1]},
-            "train_subsample": 10,
-            "test_subsample": 5,
-        }
+        splits_kwargs["drop_values"] = {"race": [1]}
+        splits_kwargs["train_subsample"] = 10
+        splits_kwargs["test_subsample"] = 5
 
         # Act: if drop is applied, loaders still return only race==0 rows
         result = prepare_distribution_splits(
-            x_train, y_train, z_train, x_test, y_test, z_test, **kwargs
+            x_train, y_train, z_train, x_test, y_test, z_test, **splits_kwargs
         )
 
         # Assert: the function completes without error and returns valid splits
         assert isinstance(result, DistributionSplits)
 
-    def test_seed_produces_same_split_sizes(self):
+    def test_seed_produces_same_split_sizes(self, splits_inputs_factory, splits_kwargs):
         # Arrange
         # The seed controls StratifiedShuffleSplit for the 50/50 halves.
         # Heuristic subsampling uses np.random globally, so per-call tensor
         # content is not guaranteed to be identical; however, dataset *sizes*
         # produced by _heuristic_sample are deterministic given the same pool.
         # We seed numpy before each call to make the full pipeline reproducible.
-        args = _make_splits_inputs()
+        args = splits_inputs_factory()
 
         # Act
         np.random.seed(99)
-        result_a = prepare_distribution_splits(*args, **_COMMON_KWARGS)
+        result_a = prepare_distribution_splits(*args, **splits_kwargs)
         np.random.seed(99)
-        result_b = prepare_distribution_splits(*args, **_COMMON_KWARGS)
+        result_b = prepare_distribution_splits(*args, **splits_kwargs)
 
         # Assert: dataset sizes must be identical when numpy state is reset
         for attr in [
@@ -656,12 +667,16 @@ class TestPrepareDistributionSplits:
 
     @pytest.mark.parametrize("ratio1,ratio2", [(0.1, 0.9), (0.2, 0.8), (0.4, 0.6)])
     def test_different_ratios_produce_different_loaders(
-        self, ratio1: float, ratio2: float
+        self,
+        splits_inputs_factory,
+        splits_kwargs,
+        ratio1: float,
+        ratio2: float,
     ):
         # Arrange
-        args = _make_splits_inputs()
-        kwargs_1 = {**_COMMON_KWARGS, "ratio1": ratio1, "ratio2": ratio2}
-        kwargs_2 = {**_COMMON_KWARGS, "ratio1": ratio2, "ratio2": ratio1}
+        args = splits_inputs_factory()
+        kwargs_1 = {**splits_kwargs, "ratio1": ratio1, "ratio2": ratio2}
+        kwargs_2 = {**splits_kwargs, "ratio1": ratio2, "ratio2": ratio1}
 
         # Act
         result_1 = prepare_distribution_splits(*args, **kwargs_1)
@@ -679,18 +694,18 @@ class TestPrepareDistributionSplits:
         assert len(result_1.vic_trainloader_1.dataset) > 0  # type: ignore[arg-type]
         assert len(result_2.vic_trainloader_1.dataset) > 0  # type: ignore[arg-type]
 
-    def test_test_loaders_are_concatenated_from_vic_and_adv(self):
+    def test_test_loaders_are_concatenated_from_vic_and_adv(
+        self, splits_inputs_factory, splits_kwargs
+    ):
         # Arrange
-        args = _make_splits_inputs(n_train=600, n_test=400)
-        kwargs = {**_COMMON_KWARGS, "test_subsample": 15}
+        args = splits_inputs_factory(n_train=600, n_test=400)
+        splits_kwargs["test_subsample"] = 15
 
         # Act
-        result = prepare_distribution_splits(*args, **kwargs)
+        result = prepare_distribution_splits(*args, **splits_kwargs)
 
         # Assert: test_loader_1 size == 2 * test_subsample per class
         # (adv_test_1 + vic_test_1), so dataset must be larger than a single draw
         n_test1 = len(result.test_loader_1.dataset)  # type: ignore[arg-type]
-        n_vic1 = len(result.vic_trainloader_1.dataset)  # type: ignore[arg-type]
         # The combined test set has contributions from both adv and vic halves
         assert n_test1 > 0
-        assert n_vic1 > 0

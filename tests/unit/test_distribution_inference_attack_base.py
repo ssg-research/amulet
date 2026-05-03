@@ -31,71 +31,82 @@ from amulet.distribution_inference.attacks.suri_evans_2022 import SuriEvans2022
 if TYPE_CHECKING:
     pass
 
-# ---------------------------------------------------------------------------
-# Shared helpers
-# ---------------------------------------------------------------------------
-
 _NUM_FEATURES = 4
 _NUM_CLASSES = 2
 _BATCH_SIZE = 16
 
 
-def _make_synthetic_data(
-    n_train: int = 600,
-    n_test: int = 200,
-    seed: int = 0,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """Return (x_train, y_train, z_train, x_test, y_test, z_test) for binary tasks."""
-    rng = np.random.default_rng(seed)
-    x_train = rng.standard_normal((n_train, _NUM_FEATURES)).astype(np.float32)
-    y_train = rng.integers(0, 2, n_train).astype(np.int64)
-    z_train = rng.integers(0, 2, (n_train, 2)).astype(np.int64)
-    x_test = rng.standard_normal((n_test, _NUM_FEATURES)).astype(np.float32)
-    y_test = rng.integers(0, 2, n_test).astype(np.int64)
-    z_test = rng.integers(0, 2, (n_test, 2)).astype(np.int64)
-    return x_train, y_train, z_train, x_test, y_test, z_test
+@pytest.fixture
+def synthetic_data_factory():
+    """Factory fixture: (x_train, y_train, z_train, x_test, y_test, z_test) for binary tasks."""
+
+    def _make(
+        n_train: int = 600,
+        n_test: int = 200,
+        seed: int = 0,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        rng = np.random.default_rng(seed)
+        x_train = rng.standard_normal((n_train, _NUM_FEATURES)).astype(np.float32)
+        y_train = rng.integers(0, 2, n_train).astype(np.int64)
+        z_train = rng.integers(0, 2, (n_train, 2)).astype(np.int64)
+        x_test = rng.standard_normal((n_test, _NUM_FEATURES)).astype(np.float32)
+        y_test = rng.integers(0, 2, n_test).astype(np.int64)
+        z_test = rng.integers(0, 2, (n_test, 2)).astype(np.int64)
+        return x_train, y_train, z_train, x_test, y_test, z_test
+
+    return _make
 
 
-def _make_attack(tmp_path: Path, **overrides: object) -> SuriEvans2022:
-    """Construct a SuriEvans2022 instance with sensible tiny defaults."""
-    x_train, y_train, z_train, x_test, y_test, z_test = _make_synthetic_data()
-    defaults: dict[str, object] = {
-        "x_train": x_train,
-        "y_train": y_train,
-        "z_train": z_train,
-        "x_test": x_test,
-        "y_test": y_test,
-        "z_test": z_test,
-        "sensitive_columns": ["race", "sex"],
-        "filter_column": "sex",
-        "ratio1": 0.3,
-        "ratio2": 0.7,
-        "model_arch": "linearnet",
-        "model_capacity": "m1",
-        "num_features": _NUM_FEATURES,
-        "num_classes": _NUM_CLASSES,
-        "num_models": 2,
-        "epochs": 1,
-        "batch_size": _BATCH_SIZE,
-        "device": "cpu",
-        "models_dir": tmp_path,
-        "dataset": "synthetic",
-        "exp_id": 0,
-        "filter_value": 1,
-        "drop_values": None,
-        "train_subsample": 50,
-        "test_subsample": 25,
-    }
-    defaults.update(overrides)
-    return SuriEvans2022(**defaults)  # type: ignore[arg-type]
+@pytest.fixture
+def attack_factory(tmp_path, synthetic_data_factory):
+    """Factory fixture: SuriEvans2022 instance with sensible tiny defaults."""
+
+    def _make(**overrides: object) -> SuriEvans2022:
+        x_train, y_train, z_train, x_test, y_test, z_test = synthetic_data_factory()
+        defaults: dict[str, object] = {
+            "x_train": x_train,
+            "y_train": y_train,
+            "z_train": z_train,
+            "x_test": x_test,
+            "y_test": y_test,
+            "z_test": z_test,
+            "sensitive_columns": ["race", "sex"],
+            "filter_column": "sex",
+            "ratio1": 0.3,
+            "ratio2": 0.7,
+            "model_arch": "linearnet",
+            "model_capacity": "m1",
+            "num_features": _NUM_FEATURES,
+            "num_classes": _NUM_CLASSES,
+            "num_models": 2,
+            "epochs": 1,
+            "batch_size": _BATCH_SIZE,
+            "device": "cpu",
+            "models_dir": tmp_path,
+            "dataset": "synthetic",
+            "exp_id": 0,
+            "filter_value": 1,
+            "drop_values": None,
+            "train_subsample": 50,
+            "test_subsample": 25,
+        }
+        defaults.update(overrides)
+        return SuriEvans2022(**defaults)  # type: ignore[arg-type]
+
+    return _make
 
 
-def _tiny_loader(n: int = 64) -> DataLoader:
-    """Return a small DataLoader with _NUM_FEATURES-dimensional float32 inputs."""
-    torch.manual_seed(0)
-    x = torch.randn(n, _NUM_FEATURES)
-    y = torch.randint(0, _NUM_CLASSES, (n,))
-    return DataLoader(TensorDataset(x, y), batch_size=_BATCH_SIZE, shuffle=False)
+@pytest.fixture
+def tiny_loader_factory():
+    """Factory fixture: small DataLoader with _NUM_FEATURES-dimensional float32 inputs."""
+
+    def _make(n: int = 64) -> DataLoader:
+        torch.manual_seed(0)
+        x = torch.randn(n, _NUM_FEATURES)
+        y = torch.randint(0, _NUM_CLASSES, (n,))
+        return DataLoader(TensorDataset(x, y), batch_size=_BATCH_SIZE, shuffle=False)
+
+    return _make
 
 
 # ---------------------------------------------------------------------------
@@ -104,10 +115,10 @@ def _tiny_loader(n: int = 64) -> DataLoader:
 
 
 class TestTrainModelPopulationReturnType:
-    def test_returns_list(self, tmp_path: Path) -> None:
+    def test_returns_list(self, attack_factory, tiny_loader_factory) -> None:
         # Arrange
-        attack = _make_attack(tmp_path, num_models=2)
-        loader = _tiny_loader()
+        attack = attack_factory(num_models=2)
+        loader = tiny_loader_factory()
 
         # Act
         result = attack.train_model_population(loader, checkpoint_tag="tag_a")
@@ -115,10 +126,12 @@ class TestTrainModelPopulationReturnType:
         # Assert
         assert isinstance(result, list)
 
-    def test_list_length_equals_num_models_default(self, tmp_path: Path) -> None:
+    def test_list_length_equals_num_models_default(
+        self, attack_factory, tiny_loader_factory
+    ) -> None:
         # Arrange
-        attack = _make_attack(tmp_path, num_models=3)
-        loader = _tiny_loader()
+        attack = attack_factory(num_models=3)
+        loader = tiny_loader_factory()
 
         # Act
         result = attack.train_model_population(loader, checkpoint_tag="tag_len")
@@ -128,11 +141,11 @@ class TestTrainModelPopulationReturnType:
 
     @pytest.mark.parametrize("n_models", [1, 2, 4])
     def test_list_length_respects_num_models_override(
-        self, tmp_path: Path, n_models: int
+        self, attack_factory, tiny_loader_factory, n_models: int
     ) -> None:
         # Arrange
-        attack = _make_attack(tmp_path, num_models=99)  # should be ignored
-        loader = _tiny_loader()
+        attack = attack_factory(num_models=99)  # should be ignored
+        loader = tiny_loader_factory()
 
         # Act
         result = attack.train_model_population(
@@ -142,10 +155,12 @@ class TestTrainModelPopulationReturnType:
         # Assert
         assert len(result) == n_models
 
-    def test_all_elements_are_nn_module(self, tmp_path: Path) -> None:
+    def test_all_elements_are_nn_module(
+        self, attack_factory, tiny_loader_factory
+    ) -> None:
         # Arrange
-        attack = _make_attack(tmp_path, num_models=2)
-        loader = _tiny_loader()
+        attack = attack_factory(num_models=2)
+        loader = tiny_loader_factory()
 
         # Act
         result = attack.train_model_population(loader, checkpoint_tag="tag_type")
@@ -160,10 +175,10 @@ class TestTrainModelPopulationReturnType:
 
 
 class TestTrainModelPopulationModelState:
-    def test_all_models_in_eval_mode(self, tmp_path: Path) -> None:
+    def test_all_models_in_eval_mode(self, attack_factory, tiny_loader_factory) -> None:
         # Arrange
-        attack = _make_attack(tmp_path, num_models=2)
-        loader = _tiny_loader()
+        attack = attack_factory(num_models=2)
+        loader = tiny_loader_factory()
 
         # Act
         result = attack.train_model_population(loader, checkpoint_tag="tag_eval")
@@ -171,10 +186,12 @@ class TestTrainModelPopulationModelState:
         # Assert
         assert all(not m.training for m in result)
 
-    def test_all_parameters_have_grad_disabled(self, tmp_path: Path) -> None:
+    def test_all_parameters_have_grad_disabled(
+        self, attack_factory, tiny_loader_factory
+    ) -> None:
         # Arrange
-        attack = _make_attack(tmp_path, num_models=2)
-        loader = _tiny_loader()
+        attack = attack_factory(num_models=2)
+        loader = tiny_loader_factory()
 
         # Act
         result = attack.train_model_population(loader, checkpoint_tag="tag_nograd")
@@ -191,11 +208,13 @@ class TestTrainModelPopulationModelState:
 
 
 class TestTrainModelPopulationCheckpoints:
-    def test_creates_models_dir_if_missing(self, tmp_path: Path) -> None:
+    def test_creates_models_dir_if_missing(
+        self, tmp_path: Path, attack_factory, tiny_loader_factory
+    ) -> None:
         # Arrange
         nested = tmp_path / "a" / "b" / "c"
-        attack = _make_attack(nested, num_models=1)
-        loader = _tiny_loader()
+        attack = attack_factory(models_dir=nested, num_models=1)
+        loader = tiny_loader_factory()
 
         # Act
         attack.train_model_population(loader, checkpoint_tag="tag_dir")
@@ -203,13 +222,15 @@ class TestTrainModelPopulationCheckpoints:
         # Assert
         assert nested.is_dir()
 
-    def test_checkpoint_file_created_per_model(self, tmp_path: Path) -> None:
+    def test_checkpoint_file_created_per_model(
+        self, tmp_path: Path, attack_factory, tiny_loader_factory
+    ) -> None:
         # Arrange
         n_models = 2
         exp_id = 7
         tag = "synth_tag"
-        attack = _make_attack(tmp_path, num_models=n_models, exp_id=exp_id)
-        loader = _tiny_loader()
+        attack = attack_factory(num_models=n_models, exp_id=exp_id)
+        loader = tiny_loader_factory()
 
         # Act
         attack.train_model_population(loader, checkpoint_tag=tag, num_models=n_models)
@@ -220,13 +241,13 @@ class TestTrainModelPopulationCheckpoints:
             assert expected.exists(), f"Missing checkpoint: {expected}"
 
     def test_checkpoint_filename_encodes_tag_id_and_exp_id(
-        self, tmp_path: Path
+        self, tmp_path: Path, attack_factory, tiny_loader_factory
     ) -> None:
         # Arrange
         tag = "my_custom_tag"
         exp_id = 42
-        attack = _make_attack(tmp_path, num_models=1, exp_id=exp_id)
-        loader = _tiny_loader()
+        attack = attack_factory(num_models=1, exp_id=exp_id)
+        loader = tiny_loader_factory()
 
         # Act
         attack.train_model_population(loader, checkpoint_tag=tag, num_models=1)
@@ -243,11 +264,11 @@ class TestTrainModelPopulationCheckpoints:
 
 class TestTrainModelPopulationCacheReuse:
     def test_train_classifier_not_called_on_second_invocation(
-        self, tmp_path: Path
+        self, attack_factory, tiny_loader_factory
     ) -> None:
         # Arrange — first call trains and saves to disk
-        attack = _make_attack(tmp_path, num_models=1)
-        loader = _tiny_loader()
+        attack = attack_factory(num_models=1)
+        loader = tiny_loader_factory()
         attack.train_model_population(loader, checkpoint_tag="reuse_tag", num_models=1)
 
         # Act — second call should load from disk; patch train_classifier to detect calls
@@ -261,10 +282,12 @@ class TestTrainModelPopulationCacheReuse:
         # Assert: train_classifier must not have been called
         mock_train.assert_not_called()
 
-    def test_loaded_models_still_in_eval_mode(self, tmp_path: Path) -> None:
+    def test_loaded_models_still_in_eval_mode(
+        self, attack_factory, tiny_loader_factory
+    ) -> None:
         # Arrange — write checkpoints on first call
-        attack = _make_attack(tmp_path, num_models=2)
-        loader = _tiny_loader()
+        attack = attack_factory(num_models=2)
+        loader = tiny_loader_factory()
         attack.train_model_population(loader, checkpoint_tag="reload_tag", num_models=2)
 
         # Act — reload from disk
@@ -275,10 +298,12 @@ class TestTrainModelPopulationCacheReuse:
         # Assert
         assert all(not m.training for m in result)
 
-    def test_loaded_models_have_grad_disabled(self, tmp_path: Path) -> None:
+    def test_loaded_models_have_grad_disabled(
+        self, attack_factory, tiny_loader_factory
+    ) -> None:
         # Arrange
-        attack = _make_attack(tmp_path, num_models=2)
-        loader = _tiny_loader()
+        attack = attack_factory(num_models=2)
+        loader = tiny_loader_factory()
         attack.train_model_population(
             loader, checkpoint_tag="reload_grad_tag", num_models=2
         )
@@ -300,11 +325,13 @@ class TestTrainModelPopulationCacheReuse:
 
 
 class TestTrainModelPopulationOverrides:
-    def test_model_arch_override_is_used(self, tmp_path: Path) -> None:
+    def test_model_arch_override_is_used(
+        self, attack_factory, tiny_loader_factory
+    ) -> None:
         # Arrange: instance uses 'linearnet', override to 'linearnet' with m2
         # (only one arch available in unit tests without GPU; verify via forward pass)
-        attack = _make_attack(tmp_path, model_arch="linearnet", model_capacity="m1")
-        loader = _tiny_loader()
+        attack = attack_factory(model_arch="linearnet", model_capacity="m1")
+        loader = tiny_loader_factory()
 
         # Act: request m2 capacity override — if the wrong capacity were used,
         # the model returned would have a different parameter count.
@@ -322,10 +349,12 @@ class TestTrainModelPopulationOverrides:
             out = result[0](x)
         assert out.shape == (1, _NUM_CLASSES)
 
-    def test_epochs_override_passed_to_train_classifier(self, tmp_path: Path) -> None:
+    def test_epochs_override_passed_to_train_classifier(
+        self, attack_factory, tiny_loader_factory
+    ) -> None:
         # Arrange
-        attack = _make_attack(tmp_path, epochs=99, num_models=1)
-        loader = _tiny_loader()
+        attack = attack_factory(epochs=99, num_models=1)
+        loader = tiny_loader_factory()
         recorded_epochs: list[int] = []
 
         original_train = __import__(
@@ -360,10 +389,12 @@ class TestTrainModelPopulationOverrides:
         # Assert: the captured epoch count must match the override, not the default 99
         assert recorded_epochs == [3]
 
-    def test_epochs_default_used_when_not_overridden(self, tmp_path: Path) -> None:
+    def test_epochs_default_used_when_not_overridden(
+        self, attack_factory, tiny_loader_factory
+    ) -> None:
         # Arrange
-        attack = _make_attack(tmp_path, epochs=2, num_models=1)
-        loader = _tiny_loader()
+        attack = attack_factory(epochs=2, num_models=1)
+        loader = tiny_loader_factory()
         recorded_epochs: list[int] = []
 
         original_train = __import__(
@@ -404,18 +435,18 @@ class TestTrainModelPopulationOverrides:
 
 
 class TestPrepareModelPopulationsState:
-    def test_splits_is_none_before_call(self, tmp_path: Path) -> None:
+    def test_splits_is_none_before_call(self, attack_factory) -> None:
         # Arrange
-        attack = _make_attack(tmp_path)
+        attack = attack_factory()
 
         # Assert: precondition
         assert attack.splits is None
 
-    def test_splits_set_after_call(self, tmp_path: Path) -> None:
+    def test_splits_set_after_call(self, attack_factory) -> None:
         # Arrange
         from amulet.distribution_inference.dataset_utils import DistributionSplits
 
-        attack = _make_attack(tmp_path, num_models=1)
+        attack = attack_factory(num_models=1)
 
         # Act
         attack.prepare_model_populations()
@@ -423,9 +454,9 @@ class TestPrepareModelPopulationsState:
         # Assert
         assert isinstance(attack.splits, DistributionSplits)
 
-    def test_models_adv_1_non_empty(self, tmp_path: Path) -> None:
+    def test_models_adv_1_non_empty(self, attack_factory) -> None:
         # Arrange
-        attack = _make_attack(tmp_path, num_models=1)
+        attack = attack_factory(num_models=1)
 
         # Act
         attack.prepare_model_populations()
@@ -433,9 +464,9 @@ class TestPrepareModelPopulationsState:
         # Assert
         assert len(attack.models_adv_1) > 0
 
-    def test_models_adv_2_non_empty(self, tmp_path: Path) -> None:
+    def test_models_adv_2_non_empty(self, attack_factory) -> None:
         # Arrange
-        attack = _make_attack(tmp_path, num_models=1)
+        attack = attack_factory(num_models=1)
 
         # Act
         attack.prepare_model_populations()
@@ -443,9 +474,9 @@ class TestPrepareModelPopulationsState:
         # Assert
         assert len(attack.models_adv_2) > 0
 
-    def test_models_vic_1_non_empty(self, tmp_path: Path) -> None:
+    def test_models_vic_1_non_empty(self, attack_factory) -> None:
         # Arrange
-        attack = _make_attack(tmp_path, num_models=1)
+        attack = attack_factory(num_models=1)
 
         # Act
         attack.prepare_model_populations()
@@ -453,9 +484,9 @@ class TestPrepareModelPopulationsState:
         # Assert
         assert len(attack.models_vic_1) > 0
 
-    def test_models_vic_2_non_empty(self, tmp_path: Path) -> None:
+    def test_models_vic_2_non_empty(self, attack_factory) -> None:
         # Arrange
-        attack = _make_attack(tmp_path, num_models=1)
+        attack = attack_factory(num_models=1)
 
         # Act
         attack.prepare_model_populations()
@@ -465,10 +496,10 @@ class TestPrepareModelPopulationsState:
 
     @pytest.mark.parametrize("n_models", [1, 2])
     def test_each_population_length_equals_num_models(
-        self, tmp_path: Path, n_models: int
+        self, attack_factory, n_models: int
     ) -> None:
         # Arrange
-        attack = _make_attack(tmp_path, num_models=n_models)
+        attack = attack_factory(num_models=n_models)
 
         # Act
         attack.prepare_model_populations()
@@ -486,9 +517,11 @@ class TestPrepareModelPopulationsState:
 
 
 class TestPrepareModelPopulationsCheckpoints:
-    def test_checkpoint_files_created_under_models_dir(self, tmp_path: Path) -> None:
+    def test_checkpoint_files_created_under_models_dir(
+        self, tmp_path: Path, attack_factory
+    ) -> None:
         # Arrange
-        attack = _make_attack(tmp_path, num_models=1)
+        attack = attack_factory(num_models=1)
 
         # Act
         attack.prepare_model_populations()
@@ -498,10 +531,10 @@ class TestPrepareModelPopulationsCheckpoints:
         assert len(pth_files) > 0
 
     def test_exactly_four_times_num_models_checkpoint_files(
-        self, tmp_path: Path
+        self, tmp_path: Path, attack_factory
     ) -> None:
         # Arrange: 1 model x 4 populations = 4 files
-        attack = _make_attack(tmp_path, num_models=1)
+        attack = attack_factory(num_models=1)
 
         # Act
         attack.prepare_model_populations()
@@ -511,15 +544,14 @@ class TestPrepareModelPopulationsCheckpoints:
         assert len(pth_files) == 4
 
     def test_checkpoint_names_follow_arch_tagged_convention(
-        self, tmp_path: Path
+        self, tmp_path: Path, attack_factory
     ) -> None:
         # Arrange
         dataset = "synthetic"
         arch = "linearnet"
         capacity = "m1"
         exp_id = 0
-        attack = _make_attack(
-            tmp_path,
+        attack = attack_factory(
             num_models=1,
             dataset=dataset,
             model_arch=arch,
@@ -542,10 +574,10 @@ class TestPrepareModelPopulationsCheckpoints:
             )
 
     def test_all_four_roles_represented_in_checkpoint_names(
-        self, tmp_path: Path
+        self, tmp_path: Path, attack_factory
     ) -> None:
         # Arrange
-        attack = _make_attack(tmp_path, num_models=1)
+        attack = attack_factory(num_models=1)
 
         # Act
         attack.prepare_model_populations()
@@ -559,11 +591,11 @@ class TestPrepareModelPopulationsCheckpoints:
             )
 
     def test_models_dir_created_including_parents_by_prepare(
-        self, tmp_path: Path
+        self, tmp_path: Path, attack_factory
     ) -> None:
         # Arrange
         nested = tmp_path / "deep" / "nested"
-        attack = _make_attack(nested, num_models=1)
+        attack = attack_factory(models_dir=nested, num_models=1)
 
         # Act
         attack.prepare_model_populations()
@@ -571,9 +603,9 @@ class TestPrepareModelPopulationsCheckpoints:
         # Assert
         assert nested.is_dir()
 
-    def test_models_dir_accepts_str_path(self, tmp_path: Path) -> None:
+    def test_models_dir_accepts_str_path(self, tmp_path: Path, attack_factory) -> None:
         # Arrange: pass models_dir as a plain string, not a Path
-        attack = _make_attack(str(tmp_path), num_models=1)  # type: ignore[arg-type]
+        attack = attack_factory(models_dir=str(tmp_path), num_models=1)
 
         # Act — must not raise
         attack.prepare_model_populations()
@@ -589,13 +621,13 @@ class TestPrepareModelPopulationsCheckpoints:
 
 
 class TestPrepareModelPopulationsReuse:
-    def test_second_prepare_reuses_checkpoints(self, tmp_path: Path) -> None:
+    def test_second_prepare_reuses_checkpoints(self, attack_factory) -> None:
         # Arrange — run once to populate disk
-        attack1 = _make_attack(tmp_path, num_models=1, exp_id=5)
+        attack1 = attack_factory(num_models=1, exp_id=5)
         attack1.prepare_model_populations()
 
         # Act — second instance, same dir; patch train_classifier to detect calls
-        attack2 = _make_attack(tmp_path, num_models=1, exp_id=5)
+        attack2 = attack_factory(num_models=1, exp_id=5)
         with patch(
             "amulet.distribution_inference.attacks.distribution_inference_attack.train_classifier"
         ) as mock_train:
