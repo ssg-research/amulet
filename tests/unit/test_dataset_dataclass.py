@@ -1,19 +1,22 @@
 import numpy as np
+import pytest
 import torch
 from torch.utils.data import TensorDataset
 
 from amulet.datasets.__data import AmuletDataset
 
 
-def _make_datasets() -> tuple[TensorDataset, TensorDataset]:
+@pytest.fixture
+def datasets() -> tuple[TensorDataset, TensorDataset]:
+    """Train/test TensorDataset pair sized 10 and 5 over a single feature."""
     return (
         TensorDataset(torch.randn(10, 1), torch.zeros(10)),
         TensorDataset(torch.randn(5, 1), torch.zeros(5)),
     )
 
 
-def test_amulet_dataset_required_fields():
-    train, test = _make_datasets()
+def test_amulet_dataset_required_fields(datasets):
+    train, test = datasets
     data = AmuletDataset(
         train_set=train,
         test_set=test,
@@ -26,8 +29,8 @@ def test_amulet_dataset_required_fields():
     assert data.num_classes == 2
 
 
-def test_amulet_dataset_optional_arrays_default_none():
-    train, test = _make_datasets()
+def test_amulet_dataset_optional_arrays_default_none(datasets):
+    train, test = datasets
     data = AmuletDataset(train_set=train, test_set=test, num_features=1, num_classes=2)
     assert data.x_train is None
     assert data.x_test is None
@@ -37,8 +40,8 @@ def test_amulet_dataset_optional_arrays_default_none():
     assert data.z_test is None
 
 
-def test_amulet_dataset_with_optional_arrays():
-    train, test = _make_datasets()
+def test_amulet_dataset_with_optional_arrays(datasets):
+    train, test = datasets
     x_train = np.array([[1], [2]])
     z_train = np.array([0, 1])
     data = AmuletDataset(
