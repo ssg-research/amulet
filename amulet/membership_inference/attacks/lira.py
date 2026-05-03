@@ -243,7 +243,7 @@ class LiRA(MembershipInferenceAttack):
         final_preds = []
         true_labels = []
 
-        for ans, sc in zip(target_in_out_labels, target_scores, strict=False):
+        for ans, sc in zip(target_in_out_labels, target_scores, strict=True):
             pr_in = -scipy.stats.norm.logpdf(sc, mean_in, std_in + 1e-30)
             pr_out = -scipy.stats.norm.logpdf(sc, mean_out, std_out + 1e-30)
             score = pr_in - pr_out
@@ -297,7 +297,7 @@ class LiRA(MembershipInferenceAttack):
         final_preds = []
         true_labels = []
 
-        for ans, sc in zip(target_in_out_labels, target_scores, strict=False):
+        for ans, sc in zip(target_in_out_labels, target_scores, strict=True):
             score = scipy.stats.norm.logpdf(sc, mean_out, std_out + 1e-30)
             final_preds.extend(score.mean(axis=1))
             true_labels.extend(ans)

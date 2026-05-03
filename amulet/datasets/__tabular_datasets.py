@@ -244,7 +244,7 @@ def load_lfw(
         w = int(resize_by * w)
 
         imgs = np.zeros((len(names), h, w, 3), dtype=np.uint8)
-        for i, (name, num) in enumerate(zip(names, img_num, strict=False)):
+        for i, (name, num) in enumerate(zip(names, img_num, strict=True)):
             name = name.replace(" ", "_")
             img_path = (
                 path
@@ -276,7 +276,7 @@ def load_lfw(
             binary_attr = np.asarray(attributes["Male"])
             binary_attr = np.sign(binary_attr)
             binary_attr[binary_attr == -1] = 0
-            return dict(zip(range(len(binary_attr)), binary_attr, strict=False))
+            return dict(zip(range(len(binary_attr)), binary_attr, strict=True))
         else:
             raise ValueError(attribute)
 
@@ -295,7 +295,7 @@ def load_lfw(
             indices.append(i)
             labels.append(np.argmax(a))
 
-        return dict(zip(indices, labels, strict=False))
+        return dict(zip(indices, labels, strict=True))
 
     # Wrapper
     def _load_lfw_attr(attribute: str):

@@ -69,7 +69,7 @@ class PermInvModel(nn.Module):
         for_prev = None
 
         for _i, (param, net) in enumerate(
-            zip(layer_params_list, self.mini_nets, strict=False)
+            zip(layer_params_list, self.mini_nets, strict=True)
         ):
             # param shape: [Batch, N_neurons, Dim]
             if param.size(1) != self.layer_shapes[_i][0]:
