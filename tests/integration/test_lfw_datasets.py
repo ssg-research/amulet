@@ -363,24 +363,34 @@ def test_changed_params_race_target_y_values_are_valid_integers(lfw_tmp: Path):
 # ---------------------------------------------------------------------------
 
 
-def _make_attributes_txt(*, raw_format: bool) -> str:
-    """Build a minimal in-memory LFW attributes file."""
-    header_cols = "person\timagenum\tMale\tSmiling"
-    row = "John_Doe\t1\t0.8\t-0.3"
+@pytest.fixture
+def make_attributes_txt():
+    """Factory fixture that builds a minimal in-memory LFW attributes file string.
 
-    if raw_format:
-        # Two-line header: description comment + "#\t"-prefixed column names
-        return f"# LFW Attribute descriptions\n#\t{header_cols}\n{row}\n"
-    else:
-        # Pre-cleaned: single header line with no prefix
-        return f"{header_cols}\n{row}\n"
+    Returned callable signature: `(*, raw_format: bool) -> str`.
+    """
+
+    def _make(*, raw_format: bool) -> str:
+        header_cols = "person\timagenum\tMale\tSmiling"
+        row = "John_Doe\t1\t0.8\t-0.3"
+
+        if raw_format:
+            # Two-line header: description comment + "#\t"-prefixed column names
+            return f"# LFW Attribute descriptions\n#\t{header_cols}\n{row}\n"
+        else:
+            # Pre-cleaned: single header line with no prefix
+            return f"{header_cols}\n{row}\n"
+
+    return _make
 
 
-def test_lfw_read_attributes_raw_format_returns_correct_columns(tmp_path: Path):
+def test_lfw_read_attributes_raw_format_returns_correct_columns(
+    tmp_path: Path, make_attributes_txt
+):
     """_lfw_read_attributes: raw two-line header format must yield expected column names."""
     # Arrange
     attrs_file = tmp_path / "lfw_attributes.txt"
-    attrs_file.write_text(_make_attributes_txt(raw_format=True), encoding="utf-8")
+    attrs_file.write_text(make_attributes_txt(raw_format=True), encoding="utf-8")
 
     # Act
     df = _lfw_read_attributes(attrs_file)
@@ -389,11 +399,13 @@ def test_lfw_read_attributes_raw_format_returns_correct_columns(tmp_path: Path):
     assert list(df.columns) == ["person", "imagenum", "Male", "Smiling"]
 
 
-def test_lfw_read_attributes_precleaned_format_returns_correct_columns(tmp_path: Path):
+def test_lfw_read_attributes_precleaned_format_returns_correct_columns(
+    tmp_path: Path, make_attributes_txt
+):
     """_lfw_read_attributes: pre-cleaned single-header format must yield same column names."""
     # Arrange
     attrs_file = tmp_path / "lfw_attributes.txt"
-    attrs_file.write_text(_make_attributes_txt(raw_format=False), encoding="utf-8")
+    attrs_file.write_text(make_attributes_txt(raw_format=False), encoding="utf-8")
 
     # Act
     df = _lfw_read_attributes(attrs_file)
@@ -402,13 +414,15 @@ def test_lfw_read_attributes_precleaned_format_returns_correct_columns(tmp_path:
     assert list(df.columns) == ["person", "imagenum", "Male", "Smiling"]
 
 
-def test_lfw_read_attributes_both_formats_same_dataframe(tmp_path: Path):
+def test_lfw_read_attributes_both_formats_same_dataframe(
+    tmp_path: Path, make_attributes_txt
+):
     """_lfw_read_attributes: raw and pre-cleaned formats must produce identical DataFrames."""
     # Arrange
     raw_file = tmp_path / "raw.txt"
     clean_file = tmp_path / "clean.txt"
-    raw_file.write_text(_make_attributes_txt(raw_format=True), encoding="utf-8")
-    clean_file.write_text(_make_attributes_txt(raw_format=False), encoding="utf-8")
+    raw_file.write_text(make_attributes_txt(raw_format=True), encoding="utf-8")
+    clean_file.write_text(make_attributes_txt(raw_format=False), encoding="utf-8")
 
     # Act
     df_raw = _lfw_read_attributes(raw_file)
@@ -441,15 +455,25 @@ def test_lfw_read_attributes_row_count(tmp_path: Path):
 # ---------------------------------------------------------------------------
 
 
-def _male_df(values: list[float]) -> pd.DataFrame:
-    """Build a minimal attributes DataFrame with only a 'Male' column."""
-    return pd.DataFrame({"Male": values})
+@pytest.fixture
+def make_male_df():
+    """Factory fixture for a minimal attributes DataFrame with only a 'Male' column."""
+
+    def _make(values: list[float]) -> pd.DataFrame:
+        return pd.DataFrame({"Male": values})
+
+    return _make
 
 
-def _age_df(rows: list[list[float]]) -> pd.DataFrame:
-    """Build a minimal attributes DataFrame with age category columns."""
-    cols = ["Baby", "Child", "Youth", "Middle Aged", "Senior"]
-    return pd.DataFrame(rows, columns=cols)  # type: ignore[reportArgumentType]
+@pytest.fixture
+def make_age_df():
+    """Factory fixture for a minimal attributes DataFrame with age category columns."""
+
+    def _make(rows: list[list[float]]) -> pd.DataFrame:
+        cols = ["Baby", "Child", "Youth", "Middle Aged", "Senior"]
+        return pd.DataFrame(rows, columns=cols)  # type: ignore[reportArgumentType]
+
+    return _make
 
 
 @pytest.mark.parametrize(
@@ -460,10 +484,12 @@ def _age_df(rows: list[list[float]]) -> pd.DataFrame:
         [0.1, -0.1],
     ],
 )
-def test_lfw_attr_labels_gender_returns_binary_labels(male_values: list[float]):
+def test_lfw_attr_labels_gender_returns_binary_labels(
+    male_values: list[float], make_male_df
+):
     """_lfw_attr_labels: gender labels must be 0 or 1 only."""
     # Arrange
-    df = _male_df(male_values)
+    df = make_male_df(male_values)
 
     # Act
     labels = _lfw_attr_labels(df, "gender")
@@ -482,11 +508,11 @@ def test_lfw_attr_labels_gender_returns_binary_labels(male_values: list[float]):
     ],
 )
 def test_lfw_attr_labels_gender_correct_mapping(
-    male_values: list[float], expected: dict[int, int]
+    male_values: list[float], expected: dict[int, int], make_male_df
 ):
     """_lfw_attr_labels: positive Male score -> 1 (Male), negative -> 0 (Female)."""
     # Arrange
-    df = _male_df(male_values)
+    df = make_male_df(male_values)
 
     # Act
     labels = _lfw_attr_labels(df, "gender")
@@ -505,10 +531,12 @@ def test_lfw_attr_labels_gender_correct_mapping(
         ([[0.0, 0.0, 0.0, 0.0, 1.0]], 4),  # Senior -> 4
     ],
 )
-def test_lfw_attr_labels_age_argmax_label(rows: list[list[float]], expected_label: int):
+def test_lfw_attr_labels_age_argmax_label(
+    rows: list[list[float]], expected_label: int, make_age_df
+):
     """_lfw_attr_labels: age label must be the argmax index into the age columns."""
     # Arrange
-    df = _age_df(rows)
+    df = make_age_df(rows)
 
     # Act
     labels = _lfw_attr_labels(df, "age")
@@ -517,7 +545,7 @@ def test_lfw_attr_labels_age_argmax_label(rows: list[list[float]], expected_labe
     assert labels[0] == expected_label
 
 
-def test_lfw_attr_labels_age_labels_in_valid_range():
+def test_lfw_attr_labels_age_labels_in_valid_range(make_age_df):
     """_lfw_attr_labels: all age labels must be integers in [0, 4]."""
     # Arrange — multiple rows with varying dominant categories
     rows = [
@@ -527,7 +555,7 @@ def test_lfw_attr_labels_age_labels_in_valid_range():
         [0.0, 0.0, 0.0, 1.0, 0.0],
         [0.0, 0.0, 0.0, 0.0, 1.0],
     ]
-    df = _age_df(rows)
+    df = make_age_df(rows)
 
     # Act
     labels = _lfw_attr_labels(df, "age")

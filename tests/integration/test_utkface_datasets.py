@@ -600,28 +600,34 @@ _SYNTHETIC_FILENAMES = [
 ]
 
 
-def _make_fake_utkface(tmp: Path, n: int = 5) -> Path:
-    """Build a synthetic UTKFace/ directory with n small random RGB JPEG images.
+@pytest.fixture
+def make_fake_utkface():
+    """Factory fixture that builds a synthetic UTKFace/ directory.
 
-    Image filenames follow the UTKFace naming convention so that
-    _utkface_parse_labels can parse them.  Returns the imgs_dir path.
+    Returned callable signature: `(tmp: Path, n: int = 5) -> imgs_dir`.
+    Filenames follow the UTKFace naming convention so `_utkface_parse_labels`
+    can parse them.
     """
-    imgs_dir = tmp / "UTKFace"
-    imgs_dir.mkdir(parents=True, exist_ok=True)
 
-    rng = np.random.default_rng(42)
-    for fname in _SYNTHETIC_FILENAMES[:n]:
-        pixel_data = rng.integers(0, 256, (32, 32, 3), dtype=np.uint8)
-        img = Image.fromarray(pixel_data, mode="RGB")
-        img.save(imgs_dir / fname, format="JPEG")
+    def _make(tmp: Path, n: int = 5) -> Path:
+        imgs_dir = tmp / "UTKFace"
+        imgs_dir.mkdir(parents=True, exist_ok=True)
 
-    return imgs_dir
+        rng = np.random.default_rng(42)
+        for fname in _SYNTHETIC_FILENAMES[:n]:
+            pixel_data = rng.integers(0, 256, (32, 32, 3), dtype=np.uint8)
+            img = Image.fromarray(pixel_data, mode="RGB")
+            img.save(imgs_dir / fname, format="JPEG")
+
+        return imgs_dir
+
+    return _make
 
 
-def test_build_processed_cache_npz_keys(tmp_path: Path) -> None:
+def test_build_processed_cache_npz_keys(tmp_path: Path, make_fake_utkface) -> None:
     """_utkface_build_processed_cache: .npz must contain keys imgs, y, z1, z2."""
     # Arrange
-    imgs_dir = _make_fake_utkface(tmp_path)
+    imgs_dir = make_fake_utkface(tmp_path)
     cache_path = (
         tmp_path / "utkface_processed__target=age__attr1=gender__attr2=race.npz"
     )
@@ -638,11 +644,11 @@ def test_build_processed_cache_npz_keys(tmp_path: Path) -> None:
     npz.close()
 
 
-def test_build_processed_cache_imgs_shape(tmp_path: Path) -> None:
+def test_build_processed_cache_imgs_shape(tmp_path: Path, make_fake_utkface) -> None:
     """_utkface_build_processed_cache: imgs must have shape (5, 3, 64, 64)."""
     # Arrange
     n = 5
-    imgs_dir = _make_fake_utkface(tmp_path, n=n)
+    imgs_dir = make_fake_utkface(tmp_path, n=n)
     cache_path = (
         tmp_path / "utkface_processed__target=age__attr1=gender__attr2=race.npz"
     )
@@ -661,10 +667,12 @@ def test_build_processed_cache_imgs_shape(tmp_path: Path) -> None:
     npz.close()
 
 
-def test_build_processed_cache_imgs_dtype_uint8(tmp_path: Path) -> None:
+def test_build_processed_cache_imgs_dtype_uint8(
+    tmp_path: Path, make_fake_utkface
+) -> None:
     """_utkface_build_processed_cache: imgs must have dtype uint8."""
     # Arrange
-    imgs_dir = _make_fake_utkface(tmp_path)
+    imgs_dir = make_fake_utkface(tmp_path)
     cache_path = (
         tmp_path / "utkface_processed__target=age__attr1=gender__attr2=race.npz"
     )
@@ -682,11 +690,11 @@ def test_build_processed_cache_imgs_dtype_uint8(tmp_path: Path) -> None:
     npz.close()
 
 
-def test_build_processed_cache_y_shape(tmp_path: Path) -> None:
+def test_build_processed_cache_y_shape(tmp_path: Path, make_fake_utkface) -> None:
     """_utkface_build_processed_cache: y must be a 1-D array of length 5."""
     # Arrange
     n = 5
-    imgs_dir = _make_fake_utkface(tmp_path, n=n)
+    imgs_dir = make_fake_utkface(tmp_path, n=n)
     cache_path = (
         tmp_path / "utkface_processed__target=age__attr1=gender__attr2=race.npz"
     )
@@ -703,10 +711,10 @@ def test_build_processed_cache_y_shape(tmp_path: Path) -> None:
     npz.close()
 
 
-def test_build_processed_cache_y_dtype_int64(tmp_path: Path) -> None:
+def test_build_processed_cache_y_dtype_int64(tmp_path: Path, make_fake_utkface) -> None:
     """_utkface_build_processed_cache: y must have dtype int64."""
     # Arrange
-    imgs_dir = _make_fake_utkface(tmp_path)
+    imgs_dir = make_fake_utkface(tmp_path)
     cache_path = (
         tmp_path / "utkface_processed__target=age__attr1=gender__attr2=race.npz"
     )
@@ -722,11 +730,11 @@ def test_build_processed_cache_y_dtype_int64(tmp_path: Path) -> None:
     npz.close()
 
 
-def test_build_processed_cache_z1_shape(tmp_path: Path) -> None:
+def test_build_processed_cache_z1_shape(tmp_path: Path, make_fake_utkface) -> None:
     """_utkface_build_processed_cache: z1 must be a 1-D array of length 5."""
     # Arrange
     n = 5
-    imgs_dir = _make_fake_utkface(tmp_path, n=n)
+    imgs_dir = make_fake_utkface(tmp_path, n=n)
     cache_path = (
         tmp_path / "utkface_processed__target=age__attr1=gender__attr2=race.npz"
     )
@@ -743,10 +751,12 @@ def test_build_processed_cache_z1_shape(tmp_path: Path) -> None:
     npz.close()
 
 
-def test_build_processed_cache_z1_dtype_int64(tmp_path: Path) -> None:
+def test_build_processed_cache_z1_dtype_int64(
+    tmp_path: Path, make_fake_utkface
+) -> None:
     """_utkface_build_processed_cache: z1 must have dtype int64."""
     # Arrange
-    imgs_dir = _make_fake_utkface(tmp_path)
+    imgs_dir = make_fake_utkface(tmp_path)
     cache_path = (
         tmp_path / "utkface_processed__target=age__attr1=gender__attr2=race.npz"
     )
@@ -764,11 +774,11 @@ def test_build_processed_cache_z1_dtype_int64(tmp_path: Path) -> None:
     npz.close()
 
 
-def test_build_processed_cache_z2_shape(tmp_path: Path) -> None:
+def test_build_processed_cache_z2_shape(tmp_path: Path, make_fake_utkface) -> None:
     """_utkface_build_processed_cache: z2 must be a 1-D array of length 5."""
     # Arrange
     n = 5
-    imgs_dir = _make_fake_utkface(tmp_path, n=n)
+    imgs_dir = make_fake_utkface(tmp_path, n=n)
     cache_path = (
         tmp_path / "utkface_processed__target=age__attr1=gender__attr2=race.npz"
     )
@@ -785,10 +795,12 @@ def test_build_processed_cache_z2_shape(tmp_path: Path) -> None:
     npz.close()
 
 
-def test_build_processed_cache_z2_dtype_int64(tmp_path: Path) -> None:
+def test_build_processed_cache_z2_dtype_int64(
+    tmp_path: Path, make_fake_utkface
+) -> None:
     """_utkface_build_processed_cache: z2 must have dtype int64."""
     # Arrange
-    imgs_dir = _make_fake_utkface(tmp_path)
+    imgs_dir = make_fake_utkface(tmp_path)
     cache_path = (
         tmp_path / "utkface_processed__target=age__attr1=gender__attr2=race.npz"
     )
@@ -806,10 +818,12 @@ def test_build_processed_cache_z2_dtype_int64(tmp_path: Path) -> None:
     npz.close()
 
 
-def test_build_processed_cache_gender_values_binary(tmp_path: Path) -> None:
+def test_build_processed_cache_gender_values_binary(
+    tmp_path: Path, make_fake_utkface
+) -> None:
     """_utkface_build_processed_cache: gender (z1) values must be in {0, 1}."""
     # Arrange
-    imgs_dir = _make_fake_utkface(tmp_path)
+    imgs_dir = make_fake_utkface(tmp_path)
     cache_path = (
         tmp_path / "utkface_processed__target=age__attr1=gender__attr2=race.npz"
     )
@@ -828,10 +842,12 @@ def test_build_processed_cache_gender_values_binary(tmp_path: Path) -> None:
     npz.close()
 
 
-def test_build_processed_cache_race_values_in_range(tmp_path: Path) -> None:
+def test_build_processed_cache_race_values_in_range(
+    tmp_path: Path, make_fake_utkface
+) -> None:
     """_utkface_build_processed_cache: race (z2) values must be in {0, 1, 2, 3, 4}."""
     # Arrange
-    imgs_dir = _make_fake_utkface(tmp_path)
+    imgs_dir = make_fake_utkface(tmp_path)
     cache_path = (
         tmp_path / "utkface_processed__target=age__attr1=gender__attr2=race.npz"
     )
@@ -850,10 +866,12 @@ def test_build_processed_cache_race_values_in_range(tmp_path: Path) -> None:
     npz.close()
 
 
-def test_build_processed_cache_age_values_nonnegative(tmp_path: Path) -> None:
+def test_build_processed_cache_age_values_nonnegative(
+    tmp_path: Path, make_fake_utkface
+) -> None:
     """_utkface_build_processed_cache: age (y) values must all be >= 0."""
     # Arrange
-    imgs_dir = _make_fake_utkface(tmp_path)
+    imgs_dir = make_fake_utkface(tmp_path)
     cache_path = (
         tmp_path / "utkface_processed__target=age__attr1=gender__attr2=race.npz"
     )
@@ -870,11 +888,13 @@ def test_build_processed_cache_age_values_nonnegative(tmp_path: Path) -> None:
     npz.close()
 
 
-def test_build_processed_cache_age_values_match_filenames(tmp_path: Path) -> None:
+def test_build_processed_cache_age_values_match_filenames(
+    tmp_path: Path, make_fake_utkface
+) -> None:
     """_utkface_build_processed_cache: parsed age values must match filenames exactly."""
     # Arrange — synthetic filenames encode ages [10, 25, 45, 60, 80] in sorted order
     expected_ages = sorted([10, 25, 45, 60, 80])
-    imgs_dir = _make_fake_utkface(tmp_path)
+    imgs_dir = make_fake_utkface(tmp_path)
     cache_path = (
         tmp_path / "utkface_processed__target=age__attr1=gender__attr2=race.npz"
     )

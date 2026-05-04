@@ -450,49 +450,53 @@ def test_changed_target_young_y_values_binary(celeba_tmp: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _make_fake_celeba(tmp: Path, n: int = 3) -> tuple[Path, Path]:
-    """Build a minimal synthetic CelebA-style directory structure.
+@pytest.fixture
+def make_fake_celeba():
+    """Factory fixture that builds a minimal synthetic CelebA-style directory.
 
-    Creates:
-      tmp/list_attr_celeba.txt  — CelebA-format attribute file with n rows
-      tmp/img_align_celeba/     — n small random RGB JPEG images
-
-    Returns the paths to the attribute file and images directory.
+    Returned callable signature: `(tmp: Path, n: int = 3) -> (attrs_path, imgs_dir)`.
+    Creates `tmp/list_attr_celeba.txt` and `tmp/img_align_celeba/` with n images.
     """
-    imgs_dir = tmp / "img_align_celeba"
-    imgs_dir.mkdir(parents=True, exist_ok=True)
 
-    # CelebA list_attr_celeba.txt format:
-    #   Line 1: number of images
-    #   Line 2: space-separated attribute names
-    #   Lines 3+: filename followed by attribute values (-1 or 1)
-    attr_names = "Smiling Male"
-    rng = np.random.default_rng(0)
+    def _make(tmp: Path, n: int = 3) -> tuple[Path, Path]:
+        imgs_dir = tmp / "img_align_celeba"
+        imgs_dir.mkdir(parents=True, exist_ok=True)
 
-    rows: list[str] = []
-    for i in range(1, n + 1):
-        fname = f"{i:06d}.jpg"
-        # Alternate between +1 and -1 to cover both label values
-        smiling = 1 if i % 2 == 0 else -1
-        male = 1 if i % 3 == 0 else -1
-        rows.append(f"{fname} {smiling} {male}")
+        # CelebA list_attr_celeba.txt format:
+        #   Line 1: number of images
+        #   Line 2: space-separated attribute names
+        #   Lines 3+: filename followed by attribute values (-1 or 1)
+        attr_names = "Smiling Male"
+        rng = np.random.default_rng(0)
 
-        # Save a tiny 10x10 random RGB JPEG
-        pixel_data = rng.integers(0, 256, (10, 10, 3), dtype=np.uint8)
-        img = Image.fromarray(pixel_data, mode="RGB")
-        img.save(imgs_dir / fname, format="JPEG")
+        rows: list[str] = []
+        for i in range(1, n + 1):
+            fname = f"{i:06d}.jpg"
+            # Alternate between +1 and -1 to cover both label values
+            smiling = 1 if i % 2 == 0 else -1
+            male = 1 if i % 3 == 0 else -1
+            rows.append(f"{fname} {smiling} {male}")
 
-    attrs_content = f"{n}\n{attr_names}\n" + "\n".join(rows) + "\n"
-    attrs_path = tmp / "list_attr_celeba.txt"
-    attrs_path.write_text(attrs_content, encoding="utf-8")
+            # Save a tiny 10x10 random RGB JPEG
+            pixel_data = rng.integers(0, 256, (10, 10, 3), dtype=np.uint8)
+            img = Image.fromarray(pixel_data, mode="RGB")
+            img.save(imgs_dir / fname, format="JPEG")
 
-    return attrs_path, imgs_dir
+        attrs_content = f"{n}\n{attr_names}\n" + "\n".join(rows) + "\n"
+        attrs_path = tmp / "list_attr_celeba.txt"
+        attrs_path.write_text(attrs_content, encoding="utf-8")
+
+        return attrs_path, imgs_dir
+
+    return _make
 
 
-def test_build_processed_cache_creates_npz_file(tmp_path: Path) -> None:
+def test_build_processed_cache_creates_npz_file(
+    tmp_path: Path, make_fake_celeba
+) -> None:
     """_celeba_build_processed_cache: output .npz file must be created on disk."""
     # Arrange
-    attrs_path, imgs_dir = _make_fake_celeba(tmp_path)
+    attrs_path, imgs_dir = make_fake_celeba(tmp_path)
     cache_path = tmp_path / "celeba_processed__target=Smiling.npz"
 
     # Act
@@ -502,10 +506,12 @@ def test_build_processed_cache_creates_npz_file(tmp_path: Path) -> None:
     assert cache_path.exists(), ".npz cache file must be created"
 
 
-def test_build_processed_cache_npz_has_imgs_key(tmp_path: Path) -> None:
+def test_build_processed_cache_npz_has_imgs_key(
+    tmp_path: Path, make_fake_celeba
+) -> None:
     """_celeba_build_processed_cache: .npz must contain the 'imgs' key."""
     # Arrange
-    attrs_path, imgs_dir = _make_fake_celeba(tmp_path)
+    attrs_path, imgs_dir = make_fake_celeba(tmp_path)
     cache_path = tmp_path / "celeba_processed__target=Smiling.npz"
 
     # Act
@@ -517,10 +523,10 @@ def test_build_processed_cache_npz_has_imgs_key(tmp_path: Path) -> None:
     npz.close()
 
 
-def test_build_processed_cache_npz_has_y_key(tmp_path: Path) -> None:
+def test_build_processed_cache_npz_has_y_key(tmp_path: Path, make_fake_celeba) -> None:
     """_celeba_build_processed_cache: .npz must contain the 'y' key."""
     # Arrange
-    attrs_path, imgs_dir = _make_fake_celeba(tmp_path)
+    attrs_path, imgs_dir = make_fake_celeba(tmp_path)
     cache_path = tmp_path / "celeba_processed__target=Smiling.npz"
 
     # Act
@@ -532,10 +538,10 @@ def test_build_processed_cache_npz_has_y_key(tmp_path: Path) -> None:
     npz.close()
 
 
-def test_build_processed_cache_npz_has_z_key(tmp_path: Path) -> None:
+def test_build_processed_cache_npz_has_z_key(tmp_path: Path, make_fake_celeba) -> None:
     """_celeba_build_processed_cache: .npz must contain the 'z' key."""
     # Arrange
-    attrs_path, imgs_dir = _make_fake_celeba(tmp_path)
+    attrs_path, imgs_dir = make_fake_celeba(tmp_path)
     cache_path = tmp_path / "celeba_processed__target=Smiling.npz"
 
     # Act
@@ -547,11 +553,11 @@ def test_build_processed_cache_npz_has_z_key(tmp_path: Path) -> None:
     npz.close()
 
 
-def test_build_processed_cache_imgs_shape(tmp_path: Path) -> None:
+def test_build_processed_cache_imgs_shape(tmp_path: Path, make_fake_celeba) -> None:
     """_celeba_build_processed_cache: imgs must have shape (N, 3, 64, 64)."""
     # Arrange
     n = 3
-    attrs_path, imgs_dir = _make_fake_celeba(tmp_path, n=n)
+    attrs_path, imgs_dir = make_fake_celeba(tmp_path, n=n)
     cache_path = tmp_path / "celeba_processed__target=Smiling.npz"
 
     # Act
@@ -566,10 +572,12 @@ def test_build_processed_cache_imgs_shape(tmp_path: Path) -> None:
     npz.close()
 
 
-def test_build_processed_cache_imgs_dtype_uint8(tmp_path: Path) -> None:
+def test_build_processed_cache_imgs_dtype_uint8(
+    tmp_path: Path, make_fake_celeba
+) -> None:
     """_celeba_build_processed_cache: imgs must have dtype uint8."""
     # Arrange
-    attrs_path, imgs_dir = _make_fake_celeba(tmp_path)
+    attrs_path, imgs_dir = make_fake_celeba(tmp_path)
     cache_path = tmp_path / "celeba_processed__target=Smiling.npz"
 
     # Act
@@ -583,11 +591,11 @@ def test_build_processed_cache_imgs_dtype_uint8(tmp_path: Path) -> None:
     npz.close()
 
 
-def test_build_processed_cache_y_shape(tmp_path: Path) -> None:
+def test_build_processed_cache_y_shape(tmp_path: Path, make_fake_celeba) -> None:
     """_celeba_build_processed_cache: y must be a 1-D array of length N."""
     # Arrange
     n = 3
-    attrs_path, imgs_dir = _make_fake_celeba(tmp_path, n=n)
+    attrs_path, imgs_dir = make_fake_celeba(tmp_path, n=n)
     cache_path = tmp_path / "celeba_processed__target=Smiling.npz"
 
     # Act
@@ -600,10 +608,10 @@ def test_build_processed_cache_y_shape(tmp_path: Path) -> None:
     npz.close()
 
 
-def test_build_processed_cache_y_dtype_int64(tmp_path: Path) -> None:
+def test_build_processed_cache_y_dtype_int64(tmp_path: Path, make_fake_celeba) -> None:
     """_celeba_build_processed_cache: y must have dtype int64."""
     # Arrange
-    attrs_path, imgs_dir = _make_fake_celeba(tmp_path)
+    attrs_path, imgs_dir = make_fake_celeba(tmp_path)
     cache_path = tmp_path / "celeba_processed__target=Smiling.npz"
 
     # Act
@@ -615,10 +623,12 @@ def test_build_processed_cache_y_dtype_int64(tmp_path: Path) -> None:
     npz.close()
 
 
-def test_build_processed_cache_y_values_binary(tmp_path: Path) -> None:
+def test_build_processed_cache_y_values_binary(
+    tmp_path: Path, make_fake_celeba
+) -> None:
     """_celeba_build_processed_cache: all y values must be 0 or 1 (not -1)."""
     # Arrange
-    attrs_path, imgs_dir = _make_fake_celeba(tmp_path)
+    attrs_path, imgs_dir = make_fake_celeba(tmp_path)
     cache_path = tmp_path / "celeba_processed__target=Smiling.npz"
 
     # Act
@@ -634,11 +644,11 @@ def test_build_processed_cache_y_values_binary(tmp_path: Path) -> None:
     npz.close()
 
 
-def test_build_processed_cache_z_shape(tmp_path: Path) -> None:
+def test_build_processed_cache_z_shape(tmp_path: Path, make_fake_celeba) -> None:
     """_celeba_build_processed_cache: z must be a 1-D array of length N."""
     # Arrange
     n = 3
-    attrs_path, imgs_dir = _make_fake_celeba(tmp_path, n=n)
+    attrs_path, imgs_dir = make_fake_celeba(tmp_path, n=n)
     cache_path = tmp_path / "celeba_processed__target=Smiling.npz"
 
     # Act
@@ -651,10 +661,10 @@ def test_build_processed_cache_z_shape(tmp_path: Path) -> None:
     npz.close()
 
 
-def test_build_processed_cache_z_dtype_int64(tmp_path: Path) -> None:
+def test_build_processed_cache_z_dtype_int64(tmp_path: Path, make_fake_celeba) -> None:
     """_celeba_build_processed_cache: z must have dtype int64."""
     # Arrange
-    attrs_path, imgs_dir = _make_fake_celeba(tmp_path)
+    attrs_path, imgs_dir = make_fake_celeba(tmp_path)
     cache_path = tmp_path / "celeba_processed__target=Smiling.npz"
 
     # Act
@@ -666,10 +676,12 @@ def test_build_processed_cache_z_dtype_int64(tmp_path: Path) -> None:
     npz.close()
 
 
-def test_build_processed_cache_z_values_binary(tmp_path: Path) -> None:
+def test_build_processed_cache_z_values_binary(
+    tmp_path: Path, make_fake_celeba
+) -> None:
     """_celeba_build_processed_cache: all z values must be 0 or 1 (not -1)."""
     # Arrange
-    attrs_path, imgs_dir = _make_fake_celeba(tmp_path)
+    attrs_path, imgs_dir = make_fake_celeba(tmp_path)
     cache_path = tmp_path / "celeba_processed__target=Smiling.npz"
 
     # Act
@@ -685,15 +697,17 @@ def test_build_processed_cache_z_values_binary(tmp_path: Path) -> None:
     npz.close()
 
 
-def test_build_processed_cache_minus_one_converted_to_zero(tmp_path: Path) -> None:
+def test_build_processed_cache_minus_one_converted_to_zero(
+    tmp_path: Path, make_fake_celeba
+) -> None:
     """_celeba_build_processed_cache: raw attribute value -1 must map to label 0."""
     # Arrange — build synthetic data where first image has Smiling=-1 (odd index)
     n = 3
-    attrs_path, imgs_dir = _make_fake_celeba(tmp_path, n=n)
+    attrs_path, imgs_dir = make_fake_celeba(tmp_path, n=n)
     cache_path = tmp_path / "celeba_processed__target=Smiling.npz"
 
     # Verify our synthetic helper encodes Smiling=-1 for image 1 (odd) and +1 for image 2 (even)
-    # Per _make_fake_celeba: smiling = 1 if i % 2 == 0 else -1 (i is 1-based)
+    # Per make_fake_celeba: smiling = 1 if i % 2 == 0 else -1 (i is 1-based)
     # i=1 -> -1 -> expected 0; i=2 -> +1 -> expected 1; i=3 -> -1 -> expected 0
     expected_y = [0, 1, 0]
 
