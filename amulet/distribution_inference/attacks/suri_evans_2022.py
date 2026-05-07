@@ -111,29 +111,44 @@ class SuriEvans2022(DistributionInferenceAttack):
         random_pick = np.random.permutation(xx.shape[0])[: int(0.8 * xx.shape[0])]
         xx, yy = xx[random_pick], yy[random_pick]
 
+        # PyTorch's Bernoulli KL has a broadcasting bug — its internal mask
+        # indexing fails when the two probs tensors don't share a shape. Expand
+        # each victim row to adv's shape before constructing the distributions.
         kl_1_a = np.array([
-            kl_divergence(Bernoulli(probs=adv_1_t), Bernoulli(probs=v))
+            kl_divergence(
+                Bernoulli(probs=adv_1_t),
+                Bernoulli(probs=v.expand_as(adv_1_t)),
+            )
             .mean(dim=1)
             .numpy()
             for v in vic_1_t
         ])
         SuriEvans2022._check_finite(kl_1_a)
         kl_1_b = np.array([
-            kl_divergence(Bernoulli(probs=adv_2_t), Bernoulli(probs=v))
+            kl_divergence(
+                Bernoulli(probs=adv_2_t),
+                Bernoulli(probs=v.expand_as(adv_2_t)),
+            )
             .mean(dim=1)
             .numpy()
             for v in vic_1_t
         ])
         SuriEvans2022._check_finite(kl_1_b)
         kl_2_a = np.array([
-            kl_divergence(Bernoulli(probs=adv_1_t), Bernoulli(probs=v))
+            kl_divergence(
+                Bernoulli(probs=adv_1_t),
+                Bernoulli(probs=v.expand_as(adv_1_t)),
+            )
             .mean(dim=1)
             .numpy()
             for v in vic_2_t
         ])
         SuriEvans2022._check_finite(kl_2_a)
         kl_2_b = np.array([
-            kl_divergence(Bernoulli(probs=adv_2_t), Bernoulli(probs=v))
+            kl_divergence(
+                Bernoulli(probs=adv_2_t),
+                Bernoulli(probs=v.expand_as(adv_2_t)),
+            )
             .mean(dim=1)
             .numpy()
             for v in vic_2_t
