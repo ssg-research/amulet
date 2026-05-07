@@ -7,16 +7,15 @@ import os
 from pathlib import Path
 from urllib.request import urlopen
 
+import numpy as np
 import pandas as pd
 import torch
-import numpy as np
-from torch.utils.data import TensorDataset
+from PIL import Image
 from sklearn.datasets import fetch_lfw_people
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
-
+from torch.utils.data import TensorDataset
 from ucimlrepo import fetch_ucirepo
-from PIL import Image
 
 from .__data import AmuletDataset
 
@@ -100,7 +99,7 @@ def load_census(
         sex=lambda df: (df["sex"] == "Male").astype(int),
     )
     target = (adult_data["income"] == ">50K").astype(int)
-    to_drop = ["income", "fnlwgt"] + sensitive_attributes
+    to_drop = ["income", "fnlwgt", *sensitive_attributes]
     features = (
         adult_data.drop(columns=to_drop)
         .fillna("Unknown")
@@ -245,8 +244,7 @@ def load_lfw(
         w = int(resize_by * w)
 
         imgs = np.zeros((len(names), h, w, 3), dtype=np.uint8)
-        i = 0
-        for name, num in zip(names, img_num):
+        for i, (name, num) in enumerate(zip(names, img_num, strict=True)):
             name = name.replace(" ", "_")
             img_path = (
                 path
@@ -256,9 +254,7 @@ def load_lfw(
                 / f"{name}_{str(num).zfill(4)}.jpg"
             )
             img = Image.fromarray(np.array(Image.open(img_path))[slice_])
-            img = np.array(img.resize((w, h)))
-            imgs[i] = img
-            i += 1
+            imgs[i] = np.array(img.resize((w, h)))
 
         np.savez(images_path, imgs)
 
@@ -280,7 +276,7 @@ def load_lfw(
             binary_attr = np.asarray(attributes["Male"])
             binary_attr = np.sign(binary_attr)
             binary_attr[binary_attr == -1] = 0
-            return dict(zip(range(len(binary_attr)), binary_attr))
+            return dict(zip(range(len(binary_attr)), binary_attr, strict=True))
         else:
             raise ValueError(attribute)
 
@@ -299,7 +295,7 @@ def load_lfw(
             indices.append(i)
             labels.append(np.argmax(a))
 
-        return dict(zip(indices, labels))
+        return dict(zip(indices, labels, strict=True))
 
     # Wrapper
     def _load_lfw_attr(attribute: str):
@@ -314,13 +310,13 @@ def load_lfw(
         imgs = f["arr_0"].transpose(0, 3, 1, 2)
 
     target_labels = _load_lfw_attr(target)
-    target_indices = [x for x in target_labels.keys()]
+    target_indices = list(target_labels.keys())
 
     sensitive_attr_1 = _load_lfw_attr(attribute_1)
-    sens_1_indices = [x for x in sensitive_attr_1.keys()]
+    sens_1_indices = list(sensitive_attr_1.keys())
 
     sensitive_attr_2 = _load_lfw_attr(attribute_2)
-    sens_2_indices = [x for x in sensitive_attr_2.keys()]
+    sens_2_indices = list(sensitive_attr_2.keys())
 
     # Align and normalize data
     common_indices = np.intersect1d(target_indices, sens_1_indices)

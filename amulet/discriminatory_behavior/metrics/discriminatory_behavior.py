@@ -1,8 +1,8 @@
-import torch
 import numpy as np
+import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader
 from sklearn.metrics import accuracy_score
+from torch.utils.data import DataLoader
 
 
 class DiscriminatoryBehavior:
@@ -54,8 +54,8 @@ class DiscriminatoryBehavior:
         p_joint_att_positive = np.mean((predictions == 1) * (attributes == 1))
         p_joint_att_negative = np.mean((predictions == 1) * (attributes == 0))
 
-        p_margin_att_positive = np.mean((attributes == 1))
-        p_margin_att_negative = np.mean((attributes == 0))
+        p_margin_att_positive = np.mean(attributes == 1)
+        p_margin_att_negative = np.mean(attributes == 0)
 
         p_condition_att_positive = p_joint_att_positive / (p_margin_att_positive + 1e-8)
         p_condition_att_negative = p_joint_att_negative / (p_margin_att_negative + 1e-8)

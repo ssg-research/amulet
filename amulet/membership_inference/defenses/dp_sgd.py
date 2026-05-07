@@ -2,8 +2,8 @@
 
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader
 from opacus import PrivacyEngine
+from torch.utils.data import DataLoader
 
 from .membership_inference_defense import MembershipInferenceDefense
 
@@ -83,7 +83,7 @@ class DPSGD(MembershipInferenceDefense):
                 total += len(target)
                 if batch_idx % 2000 == 0:
                     print(
-                        f"Train Epoch: {epoch} Loss: {loss.item():.6f} Acc: {acc/total*100:.2f}"
+                        f"Train Epoch: {epoch} Loss: {loss.item():.6f} Acc: {acc / total * 100:.2f}"
                     )
             epsilon = self.privacy_engine.accountant.get_epsilon(delta=self.delta)
             print(

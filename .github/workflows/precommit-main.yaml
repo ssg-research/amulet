@@ -1,13 +1,12 @@
-# Same as `code-quality-pr.yaml` but triggered on commit to main branch
-# and runs on all files (instead of only the changed ones)
+# CI for push to main and PRs: pre-commit on all files, then pytest.
 
-name: precommit-checks
+name: ci
 
 on:
   push:
     branches: [main]
   pull_request:
-    branches: [main, "release/*"]
+    branches: [main, "release/*", "pr/*"]
 
 permissions: read-all
 
@@ -17,18 +16,23 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
 
       - name: Install uv
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
 
       - name: Install dependencies
         run: |
-          $HOME/.local/bin/uv sync
+          $HOME/.local/bin/uv sync --all-extras
           echo PATH="$PWD/.venv/bin:$PATH" >> $GITHUB_ENV
 
-      - name: Pre-commit on changed files
+      - name: Pre-commit on all files
         uses: pre-commit/action@v3.0.1
+
+      - name: Run pytest
+        run: uv run pytest tests/ -v

@@ -1,11 +1,13 @@
 # Introduction
 
-Each risk in Amulet represents either an *attack*, a *defense*, or a *metric*.
+Each risk in Amulet represents either an _attack_, a _defense_, or a _metric_.
 To see the list of the risks and the features, please see the [Getting Started guide](https://github.com/ssg-research/amulet/blob/main/docs/GETTING_STARTED.md).
 
 ## Design Overview
+
 Most attacks and defenses are designed such that they take the target model, and some additional information (such as data, hyperparameters, configuration, etc.) as input, run an algorithm, and output a result.
 This result can then be passed onto the respective metrics modules to evaluate the attack or defense. A brief pipeline would look something like:
+
 ```python
 data = load_data()
 

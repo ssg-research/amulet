@@ -1,10 +1,10 @@
 """PyTorch ResNet"""
 
-from typing import Callable
+from collections.abc import Callable
 
 import torch
-import torchvision
 import torch.nn as nn
+import torchvision
 from torchvision.models import (
     ResNet18_Weights,
     ResNet34_Weights,
@@ -14,16 +14,18 @@ from torchvision.models import (
 )
 from torchvision.models._api import WeightsEnum
 
+from .base import AmuletModel
+
 
 class Identity(nn.Module):
     def __init__(self):
-        super(Identity, self).__init__()
+        super().__init__()
 
     def forward(self, x):
         return x
 
 
-class ResNet(nn.Module):
+class ResNet(AmuletModel):
     def __init__(
         self,
         size: str = "resnet18",
@@ -47,10 +49,7 @@ class ResNet(nn.Module):
             "resnet152": ResNet152_Weights,
         }
 
-        if pretrained:
-            weights = self.weights_map[size]
-        else:
-            weights = None
+        weights = self.weights_map[size] if pretrained else None
 
         self.features = self.model_map[size](weights=weights)
         if replace_first:
@@ -59,7 +58,7 @@ class ResNet(nn.Module):
             )
             self.features.maxpool = nn.Identity()  # Remove aggressive downsampling
 
-        self.features.fc = Identity()  # type: ignore[reportAttributeAccessIssue]
+        self.features.fc = Identity()
 
         if size in ["resnet18", "resnet34"]:
             self.classifier = nn.Linear(512, num_classes)
@@ -80,11 +79,11 @@ class ResNet(nn.Module):
         Runs the forward pass on the neural network.
 
         Args:
-            x: :class:`~torch.Tensor`
+            x: torch.Tensor
                 Input data
 
         Returns:
-            Output from the model of type :class:`~torch.Tensor`
+            Output from the model of type torch.Tensor
         """
         x = self.features(x)
         x = self.classifier(x)
@@ -95,10 +94,10 @@ class ResNet(nn.Module):
         Gets the intermediate layer output from the model.
 
         Args:
-            x: :class:`~torch.Tensor`
+            x: torch.Tensor
                 Input data to the model.
 
         Returns:
-            Output from the model of type :class:`~torch.Tensor`.
+            Output from the model of type torch.Tensor.
         """
         return self.features(x)

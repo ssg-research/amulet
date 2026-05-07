@@ -1,23 +1,29 @@
 """
-The module mlconf.utils contains utilities
+The module amulet.utils contains utilities
 for model training and evaluation.
 """
 
+from .__base import (
+    get_intermediate_features,
+    get_predictions_numpy,
+    load_or_train,
+    train_classifier,
+)
 from .__metrics import (
     get_accuracy,
+    get_fidelity,
 )
-
-from .__base import train_classifier, get_intermediate_features, get_predictions_numpy
-
-from .__pipeline import load_data, stratified_split, create_dir, initialize_model
+from .__pipeline import create_dir, initialize_model, load_data, stratified_split
 
 __all__ = [
-    "train_classifier",
-    "get_accuracy",
-    "get_predictions_numpy",
-    "get_intermediate_features",
-    "load_data",
-    "stratified_split",
     "create_dir",
+    "get_accuracy",
+    "get_fidelity",
+    "get_intermediate_features",
+    "get_predictions_numpy",
     "initialize_model",
+    "load_data",
+    "load_or_train",
+    "stratified_split",
+    "train_classifier",
 ]

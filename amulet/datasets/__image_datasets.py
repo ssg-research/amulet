@@ -5,14 +5,15 @@ computer vision applications.
 
 from pathlib import Path
 
-import torchvision.transforms as transforms
-import pandas as pd
 import numpy as np
+import pandas as pd
 import torch
-from torchvision import datasets
-from torch.utils.data import TensorDataset
-from .__data import AmuletDataset
+import torchvision.transforms as transforms
 from sklearn.model_selection import train_test_split
+from torch.utils.data import TensorDataset
+from torchvision import datasets
+
+from .__data import AmuletDataset
 
 
 def load_cifar10(
@@ -56,13 +57,11 @@ def load_cifar10(
     # This is important for compatibility with attack methods (e.g., PGD, MIA).
 
     if transform_train is None:
-        transform_train = transforms.Compose(
-            [
-                transforms.RandomCrop(32, padding=4),
-                transforms.RandomHorizontalFlip(),
-                transforms.ToTensor(),
-            ]
-        )
+        transform_train = transforms.Compose([
+            transforms.RandomCrop(32, padding=4),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+        ])
     if transform_test is None:
         transform_test = transforms.Compose([transforms.ToTensor()])
 
@@ -119,17 +118,15 @@ def load_cifar100(
     # This is important for compatibility with attack methods (e.g., PGD, MIA).
 
     if transform_train is None:
-        transform_train = transforms.Compose(
-            [
-                transforms.RandomCrop(32, padding=4),
-                transforms.RandomHorizontalFlip(),
-                transforms.ColorJitter(
-                    brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1
-                ),
-                transforms.ToTensor(),
-                transforms.RandomErasing(p=0.2),
-            ]
-        )
+        transform_train = transforms.Compose([
+            transforms.RandomCrop(32, padding=4),
+            transforms.RandomHorizontalFlip(),
+            transforms.ColorJitter(
+                brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1
+            ),
+            transforms.ToTensor(),
+            transforms.RandomErasing(p=0.2),
+        ])
 
     if transform_test is None:
         transform_test = transforms.Compose([transforms.ToTensor()])
@@ -190,26 +187,22 @@ def load_fmnist(
                 testing PyTorch models.
     """
     if transform_train is None:
-        transform_train = transforms.Compose(
-            [
-                transforms.RandomHorizontalFlip(),
-                transforms.RandomVerticalFlip(),
-                transforms.RandomRotation(15),
-                transforms.RandomCrop([28, 28]),
-                transforms.ToTensor(),
-            ]
-        )
+        transform_train = transforms.Compose([
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomVerticalFlip(),
+            transforms.RandomRotation(15),
+            transforms.RandomCrop([28, 28]),
+            transforms.ToTensor(),
+        ])
 
     if transform_test is None:
-        transform_test = transforms.Compose(
-            [
-                transforms.RandomHorizontalFlip(),
-                transforms.RandomVerticalFlip(),
-                transforms.RandomRotation(15),
-                transforms.RandomCrop([28, 28]),
-                transforms.ToTensor(),
-            ]
-        )
+        transform_test = transforms.Compose([
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomVerticalFlip(),
+            transforms.RandomRotation(15),
+            transforms.RandomCrop([28, 28]),
+            transforms.ToTensor(),
+        ])
 
     train_set = datasets.FashionMNIST(
         root=path, train=True, transform=transform_train, download=True
@@ -264,26 +257,22 @@ def load_mnist(
                 testing PyTorch models.
     """
     if transform_train is None:
-        transform_train = transforms.Compose(
-            [
-                transforms.RandomHorizontalFlip(),
-                transforms.RandomVerticalFlip(),
-                transforms.RandomRotation(15),
-                transforms.RandomCrop([28, 28]),
-                transforms.ToTensor(),
-            ]
-        )
+        transform_train = transforms.Compose([
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomVerticalFlip(),
+            transforms.RandomRotation(15),
+            transforms.RandomCrop([28, 28]),
+            transforms.ToTensor(),
+        ])
 
     if transform_test is None:
-        transform_test = transforms.Compose(
-            [
-                transforms.RandomHorizontalFlip(),
-                transforms.RandomVerticalFlip(),
-                transforms.RandomRotation(15),
-                transforms.RandomCrop([28, 28]),
-                transforms.ToTensor(),
-            ]
-        )
+        transform_test = transforms.Compose([
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomVerticalFlip(),
+            transforms.RandomRotation(15),
+            transforms.RandomCrop([28, 28]),
+            transforms.ToTensor(),
+        ])
 
     train_set = datasets.MNIST(
         root=path, train=True, transform=transform_train, download=True
@@ -355,7 +344,7 @@ def load_celeba(
 
     images_np = np.stack(images["pixels"].to_list())
     sensitive_attributes: list[str] = ["Male"]
-    attributes = df[[target_attribute] + sensitive_attributes]
+    attributes = df[[target_attribute, *sensitive_attributes]]
 
     images_train, images_test, attributes_train, attributes_test = train_test_split(
         images_np,

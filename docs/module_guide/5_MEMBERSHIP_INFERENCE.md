@@ -1,8 +1,10 @@
 # Membership Inference
+
 Amulet implements the [Likelihood Ratio Attack (LiRA)](https://openreview.net/pdf?id=inPTplK-O6V), with the implementation taken from the [Canary in Coalmine](https://github.com/YuxinWenRick/canary-in-a-coalmine) codebase.
 To defend against these attacks, Amulet implements differentially private training using DP-SGD.
 
 ## Attack
+
 To run a membership inference attack, use `amulet.membership_inference.attacks.LiRA`.
 This attack classifies each data point as `in` or `out`.
 
@@ -104,6 +106,7 @@ print(compute_mi_metrics(results['lira_offline_preds'], results['true_labels']))
 ```
 
 ## Defense
+
 To train a model using DP-SGD, use `amulet.membership_inference.defenses.DPSGD`.
 Note that the current implementation of DP-SGD does not work with batch normalization.
 
@@ -179,6 +182,7 @@ print(f'Test accuracy of defended model: {test_accuracy_defended}')
 ```
 
 ## Metrics
+
 Amulet implements the fixed AUC method recommended by [LiRA](https://openreview.net/pdf?id=inPTplK-O6V).
 Use `amulet.membership_inference.metrics.compute_mi_metrics`.
 This function takes as input the in/out labels and compares them with the true labels.

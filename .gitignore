@@ -2,6 +2,7 @@
 data/
 saved_models/
 logs/
+scripts/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -166,3 +167,12 @@ cython_debug/
 
 # VSCode Settings
 .vscode
+
+# macOS
+.DS_Store
+
+# AI Agent Specifics (symlinks to AGENT.md and local metadata)
+CLAUDE.md
+GEMINI.md
+.claude/
+.gemini

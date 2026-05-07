@@ -1,8 +1,8 @@
 """Implementation of Model Inversion Attack from CCS 2015 by Fredrikson et al."""
 
+import numpy as np
 import torch
 import torch.nn as nn
-import numpy as np
 import torch.utils.data
 
 from .data_reconstruction_attack import DataReconstructionAttack

@@ -1,12 +1,15 @@
 # Evasion
+
 Amulet implements the Projected Gradient Descent (PGD) algorithm from [cleverhans](https://github.com/cleverhans-lab/cleverhans) to generate adversarial examples.
 PGD is used for the evasion attack and the adversarial training defense.
 
 ## Attack:
+
 To run an evasion attack, use `amulet.evasion.attacks.EvasionPGD`.
 This module returns a data loader containing the adversarial examples.
 
 The following code snippet shows a brief example:
+
 ```python
 import sys
 import torch
@@ -63,10 +66,12 @@ adversarial_accuracy = get_accuracy(target_model, adversarial_test_loader, devic
 ```
 
 ## Defense:
+
 To run the adversarial training algorithm use `amulet.evasion.defenses.AdversarialTrainingPGD`.
 This module trains a model using adversarial training.
 
 The following code snippet shows a brief example:
+
 ```python
 import sys
 import torch
@@ -127,4 +132,5 @@ test_accuracy_defended = get_accuracy(defended_model, test_loader, device)
 ```
 
 ## Metrics
+
 Accuracy (`amulet.utils.get_accuracy`) is currently the only metric implemeneted for evasion attacks.

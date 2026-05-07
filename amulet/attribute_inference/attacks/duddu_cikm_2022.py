@@ -1,12 +1,12 @@
 """Implementation of attribute inference algorithm"""
 
-import torch.nn as nn
 import numpy as np
-from sklearn.neural_network import MLPClassifier
+import torch.nn as nn
 from sklearn.metrics import roc_curve
+from sklearn.neural_network import MLPClassifier
 
-from .attribute_inference_attack import AttributeInferenceAttack
 from ...utils import get_predictions_numpy
+from .attribute_inference_attack import AttributeInferenceAttack
 
 
 class DudduCIKM2022(AttributeInferenceAttack):

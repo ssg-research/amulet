@@ -11,16 +11,18 @@ Each issue should include a title and a description of the error you are facing.
 ### Feature Requests
 
 Since this is a growing package, we welcome new feature requests! However, remember that you may need to write the code for a feature yourself. Depending on the type of feature you want, there are slightly different requirements. Some examples are:
+
 - **Requesting a utility for an ML Pipeline.**
-If this is an easy fix and we feel this would be helpful to many users facing the same issue, we would love to work with you on this to make it happen!
+  If this is an easy fix and we feel this would be helpful to many users facing the same issue, we would love to work with you on this to make it happen!
 - **Adding a new risk or defense.**
-Are you a researcher who has discovered a new risk or way to defend against known risks? We welcome your contributions! However, in most cases, we only include state-of-the-art risks or defenses in our package. The package aims to allow other users to test their models against known risks or defenses or enable researchers to test their techniques against the current state-of-the-art. Thus, having a peer-reviewed paper to justify adding a new risk or defense would be nice.
+  Are you a researcher who has discovered a new risk or way to defend against known risks? We welcome your contributions! However, in most cases, we only include state-of-the-art risks or defenses in our package. The package aims to allow other users to test their models against known risks or defenses or enable researchers to test their techniques against the current state-of-the-art. Thus, having a peer-reviewed paper to justify adding a new risk or defense would be nice.
 
 ## Contributing Code
 
 For new functionalities that help with an ML pipeline, please submit an issue, and we can work together to find the best way to incorporate the utility. For a module comprising a new risk or defense, we strongly urge you to follow the same coding conventions as the rest of the package. Please follow the tutorial below to add a new module.
 
 **For all contributions:**
+
 - **Submit an issue describing the contribution**.
 - **Fork or clone the library.**
 - **Create a new branch for your contribution.**
@@ -56,6 +58,7 @@ To install all dev dependencies:
 #### Using uv
 
 When you add or modify dependencies in `pyproject.toml`:
+
 - Run `uv lock` to update the lock file
 - Run `uv sync` to install the updated dependencies
 
@@ -85,18 +88,22 @@ def load_<name_of_dataset> (
 	return_x_y: Optional[boolean] # flag used to return NumPy arrays, if applicable
 ) -> sklearn.utils.Bunch
 ```
+
 Note that the output is a [`sklearn.utils.Bunch`](https://scikit-learn.org/stable/modules/generated/sklearn.utils.Bunch.html) object, a dictionary-like object of the format:
+
 ```python
 {
 	train_set: torch.utils.data.TensorDataset,
 	test_set: torch.utils.data.TensorDataset
 }
 ```
+
 Please follow these steps to add a new function to load a dataset:
+
 1. Write a function that will download the dataset, preprocess it, and split it into train and test sets (see function template above). Example code: [`amulet/datasets/_tabular_datasets.py:load_census()`](https://github.com/ssg-research/amulet/blob/main/amulet/datasets/_tabular_datasets.py#L21). Please ensure the following when:
-    * **Downloading**: Ensure download location is passed as a parameter. Example code: [`amulet/datasets/_tabular_datasets.py:L72-81`](https://github.com/ssg-research/amulet/blob/main/amulet/datasets/_tabular_datasets.py#L72-L81).
-    * **Preprocessing**: Ensure the data types are correct, engineer features, etc. Example code: [`amulet/datasets/_tabular_datasets.py:L83-91`](https://github.com/ssg-research/amulet/blob/main/amulet/datasets/_tabular_datasets.py#L83-L91).
-    * **Splitting**: Ensure any randomized splitting uses a random seed. Example code: [`amulet/datasets/_tabular_datasets.py:L94-99`](https://github.com/ssg-research/amulet/blob/main/amulet/datasets/_tabular_datasets.py#L94-L99).
+   - **Downloading**: Ensure download location is passed as a parameter. Example code: [`amulet/datasets/_tabular_datasets.py:L72-81`](https://github.com/ssg-research/amulet/blob/main/amulet/datasets/_tabular_datasets.py#L72-L81).
+   - **Preprocessing**: Ensure the data types are correct, engineer features, etc. Example code: [`amulet/datasets/_tabular_datasets.py:L83-91`](https://github.com/ssg-research/amulet/blob/main/amulet/datasets/_tabular_datasets.py#L83-L91).
+   - **Splitting**: Ensure any randomized splitting uses a random seed. Example code: [`amulet/datasets/_tabular_datasets.py:L94-99`](https://github.com/ssg-research/amulet/blob/main/amulet/datasets/_tabular_datasets.py#L94-L99).
 2. Add this function into the appropriate file: `amulet/datasets/_tabular_datasets.py` for 1-dimensional datasets and `amulet/datasets/_image_datasets.py` for 2-dimensional datasets.
 3. Import your function in [`amulet/datasets/__init__.py`](https://github.com/ssg-research/amulet/blob/main/amulet/datasets/__init__.py).
 4. Add the appropriate if condition in [`amulet/utils/_pipeline.py/load_data()`](https://github.com/ssg-research/amulet/blob/main/amulet/utils/_pipeline.py).
@@ -104,6 +111,7 @@ Please follow these steps to add a new function to load a dataset:
 ### Adding a model architecture
 
 Please follow these steps to add a new model architecture to Amulet:
+
 1. Create a file in `amulet/models/` that defines a model as a `nn.Module` subclass.
 2. We recommend including a `get_hidden()` function in the model since some modules use it. This function outputs the model's hidden layer activations. Example code: [`amulet/models/vgg.py:L65-76`](https://github.com/ssg-research/amulet/blob/main/amulet/models/vgg.py#L65-L76).
 3. Import the new model into `amulet/models/__init__.py`. For example, `from model_file import model_name`.
@@ -116,15 +124,16 @@ The first step is to decide which risk the new module interacts with. For detail
 ### Adding an attack or a defense
 
 The general template of an attack or defense:
+
 - Inputs:
-    - Target Model
-    - Hyperparameters (include reasonable default values)
-    - Other attributes or methods required by the class
+  - Target Model
+  - Hyperparameters (include reasonable default values)
+  - Other attributes or methods required by the class
 - Main Algorithm:
-    - Code logic to run the attack or defense
+  - Code logic to run the attack or defense
 - Outputs:
-    - Output of the attack OR
-    - Defended model
+  - Output of the attack OR
+  - Defended model
 
 Please refer to the Module Templates (link TBD) for an idea of the outputs for our existing modules. This ensures that new attacks or defenses can be compared to old ones using the same code. **If introducing a new metric, please make two separate contributions for the metric and the new attack or defense.**
 
@@ -137,36 +146,42 @@ There is no set template for metrics. Please include in-code documentation about
 ### Steps
 
 Once a rough template has been sketched out, please follow these steps for adding code:
+
 1. Create a file in the appropriate directory as follows:
 
-    `amulet/<risk>/<defense/attack/metric>/new_module.py`
+   `amulet/<risk>/<defense/attack/metric>/new_module.py`
 
-    For example, if your module is a new defense for evasion, create the file as follows:
+   For example, if your module is a new defense for evasion, create the file as follows:
 
-    `amulet/evasion/defense/new_module.py`
+   `amulet/evasion/defense/new_module.py`
+
 2. Create a class. We follow a convention for all our attacks and defenses:
-    1. Create a subclass using the Base class for the attack/defense you want to add. For example, to add a new evasion attack, you can use the following code:
-        ```python
 
-        from .evasion import Evasion
-        class newEvasionAttack(Evasion):
-            def __init__(
-                model,
-                test_loader,
-                device,
-                batch_size,
-                param1,
-                param2
-            ):
-                super().__init__(model, test_loader, device, batch_size)
-                self.param1 = param1
-                self.param2 = param2
-        ```
-    2. The `__init__()` method should have most of the parameters required to run the technique. This allows users to use functions like `__getattr__()` to log the parameters while running the technique. Optional parameters may go in other methods.
-    3. Where possible, use the utils available in the package.
-    4. If your module uses hyperparameters, please recommend a reasonable default value.
-    5. Add docstrings to the class and methods, including the recommended range for specific hyperparameters for your technique. Please use the modules we have written as a reference for formatting these.
-    6. We follow the convention of prefixing the method with an underscore for private attributes and methods in the class.
+   1. Create a subclass using the Base class for the attack/defense you want to add. For example, to add a new evasion attack, you can use the following code:
+
+      ```python
+
+      from .evasion import Evasion
+      class newEvasionAttack(Evasion):
+          def __init__(
+              model,
+              test_loader,
+              device,
+              batch_size,
+              param1,
+              param2
+          ):
+              super().__init__(model, test_loader, device, batch_size)
+              self.param1 = param1
+              self.param2 = param2
+      ```
+
+   2. The `__init__()` method should have most of the parameters required to run the technique. This allows users to use functions like `__getattr__()` to log the parameters while running the technique. Optional parameters may go in other methods.
+   3. Where possible, use the utils available in the package.
+   4. If your module uses hyperparameters, please recommend a reasonable default value.
+   5. Add docstrings to the class and methods, including the recommended range for specific hyperparameters for your technique. Please use the modules we have written as a reference for formatting these.
+   6. We follow the convention of prefixing the method with an underscore for private attributes and methods in the class.
+
 3. Please include the code to download any files or data the module requires.
 4. Add an example script in `<TBD>` to show how to use your technique. Please look at the existing examples to understand how to use them.
 5. Run PyLint on your code using the pylintrc file in the repo to validate the code style.

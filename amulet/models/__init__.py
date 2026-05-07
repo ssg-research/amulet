@@ -1,10 +1,11 @@
 """
-The module mlconf.models includes utilities to build sample models.
+The module amulet.models includes utilities to build sample models.
 """
 
-from .vgg import VGG
+from .base import AmuletModel
+from .cnn import SimpleCNN
 from .linear_net import LinearNet
 from .resnet import ResNet
-from .cnn import SimpleCNN
+from .vgg import VGG
 
-__all__ = ["VGG", "LinearNet", "ResNet", "SimpleCNN"]
+__all__ = ["VGG", "AmuletModel", "LinearNet", "ResNet", "SimpleCNN"]

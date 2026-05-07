@@ -1,8 +1,10 @@
 import torch
 import torch.nn as nn
 
+from .base import AmuletModel
 
-class SimpleCNN(nn.Module):
+
+class SimpleCNN(AmuletModel):
     """
     Parameterized CNN for MNIST, similar to the one used in the BadNets paper.
 
@@ -18,8 +20,8 @@ class SimpleCNN(nn.Module):
 
     def __init__(
         self,
-        conv_channels_kernel: list[tuple[int, int]] = [(20, 5), (50, 5)],
-        fc_layers: list[int] = [500],
+        conv_channels_kernel: list[tuple[int, int]] | None = None,
+        fc_layers: list[int] | None = None,
         num_classes: int = 10,
         input_channels: int = 1,
     ):
@@ -37,6 +39,11 @@ class SimpleCNN(nn.Module):
         """
         super().__init__()
 
+        if conv_channels_kernel is None:
+            conv_channels_kernel = [(20, 5), (50, 5)]
+        if fc_layers is None:
+            fc_layers = [500]
+
         layers = []
         in_channels = input_channels
 
@@ -52,7 +59,8 @@ class SimpleCNN(nn.Module):
 
         self.features = nn.Sequential(*layers)
 
-        # Calculate flattened feature size after convs
+        # Calculate flattened feature size after convs.
+        # Hardcoded for 28x28 inputs (MNIST/FMNIST); does not generalize to other resolutions.
         spatial_size = 28
         for _ in conv_channels_kernel:
             spatial_size = spatial_size // 2  # Each MaxPool halves spatial size
@@ -60,7 +68,7 @@ class SimpleCNN(nn.Module):
         feature_dim = in_channels * (spatial_size**2)
 
         # Fully connected layers
-        fc_layers_full = [feature_dim] + fc_layers
+        fc_layers_full = [feature_dim, *fc_layers]
         fc_modules = []
         for i in range(len(fc_layers)):
             fc_modules.append(nn.Linear(fc_layers_full[i], fc_layers_full[i + 1]))

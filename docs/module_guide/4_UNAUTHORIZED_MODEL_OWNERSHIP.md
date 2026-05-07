@@ -1,14 +1,17 @@
 # Unauthorized Model Ownership
+
 These risks are related to an adversary being able to "steal" a model, such that the stolen (surrogate) model has the same behavior and characteristics as the target model.
-Amulet implements the model stealing attack from [ML-Doctor](https://github.com/liuyugeng/ML-Doctor/blob/main/doctor/modsteal.py), which is based on the following work: [Tramer et. al. *Stealing Machine Learning Models
-via Prediction APIs*, USENIX Security, 2016](https://www.usenix.org/system/files/conference/usenixsecurity16/sec16_paper_tramer.pdf).
+Amulet implements the model stealing attack from [ML-Doctor](https://github.com/liuyugeng/ML-Doctor/blob/main/doctor/modsteal.py), which is based on the following work: [Tramer et. al. _Stealing Machine Learning Models
+via Prediction APIs_, USENIX Security, 2016](https://www.usenix.org/system/files/conference/usenixsecurity16/sec16_paper_tramer.pdf).
 The best known class of defenses for such attacks is Watermarking or Fingerprinting.
 Amulet implements the [Dataset Inference algorithm from cleverhans](https://github.com/cleverhans-lab/dataset-inference/tree/main) as a fingerprinting mechanism.
 For watermarking, Amulet implements the [WatermarkNN algorithm](https://github.com/adiyoss/WatermarkNN), however, this is currently a work in progress.
 
 ## Attack
+
 To run a model extraction attack, use `amulet.unauth_model_ownership.attacks.ModelExtraction`.
 This attack trains a surrogate model using the original target model.
+
 ```python
 import sys
 import torch
@@ -93,9 +96,11 @@ attack_model = model_extraction.train_attack_model()
 ```
 
 ## Defense
+
 ### Fingerprinting
+
 To fingerprint a target model, use `amulet.unauth_model_ownership.defenses.Fingerprinting`.
-Note that unlike other modules, a *suspect* model is required to run fingerprinting, as it outputs whether the suspect model was stolen or not.
+Note that unlike other modules, a _suspect_ model is required to run fingerprinting, as it outputs whether the suspect model was stolen or not.
 This could be a surrogate model using the attack above, or a separately trained model.
 
 ```python
@@ -188,6 +193,7 @@ results = fingerprinting.dataset_inference()
 ```
 
 ### Watermarking
+
 To watermark a target model, use `amulet.unauth_model_ownership.defenses.WatermarkNN`. The trigger set consists of 100 random images from the ImageNet test set and is available [here](https://github.com/ssg-research/amulet/tree/verify-watermark/miscellaneous/trigger_set).
 
 ```python
@@ -256,20 +262,25 @@ defended_model = wm_model.watermark()
 ```
 
 ## Metrics
+
 ### Model Extraction
+
 Amulet provides a set of metrics to evaluate surrogate models. Use `amulet.unauth_model_ownership.metrics.evaluate_extraction`, which takes as input:
+
 - The target model.
 - The surrogate model.
 - The test data loader.
 - Device to run the predictions on.
 
 And outputs a dictionary containing:
+
 - `target_accuracy`: Test accuracy of the target model.
 - `stolen_accuracy`: Test accuracy of the stolen model.
 - `fidelity`: Agreement between target and stolen model.
 - `correct_fidelity`: Accuracy conditioned on fidelity, i.e., when the models agree, how often are they also correct?
 
 ### Fingerprinting / Watermarking
+
 Amulet currently does not provide metrics to evaluate fingerprinting or watermarking.
 The modules output a boolean value for each model classifiying it as either "stolen" or "independently trained".
 Thus, evaluating these modules requires a pipeline to train multiple surrogate models and independently trained models to evaluate the module.

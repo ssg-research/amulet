@@ -1,11 +1,14 @@
 # Discriminatory Behavior
+
 This module focuses on evaluating a model for bias and fairness.
 While there is currently no specific attack that increases bias in a model, Amulet does implement an [adversarial debiasing method](https://xebia.com/blog/towards-fairness-in-ml-with-adversarial-networks/) to decrease bias in a model.
 
 This module only works with datasets that have sensitive attributes, such as Census and LFW.
 
 ## Defense
+
 To run the adversarial debiasing module, use `amulet.discriminatory_behavior.defenses.AdversarialDebiasing`. This module uses adversarial training to ensure that the model outputs are independent of the sensitive attributes in the data.
+
 ```python
 import sys
 import torch
@@ -130,6 +133,7 @@ for attribute, metrics in metrics_labelled.items():
 ```
 
 ## Metrics
+
 Unlike other metrics, Amulet implements a class to measure discriminatory behavior.
 Please use `amulet.discriminatory_behavior.metrics.DiscriminatoryBehavior` to evaluate a model's risk for discriminatory behavior.
 The example above demonstrates how to use this class.

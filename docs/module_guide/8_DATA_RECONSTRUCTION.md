@@ -1,8 +1,10 @@
 # Data Reconstruction
+
 Amulet implements the data reconstruction attack from the [ML-Doctor library](https://github.com/liuyugeng/ML-Doctor/blob/main/doctor/modinv.py) which is based off of the work [Model Inversion Attacks that Exploit Confidence Information
 and Basic Countermeasures](https://rist.tech.cornell.edu/papers/mi-ccs.pdf) by Fredrikson et. al. published at ACM CCS 2015.
 
 ## Attack
+
 To run a data reconstruction attack, use `amulet.data_reconstruction.attacks.FredriksonCCS2015`.
 
 ```python
@@ -67,10 +69,12 @@ print(f'Reverse MSE: {mse_loss}')
 ```
 
 ## Defense
+
 Amulet does not currently implement any direct defenses for data reconstruction.
 [DP-SGD](https://github.com/ssg-research/amulet/blob/main/docs/module_guide/5_MEMBERSHIP_INFERENCE.md#defense) may be used as a general privacy preserving mechanism.
 
 ## Metrics
+
 To evaluate data reconstruction attacks, use `amulet.data_reconstruction.metrics.reverse_mse`.
-This function calculates the *average* data point in each class, and finds the class-wise MSE between the reconstructed (reverse) data point and the average.
+This function calculates the _average_ data point in each class, and finds the class-wise MSE between the reconstructed (reverse) data point and the average.
 This class-wise MSE is then averaged over all classes.

@@ -1,10 +1,10 @@
 """Adversarial Debiasing Implementation"""
 
+import numpy as np
 import torch
 import torch.nn as nn
-import numpy as np
-from torch.utils.data import DataLoader
 from sklearn import metrics
+from torch.utils.data import DataLoader
 
 from .discr_behavior_defense import DicriminatoryBehaviorDefense
 
@@ -21,7 +21,7 @@ class AdversaryModel(nn.Module):
     """
 
     def __init__(self, n_sensitive_attrs: int = 2, n_classes: int = 2):
-        super(AdversaryModel, self).__init__()
+        super().__init__()
         self.network = nn.Sequential(
             nn.Linear(n_classes, 32),
             nn.ReLU(),
@@ -200,7 +200,7 @@ class AdversarialDebiasing(DicriminatoryBehaviorDefense):
 
         auc_race = float(metrics.roc_auc_score(race_true, new_race_pred))
         auc_sex = float(metrics.roc_auc_score(sex_true, new_sex_pred))
-        print("AUC [race]: {}, [sex]: {}".format(auc_race, auc_sex))
+        print(f"AUC [race]: {auc_race}, [sex]: {auc_sex}")
         return auc_race, auc_sex
 
     def __pretrain_adversary(self):

@@ -2,10 +2,16 @@
 Utilities to train and provide white-box access to models.
 """
 
+import logging
+from collections.abc import Callable
+from pathlib import Path
+
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
-import numpy as np
+
+from ..models import AmuletModel
 
 
 def train_classifier(
@@ -19,28 +25,20 @@ def train_classifier(
     early_stopping_patience: int = 25,
 ) -> nn.Module:
     """
-    Trains a classifier.
+    Train a classifier.
 
     Args:
-        model: :class:`~torch.nn.Module`
-            Model to be trained.
-        data_loader: :class:'~torch.utils.data.DataLoader`
-            Data used to train the model.
-        criterion: :class:`~torch.nn.Module`
-            Loss function for training model.
-        optimizer: :class:`~torch.optim.Optimizer`
-            Optimizer for training model.
-        epochs: int
-            Determines number of iterations over training data.
-        device: str
-            Device used to train model. Example: "cuda:0".
-        scheduler: :class:`~torch.optim.lr_scheduler._LRScheduler`
-            LR scheduler.
-        early_stopping_patience: int
-            Stop if no accuracy improvement after this many epochs.
+        model: Model to be trained.
+        data_loader: Data used to train the model.
+        criterion: Loss function for training model.
+        optimizer: Optimizer for training model.
+        epochs: Number of iterations over training data.
+        device: Device used to train model. Example: "cuda:0".
+        scheduler: LR scheduler.
+        early_stopping_patience: Stop if no accuracy improvement after this many epochs.
 
     Returns:
-        Trained model of type :class:`~torch.nn.Module`.
+        Trained model.
     """
     model.train()
     best_acc = 0.0
@@ -88,24 +86,68 @@ def train_classifier(
     return model
 
 
+def load_or_train(
+    path: Path,
+    init_fn: Callable[[], nn.Module],
+    train_fn: Callable[[nn.Module], nn.Module],
+    log: logging.Logger | None = None,
+    description: str = "model",
+) -> nn.Module:
+    """
+    Load a model checkpoint if it exists, otherwise train and save one.
+
+    Collapses the standard `if checkpoint.exists(): load else train+save` block
+    that every example pipeline reimplements. The caller supplies two closures:
+    `init_fn` returns a freshly initialised model, and `train_fn` trains it.
+    On a cache miss, `init_fn` is invoked, the result is trained via `train_fn`,
+    and its state_dict is saved to `path` (parent directories created as needed).
+    On a cache hit, `init_fn` is invoked and its state_dict is loaded from `path`.
+
+    Args:
+        path: Checkpoint file path. Parent directories are created on save.
+        init_fn: Zero-argument callable returning a fresh `nn.Module` already on
+            the target device.
+        train_fn: Callable that takes the freshly initialised model and returns
+            the trained model. Responsible for optimizer, loaders, and epochs.
+        log: Optional logger for progress messages.
+        description: Short noun phrase describing the model, used in log lines
+            (e.g. "target model", "defended model", "shadow model").
+
+    Returns:
+        The loaded or newly trained model.
+    """
+    if path.exists():
+        if log:
+            log.info("Loading %s from %s", description, path)
+        model = init_fn()
+        model.load_state_dict(torch.load(path, weights_only=True))
+        return model
+
+    if log:
+        log.info("Training %s", description)
+    model = init_fn()
+    model = train_fn(model)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    torch.save(model.state_dict(), path)
+    if log:
+        log.info("Saved %s to %s", description, path)
+    return model
+
+
 def get_predictions_numpy(
     input_data: np.ndarray, model: nn.Module, batch_size: int, device: str
 ) -> np.ndarray:
     """
-    Helper function to get predictions from a model from a numpy array and return them as a numpy array.
+    Get predictions from a model for numpy input and return as a numpy array.
 
     Args:
-        input_data: :class:`~np.ndarray`
-            The input for the model.
-        model: :class:`nn.Module`
-            Get predictions from this model.
-        batch_size: int
-            Batch size for the data loader.
-        device: str
-            Device used for computation.
+        input_data: The input for the model.
+        model: Model to get predictions from.
+        batch_size: Batch size for the data loader.
+        device: Device used for computation.
 
     Returns:
-        Predictions of type :class:`~np.ndarray`.
+        Model predictions as a numpy array.
     """
     dataloader = DataLoader(
         dataset=TensorDataset(torch.from_numpy(input_data).type(torch.float32)),
@@ -125,28 +167,18 @@ def get_predictions_numpy(
 
 
 def get_intermediate_features(
-    model: nn.Module, data_loader: DataLoader, device: str
+    model: AmuletModel, data_loader: DataLoader, device: str
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
-    Gets the intermediate layer output of a model.
+    Get intermediate layer outputs, labels, and inputs from a model.
 
     Args:
-        model: :class:`~torch.nn.Module`
-            Model to get intermediate layer outputs from.
-            Assumes model has a .get_hidden() function.
-            See sample models in src.models.
-        data_loader: :class:'~torch.utils.data.DataLoader
-            Input data to the model.
-        device: str
-            Device used for inference. Example: "cuda:0".
+        model: Amulet model to get intermediate outputs from.
+        data_loader: Input data to the model.
+        device: Device used for inference. Example: "cuda:0".
 
     Returns:
-        A tuple containing:
-            The intermediate layer output of the model of type :class:`~torch.Tensor`.
-
-            The labels of type :class:`~torch.Tensor`.
-
-            The inputs of type :class:`~torch.Tensor`.
+        Tuple of (intermediate features, labels, inputs) as numpy arrays.
     """
     model.eval()
     features = []
@@ -155,14 +187,14 @@ def get_intermediate_features(
     with torch.no_grad():
         for x, y in data_loader:
             x, y = x.to(device), y.to(device)
-            feature = model.get_hidden(x).data.cpu().numpy()  # type: ignore[misc]
+            feature = model.get_hidden(x).data.cpu().numpy()
 
             features.append(feature)
             targets.append(y.data.cpu().numpy())
             inputs.append(x.data.cpu().numpy())
 
-    features = np.concatenate(np.array(features, dtype=object))
-    targets = np.concatenate(np.array(targets, dtype=object))
-    inputs = np.concatenate(np.array(inputs, dtype=object))
+    features = np.concatenate(features, axis=0)
+    targets = np.concatenate(targets, axis=0)
+    inputs = np.concatenate(inputs, axis=0)
 
     return features, targets, inputs

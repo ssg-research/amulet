@@ -1,0 +1,5 @@
+.venv/
+.ruff_cache/
+.pytest_cache/
+.git/
+node_modules/

@@ -2,13 +2,15 @@
 
 import copy
 from pathlib import Path
+
+import numpy as np
+import scipy.stats
 import torch
 import torch.nn as nn
-import scipy.stats
-import numpy as np
+from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
-from torch.utils.data import Dataset, DataLoader
-from .membership_inference_attack import MembershipInferenceAttack, InferenceModel
+
+from .membership_inference_attack import InferenceModel, MembershipInferenceAttack
 
 
 class LiRA(MembershipInferenceAttack):
@@ -150,7 +152,7 @@ class LiRA(MembershipInferenceAttack):
             Scores numpy array of shape (num_models, num_samples, num_trials).
         """
         pred_logits = copy.deepcopy(pred_logits)  # avoid modifying input
-        num_models, num_samples, num_trials, num_classes = pred_logits.shape
+        num_models, num_samples, num_trials, _num_classes = pred_logits.shape
         eps = 1e-45
 
         scores = np.zeros((num_models, num_samples, num_trials), dtype=np.float64)
@@ -241,7 +243,7 @@ class LiRA(MembershipInferenceAttack):
         final_preds = []
         true_labels = []
 
-        for ans, sc in zip(target_in_out_labels, target_scores):
+        for ans, sc in zip(target_in_out_labels, target_scores, strict=True):
             pr_in = -scipy.stats.norm.logpdf(sc, mean_in, std_in + 1e-30)
             pr_out = -scipy.stats.norm.logpdf(sc, mean_out, std_out + 1e-30)
             score = pr_in - pr_out
@@ -290,15 +292,12 @@ class LiRA(MembershipInferenceAttack):
 
         mean_out = np.median(dat_out, axis=1)
 
-        if fix_variance:
-            std_out = np.std(dat_out)
-        else:
-            std_out = np.std(dat_out, axis=1)
+        std_out = np.std(dat_out) if fix_variance else np.std(dat_out, axis=1)
 
         final_preds = []
         true_labels = []
 
-        for ans, sc in zip(target_in_out_labels, target_scores):
+        for ans, sc in zip(target_in_out_labels, target_scores, strict=True):
             score = scipy.stats.norm.logpdf(sc, mean_out, std_out + 1e-30)
             final_preds.extend(score.mean(axis=1))
             true_labels.extend(ans)

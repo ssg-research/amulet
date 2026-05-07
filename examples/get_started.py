@@ -9,13 +9,14 @@ from pathlib import Path
 
 import torch
 from torch.utils.data import DataLoader
+
 from amulet.evasion.attacks import EvasionPGD
 from amulet.evasion.defenses import AdversarialTrainingPGD
 from amulet.utils import (
-    load_data,
-    initialize_model,
-    train_classifier,
     get_accuracy,
+    initialize_model,
+    load_data,
+    train_classifier,
 )
 
 # Set up constants

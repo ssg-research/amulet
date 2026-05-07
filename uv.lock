@@ -38,6 +38,7 @@ dev = [
     { name = "basedpyright" },
     { name = "pre-commit" },
     { name = "pytest" },
+    { name = "pytest-timeout" },
     { name = "ruff" },
 ]
 
@@ -53,11 +54,12 @@ requires-dist = [
     { name = "pandas", specifier = "==2.2.1" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = "==3.7.1" },
     { name = "pytest", marker = "extra == 'dev'", specifier = "==8.3.2" },
+    { name = "pytest-timeout", marker = "extra == 'dev'", specifier = "==2.3.1" },
     { name = "ruff", marker = "extra == 'dev'", specifier = "==0.11.0" },
     { name = "scikit-image", specifier = "==0.25.1" },
     { name = "scikit-learn", specifier = "==1.4.1.post1" },
     { name = "scipy", specifier = "==1.12.0" },
-    { name = "torch", specifier = ">=2.2.0" },
+    { name = "torch", specifier = ">=2.3.0" },
     { name = "torchvision", specifier = ">=0.18.0" },
     { name = "tqdm", specifier = "==4.66.2" },
     { name = "ucimlrepo", specifier = "==0.0.3" },
@@ -868,6 +870,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/b4/8c/9862305bdcd6020bc7b45b1b5e7397a6caf1a33d3025b9a003b39075ffb2/pytest-8.3.2.tar.gz", hash = "sha256:c132345d12ce551242c87269de812483f5bcc87cdbb4722e48487ba194f9fdce", size = 1439314, upload-time = "2024-07-25T10:40:00.159Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/0f/f9/cf155cf32ca7d6fa3601bc4c5dd19086af4b320b706919d48a4c79081cf9/pytest-8.3.2-py3-none-any.whl", hash = "sha256:4ba08f9ae7dcf84ded419494d229b48d0903ea6407b030eaec46df5e6a73bba5", size = 341802, upload-time = "2024-07-25T10:39:57.834Z" },
+]
+
+[[package]]
+name = "pytest-timeout"
+version = "2.3.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pytest" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/93/0d/04719abc7a4bdb3a7a1f968f24b0f5253d698c9cc94975330e9d3145befb/pytest-timeout-2.3.1.tar.gz", hash = "sha256:12397729125c6ecbdaca01035b9e5239d4db97352320af155b3f5de1ba5165d9", size = 17697, upload-time = "2024-03-07T21:04:01.069Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/03/27/14af9ef8321f5edc7527e47def2a21d8118c6f329a9342cc61387a0c0599/pytest_timeout-2.3.1-py3-none-any.whl", hash = "sha256:68188cb703edfc6a18fad98dc25a3c61e9f24d644b0b70f33af545219fc7813e", size = 14148, upload-time = "2024-03-07T21:03:58.764Z" },
 ]
 
 [[package]]
