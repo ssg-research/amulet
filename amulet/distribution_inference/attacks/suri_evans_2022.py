@@ -10,6 +10,8 @@ Reference:
 import numpy as np
 import torch
 import torch.nn as nn
+from torch.distributions import Bernoulli
+from torch.distributions.kl import kl_divergence
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
@@ -65,17 +67,6 @@ class SuriEvans2022(DistributionInferenceAttack):
         return exp / (1 + exp)
 
     @staticmethod
-    def _kl_divergence(x: np.ndarray, y: np.ndarray) -> np.ndarray:
-        eps = 1e-4
-        x_ = np.clip(x, eps, 1 - eps)
-        y_ = np.clip(y, eps, 1 - eps)
-        x_bar, y_bar = 1 - x_, 1 - y_
-        return np.mean(
-            x_ * (np.log(x_) - np.log(y_)) + x_bar * (np.log(x_bar) - np.log(y_bar)),
-            axis=1,
-        )
-
-    @staticmethod
     def _check_finite(x: np.ndarray) -> None:
         if np.any(np.isinf(x)) or np.any(np.isnan(x)):
             raise ValueError("KL divergence produced non-finite values.")
@@ -110,17 +101,43 @@ class SuriEvans2022(DistributionInferenceAttack):
         adv_1, adv_2 = adv_1[:, ordering], adv_2[:, ordering]
         vic_1, vic_2 = vic_1[:, ordering], vic_2[:, ordering]
 
+        # Clip once to keep KL finite; PyTorch's kl_divergence has no eps parameter.
+        adv_1_t = torch.from_numpy(np.clip(adv_1, eps, 1 - eps))
+        adv_2_t = torch.from_numpy(np.clip(adv_2, eps, 1 - eps))
+        vic_1_t = torch.from_numpy(np.clip(vic_1, eps, 1 - eps))
+        vic_2_t = torch.from_numpy(np.clip(vic_2, eps, 1 - eps))
+
         xx, yy = np.triu_indices(adv_preds_1.shape[0], k=1)
         random_pick = np.random.permutation(xx.shape[0])[: int(0.8 * xx.shape[0])]
         xx, yy = xx[random_pick], yy[random_pick]
 
-        kl_1_a = np.array([SuriEvans2022._kl_divergence(adv_1, v) for v in vic_1])
+        kl_1_a = np.array([
+            kl_divergence(Bernoulli(probs=adv_1_t), Bernoulli(probs=v))
+            .mean(dim=1)
+            .numpy()
+            for v in vic_1_t
+        ])
         SuriEvans2022._check_finite(kl_1_a)
-        kl_1_b = np.array([SuriEvans2022._kl_divergence(adv_2, v) for v in vic_1])
+        kl_1_b = np.array([
+            kl_divergence(Bernoulli(probs=adv_2_t), Bernoulli(probs=v))
+            .mean(dim=1)
+            .numpy()
+            for v in vic_1_t
+        ])
         SuriEvans2022._check_finite(kl_1_b)
-        kl_2_a = np.array([SuriEvans2022._kl_divergence(adv_1, v) for v in vic_2])
+        kl_2_a = np.array([
+            kl_divergence(Bernoulli(probs=adv_1_t), Bernoulli(probs=v))
+            .mean(dim=1)
+            .numpy()
+            for v in vic_2_t
+        ])
         SuriEvans2022._check_finite(kl_2_a)
-        kl_2_b = np.array([SuriEvans2022._kl_divergence(adv_2, v) for v in vic_2])
+        kl_2_b = np.array([
+            kl_divergence(Bernoulli(probs=adv_2_t), Bernoulli(probs=v))
+            .mean(dim=1)
+            .numpy()
+            for v in vic_2_t
+        ])
         SuriEvans2022._check_finite(kl_2_b)
 
         preds_first = SuriEvans2022._pairwise_compare(kl_1_a, kl_1_b, xx, yy)
