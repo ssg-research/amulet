@@ -8,22 +8,26 @@ from amulet.unauth_model_ownership.metrics.extraction_accuracy import (
 )
 
 
-class MockModel(nn.Module):
-    """A mock model that returns fixed predictions based on class index."""
+class _FixedPredictionModel(nn.Module):
+    """Mock model that emits one-hot logits at prescribed class indices."""
 
     def __init__(self, predictions):
         super().__init__()
-        # Predictions is a tensor of indices [0, 1, 0, ...]
         self.predictions = predictions
 
     def forward(self, x):
-        # Return one-hot-ish logits where the max index is our prediction
         batch_size = x.size(0)
-        num_classes = 10  # arbitrary
+        num_classes = 10
         logits = torch.zeros(batch_size, num_classes)
         for i in range(batch_size):
             logits[i, self.predictions[i]] = 1.0
         return logits
+
+
+@pytest.fixture
+def fixed_pred_model_factory():
+    """Factory: build a model that returns the given top-class predictions."""
+    return _FixedPredictionModel
 
 
 @pytest.mark.parametrize(
@@ -72,11 +76,16 @@ class MockModel(nn.Module):
     ],
 )
 def test_evaluate_extraction_arithmetic(
-    target_preds, attack_preds, labels, expected, cpu_device
+    target_preds,
+    attack_preds,
+    labels,
+    expected,
+    cpu_device,
+    fixed_pred_model_factory,
 ):
     # Arrange
-    target_model = MockModel(target_preds)
-    attack_model = MockModel(attack_preds)
+    target_model = fixed_pred_model_factory(target_preds)
+    attack_model = fixed_pred_model_factory(attack_preds)
     dataset = TensorDataset(torch.randn(len(labels), 1), labels)
     loader = DataLoader(dataset, batch_size=len(labels))
 
