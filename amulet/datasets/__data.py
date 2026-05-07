@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 import numpy as np
 import pandas as pd
@@ -14,31 +15,32 @@ from torchvision.io import ImageReadMode, read_image
 @dataclass
 class AmuletDataset:
     """
-    Wrapper class to return datasets.
+    Wrapper for datasets used throughout amulet pipelines.
 
     Attributes:
-        train_set: :class:`~torch.utils.data.Dataset`
-            Train data, usually as a PyTorch TensorDataset or VisionDataset.
-        test_set: :class:`~torch.utils.data.Dataset`
-            Test data, usually as a PyTorch TensorDataset or VisionDataset.
-        x_train: :class:`~np.ndarray` or None
-            Train features.
-        x_test: :class:`~np.ndarray` or None
-            Test features.
-        y_train: :class:`~np.ndarray` or None
-            Train labels.
-        y_test: :class:`~np.ndarray` or None
-            Test labels.
-        z_train: :class:`~np.ndarray` or None
-            Sensitive attributes (for datasets that have them) for train data.
-        z_test: :class:`~np.ndarray` or None
-            Sensitive attributes (for datasets that have them) for test data.
+        train_set: Train data, usually a PyTorch TensorDataset or VisionDataset.
+        test_set: Test data, usually a PyTorch TensorDataset or VisionDataset.
+        num_features: Number of input features.
+        num_classes: Number of output classes.
+        modality: Describes the tensor shape seen by models. "image" for multi-dimensional
+            (C, H, W) samples; "tabular" for 1-D feature vectors. LFW is "tabular" because
+            its images are flattened in the loader.
+        sensitive_columns: Column names of z_train/z_test, in order. None if the
+            dataset has no sensitive attributes.
+        x_train: Train features as a numpy array, or None.
+        x_test: Test features as a numpy array, or None.
+        y_train: Train labels, or None.
+        y_test: Test labels, or None.
+        z_train: Sensitive attributes for train data, or None.
+        z_test: Sensitive attributes for test data, or None.
     """
 
     train_set: Dataset
     test_set: Dataset
     num_features: int
     num_classes: int
+    modality: Literal["image", "tabular"]
+    sensitive_columns: list[str] | None = None
     x_train: np.ndarray | None = None
     x_test: np.ndarray | None = None
     y_train: np.ndarray | None = None
@@ -49,15 +51,12 @@ class AmuletDataset:
 
 class CustomImageDataset(Dataset):
     """
-    PyTorch dataset class to read a custom image dataset.
+    PyTorch Dataset for a custom image directory with a CSV label file.
 
     Attributes:
-        labels_file: str or Path object.
-            CSV file containing the labels where each row is (img_filename, label).
-        img_dir: str or Path object.
-            Directory containing the images.
-        transform: :class:`~torch.utils.data.Dataset`
-            Transformation to apply to the images.
+        labels_file: CSV file where each row is (img_filename, label).
+        img_dir: Directory containing the images.
+        transform: Transformation to apply to the images.
     """
 
     def __init__(

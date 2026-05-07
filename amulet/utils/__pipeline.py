@@ -19,6 +19,7 @@ from ..datasets import (
     load_fmnist,
     load_lfw,
     load_mnist,
+    load_utkface,
 )
 from ..models import VGG, AmuletModel, LinearNet, ResNet, SimpleCNN
 
@@ -36,7 +37,7 @@ def load_data(
 
     Args:
         root: Root directory of the pipeline.
-        dataset: Name of the dataset. Options: "cifar10", "cifar100", "fmnist", "mnist", "census", "lfw", "celeba".
+        dataset: Name of the dataset. Options: "cifar10", "cifar100", "fmnist", "mnist", "census", "lfw", "celeba", "utkface".
         training_size: Proportion of training data to use.
         log: Logging facility.
         exp_id: Used as a random seed.
@@ -67,6 +68,8 @@ def load_data(
         data = load_celeba(
             root / "data" / "celeba", random_seed=exp_id, target_attribute=celeba_target
         )
+    elif dataset == "utkface":
+        data = load_utkface(root / "data" / "utkface", random_seed=exp_id)
     else:
         raise ValueError(f"Unknown dataset: {dataset!r}")
 

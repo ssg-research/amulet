@@ -10,6 +10,7 @@ from .__image_datasets import (
     load_cifar100,
     load_fmnist,
     load_mnist,
+    load_utkface,
 )
 from .__tabular_datasets import load_census, load_lfw
 
@@ -23,4 +24,5 @@ __all__ = [
     "load_fmnist",
     "load_lfw",
     "load_mnist",
+    "load_utkface",
 ]

@@ -15,43 +15,52 @@ def datasets() -> tuple[TensorDataset, TensorDataset]:
     )
 
 
-def test_amulet_dataset_required_fields(datasets):
+def test_amulet_dataset_init(datasets):
+    # Arrange
     train, test = datasets
+
+    # Act
     data = AmuletDataset(
         train_set=train,
         test_set=test,
         num_features=1,
         num_classes=2,
+        modality="tabular",
     )
-    assert data.train_set is train
-    assert data.test_set is test
+
+    # Assert
+    assert data.train_set == train
+    assert data.test_set == test
     assert data.num_features == 1
     assert data.num_classes == 2
-
-
-def test_amulet_dataset_optional_arrays_default_none(datasets):
-    train, test = datasets
-    data = AmuletDataset(train_set=train, test_set=test, num_features=1, num_classes=2)
+    assert data.modality == "tabular"
+    assert data.sensitive_columns is None
     assert data.x_train is None
-    assert data.x_test is None
-    assert data.y_train is None
-    assert data.y_test is None
-    assert data.z_train is None
     assert data.z_test is None
 
 
-def test_amulet_dataset_with_optional_arrays(datasets):
+def test_amulet_dataset_with_optionals(datasets):
+    # Arrange
     train, test = datasets
     x_train = np.array([[1], [2]])
     z_train = np.array([0, 1])
+
+    # Act
     data = AmuletDataset(
         train_set=train,
         test_set=test,
         num_features=1,
         num_classes=2,
+        modality="tabular",
+        sensitive_columns=["attr"],
         x_train=x_train,
         z_train=z_train,
     )
-    assert data.x_train is not None and np.array_equal(data.x_train, x_train)
-    assert data.z_train is not None and np.array_equal(data.z_train, z_train)
+
+    # Assert
+    assert data.x_train is not None
+    assert data.z_train is not None
+    assert np.array_equal(data.x_train, x_train)
+    assert np.array_equal(data.z_train, z_train)
     assert data.x_test is None
+    assert data.sensitive_columns == ["attr"]
