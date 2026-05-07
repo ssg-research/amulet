@@ -54,7 +54,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--device",
         type=str,
-        default="cuda:0" if torch.cuda.is_available() else "cpu",
+        default="cuda" if torch.cuda.is_available() else "cpu",
         help="Device on which to run PyTorch",
     )
     parser.add_argument(

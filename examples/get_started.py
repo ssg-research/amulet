@@ -29,7 +29,7 @@ def main() -> None:
     log = logging.getLogger(__name__)
 
     root_dir = Path(__file__).parent.parent
-    device = "cuda:0" if torch.cuda.is_available() else "cpu"
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     random_seed = 123
     epochs = 10
     batch_size = 256
