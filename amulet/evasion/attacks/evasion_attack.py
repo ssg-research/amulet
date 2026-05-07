@@ -1,17 +1,19 @@
 """Model Evasion Attack Base class"""
 
+from abc import ABC, abstractmethod
+
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
 
-class EvasionAttack:
+class EvasionAttack(ABC):
     """
     Base class for evasion
 
     Attributes:
-        model: :class:`~torch.nn.Module`
+        model: torch.nn.Module
             The model on which to apply adversarial training.
-        test_loader: :class:`~torch.utils.data.DataLoader`
+        test_loader: torch.utils.data.DataLoader
             Input data that is perturbed to attack the model.
         device: str
             Device used for model inference. Example: "cuda:0".
@@ -30,3 +32,7 @@ class EvasionAttack:
         self.test_loader = test_loader
         self.device = device
         self.batch_size = batch_size
+
+    @abstractmethod
+    def attack(self) -> DataLoader:
+        pass

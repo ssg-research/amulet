@@ -1,24 +1,26 @@
 """Base class for Discriminatory Behavior defenses"""
 
+from abc import ABC, abstractmethod
+
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
 
-class DicriminatoryBehaviorDefense:
+class DiscriminatoryBehaviorDefense(ABC):
     """
     Base class for Discriminatory Behavior defenses
 
     Attributes:
-        model: :class:`~torch.nn.Module`
+        model: torch.nn.Module
             The model on which to apply adversarial training.
-        criterion: :class:`~torch.nn.Module`
+        criterion: torch.nn.Module
             Loss function for adversarial training.
-        optimizer: :class:`~torch.optim.Optimizer`
+        optimizer: torch.optim.Optimizer
             Optimizer for adversarial training.
-        train_loader: :class:`~torch.utils.data.DataLoader`
+        train_loader: torch.utils.data.DataLoader
             Training data loader to adversarial training.
-        test_loader: :class:`~torch.utils.data.DataLoader`
+        test_loader: torch.utils.data.DataLoader
             Testing data loader to adversarial training.
         lambdas: :class:`torch.Tensor`
             Hyperparameters for fairness objective function
@@ -38,8 +40,12 @@ class DicriminatoryBehaviorDefense:
         device: str,
     ):
         self.model = model
-        self.model_criterion = criterion
-        self.model_optimizer = optimizer
+        self.criterion = criterion
+        self.optimizer = optimizer
         self.train_loader = train_loader
         self.test_loader = test_loader
         self.device = device
+
+    @abstractmethod
+    def train_fair(self) -> nn.Module:
+        pass

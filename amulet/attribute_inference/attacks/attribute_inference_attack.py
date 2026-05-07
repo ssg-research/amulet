@@ -1,21 +1,23 @@
 """Attribute Inference Attack Base class"""
 
+from abc import ABC, abstractmethod
+
 import numpy as np
 import torch.nn as nn
 
 
-class AttributeInferenceAttack:
+class AttributeInferenceAttack(ABC):
     """
     Base class for attribute inference attacks
 
     Attributes:
-        target_model: :class:`~torch.nn.Module`
+        target_model: torch.nn.Module
             This model will be extracted.
-        x_train_adv: :class:`~numpy.ndarray`
+        x_train_adv: numpy.ndarray
             input features for training adversary' attack model
-        x_test: :class:`~numpy.ndarray`
+        x_test: numpy.ndarray
             input features for testing adversary' attack model
-        z_train_adv: :class:`~numpy.ndarray`
+        z_train_adv: numpy.ndarray
             sensitive attributes for training adversary' attack model
         device: str
             Device used to train model. Example: "cuda:0".
@@ -34,3 +36,7 @@ class AttributeInferenceAttack:
         self.z_train_adv = z_train_adv
         self.x_test = x_test
         self.device = device
+
+    @abstractmethod
+    def attack(self) -> dict[int, dict[str, np.ndarray]]:
+        pass

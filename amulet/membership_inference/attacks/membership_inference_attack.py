@@ -1,7 +1,7 @@
 """Membership Inference Attack Base class"""
 
-import os
 import random
+from abc import ABC, abstractmethod
 from pathlib import Path
 
 import numpy as np
@@ -12,39 +12,25 @@ from torch.utils.data import DataLoader, Dataset, Subset
 from ...utils import initialize_model
 
 
-class MembershipInferenceAttack:
+class MembershipInferenceAttack(ABC):
     """
     Base class for membership inference attacks.
 
     Attributes:
-        shadow_architecture: str
-            The model architecture used for all shadow models.
-        shadow_capacity: str
-            Size and complexity of the shadow model.
-        train_set: :class:`~torch.utils.data.Dataset`
-            The full dataset, a subset of which is used to train the target model.
-        dataset: str
-            The name of the dataset.
-        num_features: int
-            Number of features in dataset.
-        num_classes: int
-            Number of classes in dataset.
-        batch_size: int
-            Batch size used for training shadow models.
-        pkeep: float
-            Proportion of training data to keep for shadow models (members vs non-members).
-        criterion: :class:`~torch.nn.Module`
-            The loss function used to train shadow models.
-        num_shadow: int
-            Number of shadow models to train.
-        epochs: int
-            Number of epochs used to train shadow models.
-        device: str
-            Device used to train models. Example: "cuda:0".
-        models_dir: Path or str
-            Directory used to store shadow models.
-        exp_id: int
-            Used as a random seed.
+        shadow_architecture: Model architecture used for all shadow models.
+        shadow_capacity: Size and complexity of the shadow model.
+        train_set: The full dataset, a subset of which trains the target model.
+        dataset: Name of the dataset.
+        num_features: Number of features in the dataset.
+        num_classes: Number of classes in the dataset.
+        batch_size: Batch size used for training shadow models.
+        pkeep: Proportion of training data to keep per shadow model.
+        criterion: Loss function used to train shadow models.
+        num_shadow: Number of shadow models to train.
+        epochs: Number of training epochs for shadow models.
+        device: Device used to train models. Example: "cuda:0".
+        models_dir: Directory used to store shadow models.
+        exp_id: Used as a random seed.
     """
 
     def __init__(
@@ -82,7 +68,6 @@ class MembershipInferenceAttack:
             models_dir = Path(models_dir)
         self.models_dir = models_dir
 
-        # Set random seeds for reproducibility
         torch.manual_seed(exp_id)
         torch.cuda.manual_seed(exp_id)
         torch.cuda.manual_seed_all(exp_id)
@@ -96,15 +81,14 @@ class MembershipInferenceAttack:
         Train a single shadow model.
 
         Args:
-            shadow_model: :class:`torch.nn.Module`
-                The shadow model to be trained.
-            train_loader: :class:`torch.utils.data.DataLoader`
-                DataLoader containing training data for the shadow model.
+            shadow_model: The shadow model to be trained.
+            train_loader: Training data for the shadow model.
 
         Returns:
-            nn.Module: The trained shadow model.
+            Trained shadow model.
         """
-        scaler = torch.cuda.amp.GradScaler(enabled=True)  # type: ignore[reportDeprecated]
+        device_type = self.device.split(":")[0]
+        scaler = torch.amp.GradScaler(device_type, enabled=True)  # type: ignore[reportPrivateImportUsage]
         optimizer = torch.optim.SGD(
             shadow_model.parameters(), lr=0.01, momentum=0.9, weight_decay=5e-4
         )
@@ -119,7 +103,7 @@ class MembershipInferenceAttack:
             for inputs, targets in train_loader:
                 inputs, targets = inputs.to(self.device), targets.to(self.device)
 
-                with torch.cuda.amp.autocast(enabled=True):  # type: ignore[reportDeprecated]
+                with torch.amp.autocast(device_type, enabled=True):  # type: ignore[reportPrivateImportUsage]
                     outputs = shadow_model(inputs)
                     loss = self.criterion(outputs, targets)
 
@@ -150,8 +134,7 @@ class MembershipInferenceAttack:
         initializes and trains them, then saves each model
         and the indices used for training.
         """
-        # Randomly assign data indices to shadow models to get subset
-        keep = np.random.uniform(0, 1, size=(self.num_shadow, len(self.train_set)))  # type: ignore
+        keep = np.random.uniform(0, 1, size=(self.num_shadow, len(self.train_set)))  # type: ignore[reportArgumentType]
         order = keep.argsort(0)
         keep = order < int(self.pkeep * self.num_shadow)
 
@@ -161,9 +144,8 @@ class MembershipInferenceAttack:
             )
             if filename.exists():
                 continue
-            # Select indices for this shadow model
-            shadow_in_data = np.array(keep[shadow_id], dtype=bool)
-            shadow_in_data = shadow_in_data.nonzero()[0]
+
+            shadow_in_data = np.array(keep[shadow_id], dtype=bool).nonzero()[0]
 
             train_subset = Subset(self.train_set, list(shadow_in_data))
             train_loader = DataLoader(
@@ -180,100 +162,45 @@ class MembershipInferenceAttack:
                 self.num_classes,
             )
             shadow_model.to(self.device)
-
             shadow_model = self.train_shadow_model(shadow_model, train_loader)
 
-            # Save model state dict and training indices
             print(f"Saving shadow model #{shadow_id}")
-            state = {"model": shadow_model.state_dict(), "in_data": shadow_in_data}
-            torch.save(state, filename)
+            torch.save(
+                {
+                    "model": shadow_model.state_dict(),
+                    "in_data": torch.as_tensor(shadow_in_data, dtype=torch.long),
+                },
+                filename,
+            )
 
+    def _load_shadow_model(self, shadow_id: int) -> tuple[nn.Module, np.ndarray]:
+        """
+        Load a trained shadow model and its training indices from disk.
 
-class InferenceModel(nn.Module):
-    """
-    Wrapper to load a shadow model after training.
+        Args:
+            shadow_id: Index of the shadow model to load.
 
-    Attributes:
-        shadow_id: int
-            ID of the shadow model.
-        dataset: str
-            Dataset name.
-        num_features: int
-            Number of input features.
-        num_classes: int
-            Number of output classes.
-        shadow_architecture: str
-            Model architecture.
-        shadow_capacity: str
-            Model capacity descriptor.
-        models_dir: Path or str
-            Directory where models are stored.
-        in_data: np.ndarray
-            Indices of training data for this shadow model.
-        model: nn.Module
-            Loaded shadow model.
-    """
-
-    def __init__(
-        self,
-        shadow_id: int,
-        dataset: str,
-        num_features: int,
-        num_classes: int,
-        shadow_architecture: str,
-        shadow_capacity: str,
-        models_dir: Path | str,
-        exp_id: int,
-    ):
-        super().__init__()
-
-        self.shadow_id = shadow_id
-        self.dataset = dataset
-        self.num_features = num_features
-        self.num_classes = num_classes
-        self.shadow_architecture = shadow_architecture
-        self.shadow_capacity = shadow_capacity
-
-        if isinstance(models_dir, str):
-            models_dir = Path(models_dir)
-        self.models_dir = models_dir
-
-        resume_checkpoint = (
-            self.models_dir / f"{self.dataset}_shadow_{shadow_id}_{exp_id}.pth"
-        )
-        assert os.path.isfile(resume_checkpoint), (
-            f"Checkpoint not found at {resume_checkpoint}"
-        )
-        checkpoint = torch.load(resume_checkpoint)
-
-        self.model = initialize_model(
+        Returns:
+            Tuple of (model, in_data) where model is eval-mode with gradients
+            disabled, and in_data is the array of training-set indices this
+            shadow model was trained on.
+        """
+        path = self.models_dir / f"{self.dataset}_shadow_{shadow_id}_{self.exp_id}.pth"
+        if not path.is_file():
+            raise FileNotFoundError(f"Shadow model checkpoint not found: {path}")
+        checkpoint = torch.load(path, weights_only=True)
+        model = initialize_model(
             self.shadow_architecture,
             self.shadow_capacity,
             self.num_features,
             self.num_classes,
         )
-        self.model.load_state_dict(checkpoint["model"])
+        model.load_state_dict(checkpoint["model"])
+        model.to(self.device)
+        model.eval()
+        model.requires_grad_(False)
+        return model, checkpoint["in_data"].numpy()
 
-        self.in_data = checkpoint["in_data"]
-
-        self.deactivate_grad()
-        self.model.eval()
-
-        self.is_in_model = False  # Flag indicating whether this model represents member (True) or non-member (False)
-
-    def forward(self, x):
-        return self.model(x)
-
-    def deactivate_grad(self):
-        """Disable gradients for all model parameters."""
-        for param in self.model.parameters():
-            param.requires_grad = False
-
-    def activate_grad(self):
-        """Enable gradients for all model parameters."""
-        for param in self.model.parameters():
-            param.requires_grad = True
-
-    def load_state_dict(self, checkpoint):  # type: ignore[reportIncompatibleMethodOverride]
-        """Load state dict into the underlying model."""
-        self.model.load_state_dict(checkpoint)
+    @abstractmethod
+    def attack(self) -> dict[str, np.ndarray]:
+        pass
