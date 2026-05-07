@@ -62,11 +62,6 @@ class SuriEvans2022(DistributionInferenceAttack):
         return np.stack(per_model_preds, axis=0), ground_truth
 
     @staticmethod
-    def _sigmoid(x: np.ndarray) -> np.ndarray:
-        exp = np.exp(x)
-        return exp / (1 + exp)
-
-    @staticmethod
     def _check_finite(x: np.ndarray) -> None:
         if np.any(np.isinf(x)) or np.any(np.isnan(x)):
             raise ValueError("KL divergence produced non-finite values.")
@@ -88,10 +83,10 @@ class SuriEvans2022(DistributionInferenceAttack):
         vic_preds_2: np.ndarray,
     ) -> tuple[np.ndarray, np.ndarray]:
         """Turn raw logits into pairwise KL distinguishing scores."""
-        adv_1 = SuriEvans2022._sigmoid(adv_preds_1)
-        adv_2 = SuriEvans2022._sigmoid(adv_preds_2)
-        vic_1 = SuriEvans2022._sigmoid(vic_preds_1)
-        vic_2 = SuriEvans2022._sigmoid(vic_preds_2)
+        adv_1, adv_2, vic_1, vic_2 = (
+            torch.sigmoid(torch.from_numpy(p)).numpy()
+            for p in (adv_preds_1, adv_preds_2, vic_preds_1, vic_preds_2)
+        )
 
         eps = 1e-4
         log_a = np.log((eps + adv_1) / (eps + 1 - adv_1))
