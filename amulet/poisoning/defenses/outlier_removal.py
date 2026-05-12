@@ -3,7 +3,6 @@
 from collections.abc import Callable
 
 import numpy as np
-import pandas as pd
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
@@ -25,15 +24,15 @@ class OutlierRemoval(PoisoningDefense):
         https://openreview.net/forum?id=FAZ3i0hvm0
 
     Attributes:
-        model: :class:`~torch.nn.Module`
+        model: torch.nn.Module
             The model to retrain after removing outliers.
-        criterion: :class:`~torch.nn.Module`
+        criterion: torch.nn.Module
             Loss function for training model.
-        optimizer: :class:`~torch.optim.Optimizer`
+        optimizer: torch.optim.Optimizer
             Optimizer for training model.
-        train_loader: :class:`~torch.utils.data.DataLoader`
+        train_loader: torch.utils.data.DataLoader
             Training data loader to train model.
-        test_loader: :class:`~torch.utils.data.DataLoader`
+        test_loader: torch.utils.data.DataLoader
             Test data loader to calculate Shapley values.
         train_function: Callable
             Function used to train the model. Default function
@@ -72,10 +71,10 @@ class OutlierRemoval(PoisoningDefense):
             batch_size,
         )
 
-        self.train = train_function
+        self._train_fn = train_function
         self.percent = percent
 
-    def _knn_shapely(
+    def _knn_shapley(
         self,
         train_features: np.ndarray,
         train_targets: np.ndarray,
@@ -133,22 +132,17 @@ class OutlierRemoval(PoisoningDefense):
         )
 
         # Calculate shapely scores for the data points
-        shapley_scores = self._knn_shapely(
+        shapley_scores = self._knn_shapley(
             train_features, train_targets, test_features, test_targets, k=5
         )
         normalized_scores = (shapley_scores - min(shapley_scores)) / (
             max(shapley_scores) - min(shapley_scores)
         )
-        df = pd.Series({
-            "Scores": np.array(normalized_scores),
-            "train_inputs": train_inputs,
-            "train_targets": train_targets,
-        })
 
         print("Retraining Model")
-        # Remove a percentage of data records
-        shap_val_thresh = np.percentile(df["Scores"], (100 - self.percent))
-        mask = np.argwhere(normalized_scores < shap_val_thresh)
+        # Remove the lowest-scoring self.percent% (outliers have low Shapley values)
+        shap_val_thresh = np.percentile(normalized_scores, self.percent)
+        mask = np.argwhere(normalized_scores >= shap_val_thresh)
         train_inputs_new = np.squeeze(train_inputs[mask])
         train_targets_new = np.squeeze(train_targets[mask])
 
@@ -157,14 +151,17 @@ class OutlierRemoval(PoisoningDefense):
             torch.from_numpy(np.array(train_targets_new)).type(torch.long),
         )
         train_loader_new = DataLoader(
-            dataset=train_data_new, batch_size=self.batch_size, shuffle=False
+            dataset=train_data_new, batch_size=self.batch_size, shuffle=True
         )
 
         # Retrain model with outliers removed
-        criterion = torch.nn.CrossEntropyLoss()
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-3)
-        self.model = self.train(
-            self.model, train_loader_new, criterion, optimizer, self.epochs, self.device
+        self.model = self._train_fn(
+            self.model,
+            train_loader_new,
+            self.criterion,
+            self.optimizer,
+            self.epochs,
+            self.device,
         )
 
         return self.model

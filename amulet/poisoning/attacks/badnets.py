@@ -2,37 +2,23 @@ import numpy as np
 import torch
 from torch.utils.data import TensorDataset
 
+from .poisoning_attack import PoisoningAttack
 
-class BadNets:
+
+class BadNets(PoisoningAttack):
     """
-    Implementation of Badnets attack from https://github.com/Billy1900/BadNet.
+    BadNets backdoor poisoning attack.
 
     Reference:
         BadNets: Identifying Vulnerabilities in the Machine Learning Model Supply Chain
         Tianyu Gu, Brendan Dolan-Gavitt, Siddharth Garg
-        https://arxiv.org/abs/1708.06733.
+        https://arxiv.org/abs/1708.06733
 
     Attributes:
-        trigger_label: int
-            The label of the poisoned samples.
-        poisoned_model: :class:`~torch.nn.Module`
-            The model which will be trained on the poisoned dataset.
-        optimizer: :class:~`torch.optim.Optimizer`
-            The optimizer used to train the poisoned model.
-        criterion: :class:~`torch.nn.Module`
-            Loss function used to train the poisoned model.
-        batch_size: int
-            Batch used to train the poisoned model.
-        portion: float
-            Controls the portion of trigger data.
-        device: str
-            Device used for model inference. Example: "cuda:0".
-        dataset_type: str
-            Image or tabular (1D vs 2D).
-        random_seed: int
-            Seed for randomly selecting data points.
-        epochs: int
-            Epochs used to train the poisoned model.
+        trigger_label: Target label assigned to poisoned samples.
+        portion: Fraction of training samples to poison.
+        dataset_type: "image" for 2D data, "tabular" for 1D data.
+        random_seed: Seed for selecting which samples to poison.
     """
 
     def __init__(
@@ -42,7 +28,7 @@ class BadNets:
         random_seed: int,
         dataset_type: str = "image",
     ):
-        self.random_seed = random_seed
+        super().__init__(random_seed)
         self.trigger_label = trigger_label
         self.portion = portion
         self.dataset_type = dataset_type
@@ -64,49 +50,54 @@ class BadNets:
 
         return data_point
 
-    def attack(self, dataset, mode="train"):
+    def poison_train(self, dataset) -> TensorDataset:
         """
-        Poisons a proportion (pkeep) of the data points.
+        Poison a portion of the training dataset by embedding a trigger.
 
         Args:
-            dataset: :class:~`torch.utils.data.Dataset`
-                The dataset to poison.
-            mode: str
-                'train': To poison a proportion of the data points.
-                'test': To poison all the data points.
+            dataset: The training dataset to poison.
+
+        Returns:
+            TensorDataset with trigger-embedded samples and relabeled targets.
         """
         data_points = []
         targets = []
-        if mode == "test":
-            # Poison all test samples EXCEPT those that already have the target label
-            for data_point, target in dataset:
-                if target != self.trigger_label:
-                    poisoned = self.__poison_datapoint(data_point)
-                    data_points.append(poisoned)
-                    targets.append(torch.tensor(self.trigger_label, dtype=torch.int64))
-        else:
-            # Poison only a portion of training samples that do NOT already have the trigger label
-            perm = np.random.default_rng(seed=self.random_seed).permutation(
-                len(dataset)
-            )
-            poison_indices = set()
-            i = 0
-            while len(poison_indices) < int(len(dataset) * self.portion) and i < len(
-                perm
-            ):
-                idx = perm[i]
-                _, target = dataset[idx]
-                if target != self.trigger_label:
-                    poison_indices.add(idx)
-                i += 1
+        perm = np.random.default_rng(seed=self.random_seed).permutation(len(dataset))
+        poison_indices = set()
+        i = 0
+        while len(poison_indices) < int(len(dataset) * self.portion) and i < len(perm):
+            idx = perm[i]
+            _, target = dataset[idx]
+            if target != self.trigger_label:
+                poison_indices.add(idx)
+            i += 1
 
-            for i in range(len(dataset)):
-                data, target = dataset[i]
-                if i in poison_indices:
-                    data = self.__poison_datapoint(data)
-                    target = self.trigger_label
-                data_points.append(data)
-                targets.append(torch.tensor(target, dtype=torch.long))
+        for i in range(len(dataset)):
+            data, target = dataset[i]
+            if i in poison_indices:
+                data = self.__poison_datapoint(data)
+                target = self.trigger_label
+            data_points.append(data)
+            targets.append(torch.as_tensor(target, dtype=torch.long))
 
-        poisoned_dataset = TensorDataset(torch.stack(data_points), torch.stack(targets))
-        return poisoned_dataset
+        return TensorDataset(torch.stack(data_points), torch.stack(targets))
+
+    def poison_test(self, dataset) -> TensorDataset:
+        """
+        Poison all test samples that do not already carry the trigger label.
+
+        Args:
+            dataset: The test dataset to poison.
+
+        Returns:
+            TensorDataset containing only poisoned samples with trigger-embedded inputs.
+        """
+        data_points = []
+        targets = []
+        for data_point, target in dataset:
+            if target != self.trigger_label:
+                poisoned = self.__poison_datapoint(data_point)
+                data_points.append(poisoned)
+                targets.append(torch.tensor(self.trigger_label, dtype=torch.int64))
+
+        return TensorDataset(torch.stack(data_points), torch.stack(targets))
