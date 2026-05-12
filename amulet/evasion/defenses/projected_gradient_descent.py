@@ -23,13 +23,13 @@ class AdversarialTrainingPGD(EvasionDefense):
         https://arxiv.org/abs/1706.06083.
 
     Attributes:
-        model: :class:`~torch.nn.Module`
+        model: torch.nn.Module
             The model on which to apply adversarial training.
-        criterion: :class:`~torch.nn.Module`
+        criterion: torch.nn.Module
             Loss function for adversarial training.
-        optimizer: :class:`~torch.optim.Optimizer`
+        optimizer: torch.optim.Optimizer
             Optimizer for adversarial training.
-        train_loader: :class:`~torch.utils.data.DataLoader`
+        train_loader: torch.utils.data.DataLoader
             Training data loader to adversarial training.
         device: str
             Device used to train model. Example: "cuda:0".
@@ -79,6 +79,7 @@ class AdversarialTrainingPGD(EvasionDefense):
             for x, y in self.train_loader:
                 x, y = x.to(self.device), y.to(self.device)
 
+                # Step 1: update on clean batch (joint clean+adversarial training variant).
                 self.optimizer.zero_grad()
                 output = self.model(x)
                 loss = self.criterion(output, y)
@@ -101,6 +102,7 @@ class AdversarialTrainingPGD(EvasionDefense):
                     sanity_checks=False,
                 )
 
+                # Step 2: update on adversarial batch.
                 self.optimizer.zero_grad()
                 output = self.model(x_pgd)
                 loss = self.criterion(output, y)
