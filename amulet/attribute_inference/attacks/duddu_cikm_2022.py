@@ -11,21 +11,16 @@ from .attribute_inference_attack import AttributeInferenceAttack
 
 class DudduCIKM2022(AttributeInferenceAttack):
     """
-    Implementation of attribute inference attack from the method from:
-    https://github.com/vasishtduddu/AttInfExplanations
+    Attribute inference attack using an MLP trained on target model outputs.
 
+    Reference: https://github.com/vasishtduddu/AttInfExplanations
 
     Attributes:
-        target_model: :class:`~nn.Module`
-            This model will be extracted.
-        x_train_adv: :class:`~numpy.ndarray`
-            Input features for training adversary attack model
-        x_test: :class:`~numpy.ndarray`
-            Input features for testing adversary attack model
-        z_train_adv: :class:`~numpy.ndarray`
-            Sensitive attributes for training adversary' attack model
-        device: str
-            Device used to train model. Example: "cuda:0".
+        target_model: Target model whose sensitive attributes are inferred.
+        x_train_adv: Input features for training the adversary attack model.
+        x_test: Input features for testing the adversary attack model.
+        z_train_adv: Sensitive attribute labels for training the adversary.
+        device: Device used to train model. Example: "cuda:0".
     """
 
     def __init__(
@@ -42,17 +37,13 @@ class DudduCIKM2022(AttributeInferenceAttack):
 
     def attack(self) -> dict[int, dict[str, np.ndarray]]:
         """
-        Runs the attribute inference attack by training an attack model
-        to predict the sensitive attributes of a model using the predictions
-        of the target model
+        Run the attribute inference attack.
+
+        Trains an MLP on the target model's outputs to predict sensitive attributes.
 
         Returns:
-            Nested dictionary:
-                {i: int, result: dict}
-                    where i is the index of the sensitive attribute
-                    and result is a dictionary containing:
-                        {'predictions': np.ndarray,
-                         'confidence_values': np.ndarray}
+            Nested dictionary mapping attribute index to a dict with keys
+            "predictions" and "confidence_values".
         """
         attack_model_train_x = get_predictions_numpy(
             self.x_train_adv, self.target_model, self.batch_size, self.device

@@ -8,21 +8,16 @@ def evaluate_attribute_inference(
     z_test: np.ndarray, predictions: dict[int, dict[str, np.ndarray]]
 ) -> dict[int, dict[str, float]]:
     """
-    Calculates the attack accuracy and AUC score
-        for an attribute inference attack.
+    Calculate attack accuracy and AUC for each sensitive attribute.
 
-    Attributes:
-        z_test: :class: `~np.ndarray`
-            The ground truth indicators of the sensitive attributes
-        predictions:
-            Nested dictionary of predictions where the first key
-            is the ith attribute and the second key is a string
-            denoting "prediction" or "confidence_values"
+    Args:
+        z_test: Ground truth sensitive attribute labels, shape (N, num_attributes).
+        predictions: Nested dict mapping attribute index to a dict with
+            "predictions" and "confidence_values" arrays.
 
     Returns:
-        Nested dictionary where the first key is the index of
-        the attribute being tested, and the second key is the
-        metric being calculated.
+        Nested dict mapping attribute index to a dict with keys
+        "attack_accuracy" and "auc_score".
     """
     num_attributes = z_test.shape[1]
 

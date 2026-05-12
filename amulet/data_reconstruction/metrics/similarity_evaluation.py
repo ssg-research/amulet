@@ -18,21 +18,17 @@ def evaluate_similarity(
     device: str,
 ) -> dict[str, int | dict[int, float]]:
     """
-    Outputs the average MSE loss across different classes
+    Evaluate reconstruction quality by comparing reconstructed and original data per class.
 
     Args:
-        original_dataset: :class:~`torch.utils.data.DataLoader`
-            The data used to train the target model, please make sure to set the batch size as 1.
-        reverse_data: list of :class:~`torch.autorgrad.Variable`
-            The ith element is the reconstructed data point for the ith class.
-        input_size: int
-            Size of the model's input
-        output_size: int
-            Size of the model's output
-        device: str
-            Device on which to load the PyTorch tensors. Example: "cuda:0".
+        original_dataset: DataLoader over the original training data with batch size 1.
+        reverse_data: Reconstructed tensors, one per class (output of the attack).
+        input_size: Shape of the model's input.
+        output_size: Number of output classes.
+        device: Device used for computation. Example: "cuda:0".
+
     Returns:
-        MSE Loss
+        Dictionary with keys "mean_mse", "class_mse", "mean_ssim", and "class_ssim".
     """
     class_total = [
         torch.Tensor(torch.from_numpy(np.zeros(input_size, dtype=np.float32))).to(

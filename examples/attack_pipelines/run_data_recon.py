@@ -1,6 +1,7 @@
 import sys
 
 sys.path.append("../../")
+
 import argparse
 import logging
 from pathlib import Path
@@ -15,6 +16,7 @@ from amulet.utils import (
     get_accuracy,
     initialize_model,
     load_data,
+    load_or_train,
     train_classifier,
 )
 
@@ -32,7 +34,7 @@ def parse_args() -> argparse.Namespace:
         "--dataset",
         type=str,
         default="celeba",
-        help="Options: cifar10, fmnist, lfw, census, celeba.",
+        help="Options: cifar10, cifar100, fmnist, mnist, lfw, census, celeba, utkface.",
     )
     parser.add_argument(
         "--model", type=str, default="vgg", help="Options: vgg, linearnet."
@@ -52,7 +54,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--device",
         type=str,
-        default=torch.device(f"cuda:{0}" if torch.cuda.is_available() else "cpu"),
+        default="cuda:0" if torch.cuda.is_available() else "cpu",
         help="Device on which to run PyTorch",
     )
     parser.add_argument(
@@ -94,30 +96,25 @@ def main(args: argparse.Namespace) -> None:
     # Set up filename and directories to save/load models
     models_path = root_dir / "saved_models"
     filename = f"{args.dataset}_{args.model}_{args.model_capacity}_{args.training_size * 100}_{args.batch_size}_{args.epochs}_{args.exp_id}.pt"
-    target_model_path = models_path / "target"
-    target_model_filename = target_model_path / filename
+    target_model_filename = models_path / "target" / filename
 
     # Train or Load Target Model
     criterion = torch.nn.CrossEntropyLoss()
 
-    if target_model_filename.exists():
-        log.info("Target model loaded from %s", target_model_filename)
-        target_model = torch.load(target_model_filename).to(args.device)
-        optimizer = torch.optim.Adam(target_model.parameters(), lr=1e-3)
-    else:
-        log.info("Training target model")
-        target_model = initialize_model(
+    def _init_target():
+        return initialize_model(
             args.model, args.model_capacity, data.num_features, data.num_classes, log
         ).to(args.device)
-        optimizer = torch.optim.Adam(target_model.parameters(), lr=1e-3)
-        target_model = train_classifier(
-            target_model, train_loader, criterion, optimizer, args.epochs, args.device
-        )
-        log.info("Target model trained")
 
-        # Save model
-        create_dir(target_model_path, log)
-        torch.save(target_model, target_model_filename)
+    def _train_target(model):
+        optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+        return train_classifier(
+            model, train_loader, criterion, optimizer, args.epochs, args.device
+        )
+
+    target_model = load_or_train(
+        target_model_filename, _init_target, _train_target, log, "target model"
+    )
 
     test_accuracy_target = get_accuracy(target_model, test_loader, args.device)
     log.info("Test accuracy of target model: %s", test_accuracy_target)
@@ -126,16 +123,17 @@ def main(args: argparse.Namespace) -> None:
     log.info("Running Data Reconstruction Attack")
 
     input_size = (1, *tuple(data.test_set[0][0].shape))
-    num_classes_dict = {"cifar10": 10, "fmnist": 10, "census": 2, "lfw": 2, "celeba": 2}
-    output_size = num_classes_dict[args.dataset]
+    # FredriksonCCS2015 requires a softmax output; wrap the model so its cost
+    # function (1 - p_target) uses confidences and gamma early-stopping is meaningful.
+    inversion_model = torch.nn.Sequential(target_model, torch.nn.Softmax(dim=1))
     data_recon = FredriksonCCS2015(
-        target_model, input_size, output_size, args.device, args.alpha
+        inversion_model, input_size, data.num_classes, args.device, args.alpha
     )
 
     reverse_data = data_recon.attack()
 
     results = evaluate_similarity(
-        test_loader, reverse_data, input_size, output_size, args.device
+        test_loader, reverse_data, input_size, data.num_classes, args.device
     )
     log.info(f"Average MSE Loss on test dataset: {results['mean_mse']:.4f}")
     log.info(f"Per Class MSE Loss on test dataset: {results['class_mse']}")
