@@ -1,6 +1,7 @@
 import sys
 
 sys.path.append("../../")
+
 import argparse
 import logging
 from pathlib import Path
@@ -15,6 +16,7 @@ from amulet.utils import (
     get_accuracy,
     initialize_model,
     load_data,
+    load_or_train,
     train_classifier,
 )
 
@@ -55,7 +57,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--device",
         type=str,
-        default=torch.device(f"cuda:{0}" if torch.cuda.is_available() else "cpu"),
+        default="cuda:0" if torch.cuda.is_available() else "cpu",
         help="Device on which to run PyTorch",
     )
     parser.add_argument(
@@ -111,71 +113,55 @@ def main(args: argparse.Namespace) -> None:
     filename = f"{args.dataset}_{args.model}_{args.model_capacity}_{args.training_size * 100}_{args.batch_size}_{args.epochs}_{args.exp_id}.pt"
 
     # Train or Load Target Model
-    target_model_path = (
+    target_model_filename = (
         models_path
         / "targetForExtraction"
         / f"adv_train_fraction_{args.adv_train_fraction}"
+        / filename
     )
-    target_model_filename = target_model_path / filename
     criterion = torch.nn.CrossEntropyLoss()
 
-    if target_model_filename.exists():
-        log.info("Target model loaded from %s", target_model_filename)
-        target_model = torch.load(target_model_filename).to(args.device)
-        optimizer = torch.optim.Adam(target_model.parameters(), lr=1e-3)
-    else:
-        log.info("Training target model")
-        target_model = initialize_model(
+    def _init_target():
+        return initialize_model(
             args.model, args.model_capacity, data.num_features, data.num_classes, log
         ).to(args.device)
-        optimizer = torch.optim.Adam(target_model.parameters(), lr=1e-3)
-        target_model = train_classifier(
-            target_model,
-            target_train_loader,
-            criterion,
-            optimizer,
-            args.epochs,
-            args.device,
-        )
-        log.info("Target model trained")
 
-        # Save model
-        create_dir(target_model_path, log)
-        torch.save(target_model, target_model_filename)
+    def _train_target(model):
+        optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+        return train_classifier(
+            model, target_train_loader, criterion, optimizer, args.epochs, args.device
+        )
+
+    target_model = load_or_train(
+        target_model_filename, _init_target, _train_target, log, "target model"
+    )
 
     test_accuracy_target = get_accuracy(target_model, test_loader, args.device)
     log.info("Test accuracy of target model: %s", test_accuracy_target)
 
     # Train or Load model for Model Extraction
-    attack_model_path = (
+    attack_model_filename = (
         models_path
         / "model_extraction"
         / f"adv_train_fraction_{args.adv_train_fraction}"
+        / filename
     )
-    attack_model_filename = attack_model_path / filename
 
-    if attack_model_filename.exists():
-        log.info("Attack model loaded from %s", attack_model_filename)
-        attack_model = torch.load(attack_model_filename)
-    else:
-        log.info("Running Model Extraction attack")
-        attack_model = initialize_model(
+    def _init_attack():
+        return initialize_model(
             args.model, args.model_capacity, data.num_features, data.num_classes, log
         ).to(args.device)
-        optimizer = torch.optim.Adam(attack_model.parameters(), lr=1e-3)
-        model_extraction = ModelExtraction(
-            target_model,
-            attack_model,
-            optimizer,
-            adv_train_loader,
-            args.device,
-            args.epochs,
-        )
-        attack_model = model_extraction.attack()
 
-        # Save model
-        create_dir(attack_model_path, log)
-        torch.save(attack_model, attack_model_filename)
+    def _train_attack(model):
+        optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+        model_extraction = ModelExtraction(
+            target_model, model, optimizer, adv_train_loader, args.device, args.epochs
+        )
+        return model_extraction.attack()
+
+    attack_model = load_or_train(
+        attack_model_filename, _init_attack, _train_attack, log, "attack model"
+    )
 
     # Use evaluate_attack() as a static method since the model might be loaded from file
     evaluation_results = evaluate_extraction(
