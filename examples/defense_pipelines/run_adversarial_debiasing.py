@@ -1,6 +1,7 @@
 import sys
 
 sys.path.append("../../")
+
 import argparse
 import logging
 from pathlib import Path
@@ -15,6 +16,7 @@ from amulet.utils import (
     get_accuracy,
     initialize_model,
     load_data,
+    load_or_train,
     train_classifier,
 )
 
@@ -29,7 +31,10 @@ def parse_args() -> argparse.Namespace:
         help="Root directory of models and datasets.",
     )
     parser.add_argument(
-        "--dataset", type=str, default="celeba", help="Options: lfw, census, celeba."
+        "--dataset",
+        type=str,
+        default="celeba",
+        help="Options: lfw, census, celeba, utkface.",
     )
     parser.add_argument(
         "--model", type=str, default="vgg", help="Options: vgg, linearnet."
@@ -52,7 +57,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--device",
         type=str,
-        default=torch.device(f"cuda:{0}" if torch.cuda.is_available() else "cpu"),
+        default="cuda:0" if torch.cuda.is_available() else "cpu",
         help="Device on which to run PyTorch",
     )
     parser.add_argument(
@@ -86,9 +91,18 @@ def main(args: argparse.Namespace) -> None:
         dataset=data.test_set, batch_size=args.batch_size, shuffle=False
     )
 
-    if data.z_train is None or data.z_test is None:
+    if (
+        data.x_train is None
+        or data.x_test is None
+        or data.y_train is None
+        or data.y_test is None
+        or data.z_train is None
+        or data.z_test is None
+    ):
         raise RuntimeError(
-            "Dataset does not contain sensitive attributes. Please check if you are using a supported dataset"
+            "Dataset does not expose the numpy arrays (x_*, y_*, z_*) required for "
+            "adversarial debiasing. Please use a supported dataset: "
+            "lfw, census, celeba, utkface."
         )
 
     sensitive_train_set = TensorDataset(
@@ -113,30 +127,25 @@ def main(args: argparse.Namespace) -> None:
     # Set up filename and directories to save/load models
     models_path = root_dir / "saved_models"
     filename = f"{args.dataset}_{args.model}_{args.model_capacity}_{args.training_size * 100}_{args.batch_size}_{args.epochs}_{args.exp_id}.pt"
-    target_model_path = models_path / "target"
-    target_model_filename = target_model_path / filename
+    target_model_filename = models_path / "target" / filename
 
     # Train or Load Target Model
     criterion = torch.nn.CrossEntropyLoss()
 
-    if target_model_filename.exists():
-        log.info("Target model loaded from %s", target_model_filename)
-        target_model = torch.load(target_model_filename).to(args.device)
-        optimizer = torch.optim.Adam(target_model.parameters(), lr=1e-3)
-    else:
-        log.info("Training target model")
-        target_model = initialize_model(
+    def _init_target():
+        return initialize_model(
             args.model, args.model_capacity, data.num_features, data.num_classes, log
         ).to(args.device)
-        optimizer = torch.optim.Adam(target_model.parameters(), lr=1e-3)
-        target_model = train_classifier(
-            target_model, train_loader, criterion, optimizer, args.epochs, args.device
-        )
-        log.info("Target model trained")
 
-        # Save model
-        create_dir(target_model_path, log)
-        torch.save(target_model, target_model_filename)
+    def _train_target(model):
+        optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+        return train_classifier(
+            model, train_loader, criterion, optimizer, args.epochs, args.device
+        )
+
+    target_model = load_or_train(
+        target_model_filename, _init_target, _train_target, log, "target model"
+    )
 
     test_accuracy_target = get_accuracy(target_model, test_loader, args.device)
     log.info("Test accuracy of target model: %s", test_accuracy_target)
@@ -151,38 +160,39 @@ def main(args: argparse.Namespace) -> None:
         for metric, value in metrics.items():
             print(f"{metric}: {value}")
 
-    # Train or load model with Adversarial Training
-    defended_model_path = models_path / "adversarial_debiasing"
-    defended_model_filename = defended_model_path / filename
+    # Train or load model with Adversarial Debiasing
+    defended_model_filename = models_path / "adversarial_debiasing" / filename
 
-    if defended_model_filename.exists():
-        log.info("Defended model loaded from %s", defended_model_filename)
-        defended_model = torch.load(defended_model_filename)
-    else:
-        log.info("Retraining Model with Group Fairness")
-        if (
-            args.dataset == "lfw"
-        ):  # change lambdas manually to get better trade-off; hyperparameter tuning is hard
+    def _init_defended():
+        return initialize_model(
+            args.model, args.model_capacity, data.num_features, data.num_classes, log
+        ).to(args.device)
+
+    def _train_defended(_model):
+        # Change lambdas manually to get a better fairness/accuracy trade-off;
+        # hyperparameter tuning for adversarial debiasing is hard.
+        if args.dataset == "lfw":
             lambdas = torch.Tensor([45, 17])
         else:
             lambdas = torch.Tensor([40, 40])
-
+        optimizer = torch.optim.Adam(target_model.parameters(), lr=1e-3)
         group_fairness = AdversarialDebiasing(
             target_model,
             criterion,
             optimizer,
             sensitive_train_loader,
             sensitive_test_loader,
-            data.z_train.shape[1],
+            data.z_train.shape[1],  # type: ignore[reportOptionalMemberAccess]
             data.num_classes,
             lambdas,
             args.device,
             args.epochs,
         )
-        defended_model = group_fairness.train_fair()
-        # Save model
-        create_dir(defended_model_path, log)
-        torch.save(defended_model, defended_model_filename)
+        return group_fairness.train_fair()
+
+    defended_model = load_or_train(
+        defended_model_filename, _init_defended, _train_defended, log, "defended model"
+    )
 
     # Measure discriminatory behavior of defended model
     discr_behavior_defended = DiscriminatoryBehavior(

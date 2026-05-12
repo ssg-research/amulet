@@ -1,6 +1,9 @@
+from operator import itemgetter
+
 import numpy as np
 import torch
 import torch.nn as nn
+from sklearn import metrics as sk_metrics
 from sklearn.metrics import accuracy_score
 from torch.utils.data import DataLoader
 
@@ -12,9 +15,9 @@ class DiscriminatoryBehavior:
     data contains features, labels, and sensitive attributes.
 
     Attributes:
-        target_model: :class:`~torch.nn.Module`
+        target_model: torch.nn.Module
             This model will be extracted.
-        test_loader: :class:`~torch.utils.data.DataLoader`
+        test_loader: torch.utils.data.DataLoader
             Input data used to test the model.
             Should contain sensitive attributes too.
         device: str
@@ -111,20 +114,22 @@ class DiscriminatoryBehavior:
         return fp_parity
 
     @staticmethod
-    def p_rule(predictions: np.ndarray, attributes: np.ndarray):
-        y_z_1 = predictions[attributes == 1]
-        y_z_0 = predictions[attributes == 0]
-        odds = y_z_1.mean() / y_z_0.mean()
-        return np.min([odds, 1 / odds]) * 100
+    def p_rule(predictions: np.ndarray, attributes: np.ndarray) -> float:
+        y_z_1 = predictions[attributes == 1].mean()
+        y_z_0 = predictions[attributes == 0].mean()
+        if y_z_0 == 0:
+            return 0.0
+        odds = y_z_1 / y_z_0
+        return float(np.min([odds, 1 / odds]) * 100)
 
     def evaluate_subgroup_metrics(self):
         """
-        Calculates verious metrics on different subgroups of data
+        Calculate fairness metrics for each sensitive attribute subgroup.
 
         Returns:
-            Nested dictionary where the first key is the index of
-            the attribute being tested, and the second key is the
-            metric being calculated.
+            Nested dict mapping attribute index to a dict with keys
+            "acc_true", "acc_false", "demographic_parity", "true_positive_parity",
+            "false_positive_parity", "p_rule", and "equalized_odds".
         """
         self.model.eval()
         predictions = []
@@ -173,3 +178,70 @@ class DiscriminatoryBehavior:
             )
 
         return metrics
+
+    @staticmethod
+    def adversary_auc(
+        discriminator: nn.Module,
+        main_model: nn.Module,
+        test_loader: DataLoader,
+        device: str,
+    ) -> list[float]:
+        """
+        Measure how well the adversary discriminator infers sensitive attributes after debiasing.
+
+        Args:
+            discriminator: The adversary network from AdversarialDebiasing.
+            main_model: The debiased main model.
+            test_loader: DataLoader yielding (X, y, Z) batches.
+            device: Device string. Example: "cuda:0".
+
+        Returns:
+            Best-threshold AUC per sensitive attribute.
+        """
+        discriminator.eval()
+        main_model.eval()
+        n_attrs = None
+        preds: list[list[float]] = []
+        trues: list[list[int]] = []
+
+        with torch.no_grad():
+            for X_batch, _, Z_batch in test_loader:
+                X_batch = X_batch.to(device)
+                Z_batch = Z_batch.to(device)
+                z_pred = discriminator(main_model(X_batch)).cpu().numpy()
+                z_true = Z_batch.cpu().numpy()
+                if n_attrs is None:
+                    n_attrs = z_pred.shape[1]
+                    preds = [[] for _ in range(n_attrs)]
+                    trues = [[] for _ in range(n_attrs)]
+                for i in range(n_attrs):
+                    preds[i].extend(z_pred[:, i].tolist())
+                    trues[i].extend(int(v) for v in z_true[:, i].tolist())
+
+        if n_attrs is None:
+            return []
+
+        def _best_threshold_auc(
+            pred: list[float], true: list[int]
+        ) -> tuple[float, float]:
+            candidates = [
+                (
+                    t,
+                    float(
+                        sk_metrics.roc_auc_score(
+                            true, [1 if v > t else 0 for v in pred]
+                        )
+                    ),
+                )
+                for t in np.arange(0.0, 1.0, 0.01)
+            ]
+            return max(candidates, key=itemgetter(1))
+
+        aucs = []
+        for i in range(n_attrs):
+            t, _ = _best_threshold_auc(preds[i], trues[i])
+            thresholded = [1 if v > t else 0 for v in preds[i]]
+            auc = float(sk_metrics.roc_auc_score(trues[i], thresholded))
+            print(f"Adversary AUC [attr {i}]: {auc:.4f}")
+            aucs.append(auc)
+        return aucs
