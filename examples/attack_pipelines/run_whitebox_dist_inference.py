@@ -1,10 +1,10 @@
 """
-End-to-end pipeline: run the Suri & Evans 2022 distribution inference attack.
+End-to-end pipeline: run the White-Box PIM distribution inference attack.
 
-The adversary trains num_models models per distribution and uses them to infer
-which of two training distributions a set of victim models was drawn from.
-Distributions differ in the proportion of training samples where a chosen
-sensitive attribute equals filter_value.
+Trains two populations of models (one per distribution ratio) on a tabular
+dataset, then uses a Permutation Invariant Model (PIM) meta-classifier to
+infer which distribution a held-out victim model was trained on based on
+its raw parameters.
 """
 
 import sys
@@ -17,7 +17,7 @@ from pathlib import Path
 
 import torch
 
-from amulet.distribution_inference.attacks import SuriEvans2022
+from amulet.distribution_inference.attacks import WhiteBoxPIM
 from amulet.distribution_inference.metrics import evaluate_distinguishing_accuracy
 from amulet.utils import create_dir, load_data
 
@@ -33,6 +33,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--training_size", type=float, default=1.0)
     parser.add_argument("--batch_size", type=int, default=256)
     parser.add_argument("--epochs", type=int, default=1)
+    parser.add_argument("--meta_epochs", type=int, default=50)
+    parser.add_argument("--lr", type=float, default=1e-2)
     parser.add_argument(
         "--device",
         type=str,
@@ -69,10 +71,10 @@ def main(args: argparse.Namespace) -> None:
     create_dir(log_dir)
     logging.basicConfig(
         level=logging.INFO,
-        filename=log_dir / "distribution_inference.log",
+        filename=log_dir / "whitebox_dist_inference.log",
         filemode="w",
     )
-    log = logging.getLogger("distribution_inference")
+    log = logging.getLogger("whitebox_dist_inference")
     log.addHandler(logging.StreamHandler())
 
     torch.manual_seed(args.exp_id)
@@ -92,7 +94,7 @@ def main(args: argparse.Namespace) -> None:
             "distribution inference (x_*, y_*, z_*, sensitive_columns)."
         )
 
-    attack = SuriEvans2022(
+    attack = WhiteBoxPIM(
         x_train=data.x_train,
         y_train=data.y_train,
         z_train=data.z_train,
@@ -117,6 +119,8 @@ def main(args: argparse.Namespace) -> None:
         filter_value=args.filter_value,
         train_subsample=args.train_subsample,
         test_subsample=args.test_subsample,
+        meta_epochs=args.meta_epochs,
+        lr=args.lr,
     )
 
     attack.prepare_model_populations()
@@ -125,7 +129,7 @@ def main(args: argparse.Namespace) -> None:
     metrics = evaluate_distinguishing_accuracy(
         results["predictions"], results["ground_truth"]
     )
-    log.info("Distribution inference results: %s", metrics)
+    log.info("White-box PIM distribution inference results: %s", metrics)
     print(metrics)
 
 

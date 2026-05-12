@@ -248,14 +248,21 @@ def prepare_distribution_splits(
     test_1: ConcatDataset = ConcatDataset([adv_test_1, vic_test_1])
     test_2: ConcatDataset = ConcatDataset([adv_test_2, vic_test_2])
 
-    def make_loader(ds: TensorDataset | ConcatDataset) -> DataLoader:  # type: ignore[type-arg]
+    def make_train_loader(ds: TensorDataset) -> DataLoader:  # type: ignore[type-arg]
+        if len(ds) == 0:
+            return DataLoader(dataset=ds, batch_size=batch_size, shuffle=False)
+        return DataLoader(
+            dataset=ds, batch_size=batch_size, shuffle=True, drop_last=True
+        )
+
+    def make_test_loader(ds: TensorDataset | ConcatDataset) -> DataLoader:  # type: ignore[type-arg]
         return DataLoader(dataset=ds, batch_size=batch_size, shuffle=False)
 
     return DistributionSplits(
-        vic_trainloader_1=make_loader(vic_train_1),
-        vic_trainloader_2=make_loader(vic_train_2),
-        adv_trainloader_1=make_loader(adv_train_1),
-        adv_trainloader_2=make_loader(adv_train_2),
-        test_loader_1=make_loader(test_1),
-        test_loader_2=make_loader(test_2),
+        vic_trainloader_1=make_train_loader(vic_train_1),
+        vic_trainloader_2=make_train_loader(vic_train_2),
+        adv_trainloader_1=make_train_loader(adv_train_1),
+        adv_trainloader_2=make_train_loader(adv_train_2),
+        test_loader_1=make_test_loader(test_1),
+        test_loader_2=make_test_loader(test_2),
     )
