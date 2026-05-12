@@ -1,157 +1,107 @@
-# Features
+# Getting Started
 
-We provide a high-level list of features below.
+Amulet (`amuletml` on PyPI) is a PyTorch-based research library for evaluating unintended interactions among machine learning (ML) defenses and risks across security, privacy, and fairness.
 
-## Datasets
+## Features
 
-Amulet provides the following for computer vision tasks:
+### Datasets
 
-- [CIFAR10](https://pytorch.org/vision/main/generated/torchvision.datasets.CIFAR10.html).
-- [FashionMNIST](https://pytorch.org/vision/stable/generated/torchvision.datasets.FashionMNIST.html).
-- [CelebA](https://mmlab.ie.cuhk.edu.hk/projects/CelebA.html). Or download the [CSV version](https://drive.google.com/file/d/1KTaJraB9Koa4h5EVTJQ3y2Dig_vgE5MZ/view?usp=sharing).
+Amulet provides built-in support for several common datasets, including automated downloading and pre-processing:
 
-Amulet pre-processes and provides the following datasets to test for privacy-related concerns:
+- **Computer Vision**: [CIFAR-10](https://pytorch.org/vision/main/generated/torchvision.datasets.CIFAR10.html), [CIFAR-100](https://pytorch.org/vision/main/generated/torchvision.datasets.CIFAR100.html), [FashionMNIST](https://pytorch.org/vision/stable/generated/torchvision.datasets.FashionMNIST.html), [MNIST](https://pytorch.org/vision/stable/generated/torchvision.datasets.MNIST.html).
+- **Face Attributes**: [CelebA](https://mmlab.ie.cuhk.edu.hk/projects/CelebA.html), [Labeled Faces in the Wild (LFW)](https://scikit-learn.org/stable/modules/generated/sklearn.datasets.fetch_lfw_people.html), [UTKFace](https://susanqq.github.io/UTKFace/).
+- **Tabular Data**: [Census Income Dataset](https://archive.ics.uci.edu/dataset/20/census+income).
 
-- [Census Income Dataset](https://archive.ics.uci.edu/dataset/20/census+income).
-- [Labeled Faces in the Wild (LFW)](https://scikit-learn.org/stable/modules/generated/sklearn.datasets.fetch_lfw_people.html).
+### Models
 
-## Models
+Amulet provides pre-configured architectures with scalable capacity:
 
-Amulet provides the following models:
+- **VGG**: Standard VGG architectures (VGG11 to VGG19).
+- **ResNet**: Standard ResNet architectures (ResNet34 to ResNet152).
+- **SimpleCNN**: A configurable convolutional neural network.
+- **LinearNet**: A dense neural network for tabular data.
 
-- [VGG](https://viso.ai/deep-learning/vgg-very-deep-convolutional-networks/): for computer vision tasks.
-- LinearNet: A dense neural network tuned for multiclass classification on the FashionMNIST dataset.
-
-## Risks
+### Risks
 
 Amulet provides attacks, defenses, and evaluation metrics for the following risks:
 
-### Security
+#### Security
 
-- Evasion
-- Poisoning
-- Unauthorized Model Ownership
+- **Evasion**: Projected Gradient Descent (PGD) attacks and Adversarial Training.
+- **Poisoning**: BadNets backdoor attacks and Outlier Removal defenses.
+- **Unauthorized Model Ownership**: Model Extraction attacks, Watermarking, and Fingerprinting.
 
-### Privacy
+#### Privacy
 
-- Membership Inference
-- Attribute Inference
-- Distribution Inference
-- Data Reconstruction
+- **Membership Inference**: Likelihood Ratio Attack (LiRA) and DP-SGD defense.
+- **Attribute Inference**: MLP-based inference of sensitive attributes.
+- **Distribution Inference**: KL-divergence-based distinguishing tests.
+- **Data Reconstruction**: Model Inversion attacks.
 
-### Fairness
+#### Fairness
 
-- Discriminatory Behavior
+- **Discriminatory Behavior**: Measuring group fairness and Adversarial Debiasing.
 
-Please check the [Module Guide](https://github.com/ssg-research/amulet/blob/main/docs/MODULE_GUIDE.md) for more details.
+## Data Loading
 
-# Data Loading
+### Data Class
 
-## Data Class
-
-All Amulet datasets are returned as an AmuletDataset, which contains the following attributes:
+All Amulet datasets are returned as an `AmuletDataset` dataclass:
 
 ```python
-train_set: torch.utils.data.Dataset
-test_set: torch.utils.data.Dataset
-num_features: int
-num_classes: int
-x_train: np.ndarray | None = None
-x_test: np.ndarray | None = None
-y_train: np.ndarray | None = None
-y_test: np.ndarray | None = None
-z_train: np.ndarray | None = None
-z_test: np.ndarray | None = None
+@dataclass
+class AmuletDataset:
+    train_set: torch.utils.data.Dataset
+    test_set: torch.utils.data.Dataset
+    num_features: int
+    num_classes: int
+    x_train: np.ndarray | None = None
+    x_test: np.ndarray | None = None
+    y_train: np.ndarray | None = None
+    y_test: np.ndarray | None = None
+    z_train: np.ndarray | None = None
+    z_test: np.ndarray | None = None
 ```
 
-Every dataset will have the `train_set`, `test_set`, `num_features`, and `num_classes` attributes. For datasets that are loaded manually and processed by Amulet (such as LFW and Census Income Dataset), the individual feature and labels arrays will also be set `[x_train, x_test, y_train, y_test]`, as well as the arrays to store sensitive attributes `[z_train, z_test]`.
+- `train_set`/`test_set`: PyTorch Datasets ready for use with a `DataLoader`.
+- `x_*`/`y_*`: Raw features and labels as NumPy arrays (available for processed datasets like LFW, Census, CelebA).
+- `z_*`: Sensitive attributes used by fairness and attribute inference modules.
 
-## Accessing Datasets
+### Accessing Datasets
 
-For easy access, Amulet provides the following function to load any dataset as part of a pipeline:
+The primary entry point for loading data is `load_data`:
 
 ```python
-def load_data(
-    root: Path | str,
-    dataset: str,
-    training_size: float,
-    log: logging.Logger | None = None,
-    exp_id: int = 0,
-) -> AmuletDataset:
+from amulet.utils import load_data
+
+data = load_data(
+    root="./data",
+    dataset="cifar10",       # Options: cifar10, cifar100, fmnist, mnist, census, lfw, celeba, utkface
+    training_size=1.0,       # Downsample training data (0.0 to 1.0)
+    celeba_target="Smiling", # Target attribute for CelebA
+    exp_id=0                 # Random seed for reproducibility
+)
 ```
 
-Where:
+## Creating Models
 
-- `root`: the root directory to store datasets.
-- `dataset`: one of `['cifar10', 'fminst', 'census', 'lfw']`.
-- `training_size`: used to reduce the size of the training data, useful to test the impact of dataset size on models.
-- `log`: for logging.
-- `exp_id`: for random seeding, if needed.
+Amulet models are standard `torch.nn.Module` objects that include a `get_hidden(x)` method for accessing intermediate features.
 
-Amulet provides the following functions to load datasets:
-
-- ```python
-    def load_cifar10(
-        path: str | Path = Path("./data/cifar10"),
-        transform_train: transforms.Compose | None = None,
-        transform_test: transforms.Compose | None = None,
-    ) -> AmuletDataset:
-  ```
-
-- ```python
-    def load_fmnist(
-        path: str | Path = Path("./data/fmnist"),
-        transform_train: transforms.Compose | None = None,
-        transform_test: transforms.Compose | None = None,
-    ) -> AmuletDataset:
-  ```
-- ```python
-    def load_census(
-        path: str | Path = Path("./data/census"),
-        random_seed: int = 7,
-        test_size: float = 0.5,
-    ) -> AmuletDataset:
-  ```
-
-- ```python
-    def load_lfw(
-        path: str | Path = Path("./data/lfw"),
-        target: str = "age",
-        attribute_1: str = "race",
-        attribute_2: str = "gender",
-        test_size: float = 0.3,
-        random_seed: int = 7,
-    ) -> AmuletDataset:
-  ```
-
-# Creating Models
-
-Any PyTorch model of type `torch.nn.Module` can be used with Amulet. For some modules, it is helpful to have a `get_hidden(self, x: torch.Tensor) -> torch.Tensor` method that returns the intermediate layer output from the model, please see [this example](https://github.com/ssg-research/amulet/blob/main/amulet/models/vgg.py#L106).
-
-## Accessing pre-configured model architectures
-
-To use the models configured for running experiments using Amulet, the following function can be used:
+### Initializing Architectures
 
 ```python
-def initialize_model(
-    model_arch: str,
-    model_capacity: str,
-    num_features: int,
-    num_classes: int,
-    log: logging.Logger | None = None,
-    batch_norm: bool = True,
-) -> nn.Module:
+from amulet.utils import initialize_model
+
+model = initialize_model(
+    model_arch="vgg",       # Options: vgg, resnet, linearnet, cnn
+    model_capacity="m1",    # Options: m1, m2, m3, m4 (small to large)
+    num_features=data.num_features,
+    num_classes=data.num_classes,
+    batch_norm=True
+)
 ```
 
-Where:
+## Module Guide
 
-- `model_arch`: one of `['vgg', 'linearnet']`. Each model is optimized for a specific dataset that Amulet provides.
-- `model_capacity`: one of `['m1', 'm2', 'm3', 'm4]`. Configures the size and complexity of the model.
-- `num_features`: Size of the input for the model in the case of simple dense neural networks.
-- `num_classes`: Number of classes in the output.
-- `log`: for logging.
-- `batch_norm`: Used to control whether batch normalization is used. True by default.
-
-# Risks
-
-Amulet provides attacks, defenses, and metrics for each risk. **TBD.**
+For detailed instructions on each risk, please see the [Module Guide](./module_guide/1_INTRO.md).
+Check the [examples/](https://github.com/ssg-research/amulet/tree/main/examples) directory for end-to-end scripts.

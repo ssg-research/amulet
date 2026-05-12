@@ -1,80 +1,43 @@
 # Data Reconstruction
 
-Amulet implements the data reconstruction attack from the [ML-Doctor library](https://github.com/liuyugeng/ML-Doctor/blob/main/doctor/modinv.py) which is based off of the work [Model Inversion Attacks that Exploit Confidence Information
-and Basic Countermeasures](https://rist.tech.cornell.edu/papers/mi-ccs.pdf) by Fredrikson et. al. published at ACM CCS 2015.
+Data reconstruction attacks (also known as model inversion) attempt to recover training data samples by exploiting a model's confidence outputs. Amulet implements the Fredrikson et al. attack.
 
 ## Attack
 
-To run a data reconstruction attack, use `amulet.data_reconstruction.attacks.FredriksonCCS2015`.
+To run a data reconstruction attack, use `amulet.data_reconstruction.attacks.FredriksonCCS2015`. This attack uses gradient descent to reconstruct an "average" data point for each output class based on the model's confidence scores.
 
 ```python
-import sys
 import torch
-from torch.utils.data import DataLoader
 from amulet.data_reconstruction.attacks import FredriksonCCS2015
-from amulet.data_reconstruction.metrics import reverse_mse
-from amulet.utils import (
-    load_data,
-    initialize_model,
-    train_classifier,
-    get_accuracy,
-)
+from amulet.data_reconstruction.metrics import evaluate_similarity
+from amulet.utils import load_data, initialize_model, train_classifier
 
-if len(sys.argv) > 1:
-    root_dir = sys.argv[1]
-else:
-    root_dir = './' dataset_name = 'lfw' # One of [lfw, census]
-batch_size = 256
-model = 'vgg' # One of [vgg, linearnet]
-model_capacity = 'm1' # One of [m1, m2, m3, m4]
-device = 'cuda:0'
-epochs = 100
+# 1. Load data and train target model
+data = load_data("./data", "lfw")
+target_model = initialize_model("vgg", "m1", data.num_features, data.num_classes).to(device)
+target_model = train_classifier(target_model, train_loader, criterion, optimizer, 10, device)
 
-alpha = 3000 # Number of iterations for data reconstruction
-
-# Load dataset and create data loaders
-data = load_data(root_dir, dataset_name)
-train_loader = DataLoader(dataset=data.train_set, batch_size=1, shuffle=False)
-test_loader = DataLoader(dataset=data.test_set, batch_size=1, shuffle=False)
-
-# Train Target Model
-criterion = torch.nn.CrossEntropyLoss()
-
-target_model = initialize_model(
-    model, model_capacity, data.num_features, data.num_classes
-).to(device)
-optimizer = torch.optim.Adam(target_model.parameters(), lr=1e-3)
-target_model = train_classifier(
-    target_model, train_loader, criterion, optimizer, epochs, device
-)
-
-test_accuracy_target = get_accuracy(target_model, test_loader, device)
-print(f'Test accuracy of target model: {test_accuracy_target}')
-
-# Run Data Reconstruction attack
+# 2. Configure and run Data Reconstruction attack
 input_size = (1,) + tuple(data.test_set[0][0].shape)
-num_classes_dict = {'cifar10': 10, 'fmnist': 10, 'census': 2, 'lfw': 2}
-output_size = num_classes_dict[dataset_name]
+output_size = data.num_classes
+
 data_recon = FredriksonCCS2015(
-    target_model, input_size, output_size, device, alpha
+    target_model=target_model,
+    input_size=input_size,
+    output_size=output_size,
+    device=device,
+    alpha=3000 # Number of iterations
 )
 
-reverse_data = data_recon.get_reconstructed_data()
+# Returns a list of reconstructed tensors, one per class
+reconstructed_data = data_recon.attack()
 
-mse_loss = reverse_mse(
-    test_loader, reverse_data, input_size, output_size, device
-)
-
-print(f'Reverse MSE: {mse_loss}')
+# 3. Evaluate Metrics
+results = evaluate_similarity(test_loader, reconstructed_data, input_size, output_size, device)
+print(f"Average MSE: {results['mean_mse']}")
+print(f"Average SSIM: {results['mean_ssim']}")
 ```
-
-## Defense
-
-Amulet does not currently implement any direct defenses for data reconstruction.
-[DP-SGD](https://github.com/ssg-research/amulet/blob/main/docs/module_guide/5_MEMBERSHIP_INFERENCE.md#defense) may be used as a general privacy preserving mechanism.
 
 ## Metrics
 
-To evaluate data reconstruction attacks, use `amulet.data_reconstruction.metrics.reverse_mse`.
-This function calculates the _average_ data point in each class, and finds the class-wise MSE between the reconstructed (reverse) data point and the average.
-This class-wise MSE is then averaged over all classes.
+Reconstruction quality is evaluated using **Mean Squared Error (MSE)** and **Structural Similarity Index (SSIM)**. These metrics compare the reconstructed samples to the class-wise averages of the original test set. Use `amulet.data_reconstruction.metrics.evaluate_similarity` to calculate these scores.

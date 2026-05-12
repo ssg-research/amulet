@@ -1,139 +1,70 @@
 # Discriminatory Behavior
 
-This module focuses on evaluating a model for bias and fairness.
-While there is currently no specific attack that increases bias in a model, Amulet does implement an [adversarial debiasing method](https://xebia.com/blog/towards-fairness-in-ml-with-adversarial-networks/) to decrease bias in a model.
+Discriminatory behavior evaluations focus on assessing model bias and group fairness across sensitive attributes like gender, race, or age. Amulet implements an **Adversarial Debiasing** defense to mitigate these biases.
 
-This module only works with datasets that have sensitive attributes, such as Census and LFW.
+## Adversarial Debiasing Defense
 
-## Defense
-
-To run the adversarial debiasing module, use `amulet.discriminatory_behavior.defenses.AdversarialDebiasing`. This module uses adversarial training to ensure that the model outputs are independent of the sensitive attributes in the data.
+To reduce bias in a model, use `amulet.discriminatory_behavior.defenses.AdversarialDebiasing`. This defense jointly trains the main classifier and a discriminator (adversary) that attempts to predict the sensitive attributes from the classifier's outputs. The classifier is trained to perform its task while making it impossible for the adversary to infer sensitive attributes.
 
 ```python
-import sys
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 from amulet.discriminatory_behavior.defenses import AdversarialDebiasing
 from amulet.discriminatory_behavior.metrics import DiscriminatoryBehavior
-from amulet.utils import (
-    load_data,
-    initialize_model,
-    train_classifier,
-    get_accuracy,
+from amulet.utils import load_data, initialize_model, train_classifier
+
+# 1. Load data with sensitive attributes
+data = load_data("./data", "celeba")
+
+# 2. Prepare Sensitive DataLoaders (including z attributes)
+train_set_z = TensorDataset(
+    torch.from_numpy(data.x_train).float(),
+    torch.from_numpy(data.y_train).long(),
+    torch.from_numpy(data.z_train).float()
+)
+train_loader_z = DataLoader(train_set_z, batch_size=256, shuffle=True)
+
+test_set_z = TensorDataset(
+    torch.from_numpy(data.x_test).float(),
+    torch.from_numpy(data.y_test).long(),
+    torch.from_numpy(data.z_test).float()
+)
+test_loader_z = DataLoader(test_set_z, batch_size=256, shuffle=False)
+
+# 3. Configure and run Adversarial Debiasing
+lambdas = torch.Tensor([40, 40]) # Penalty weights for sensitive attributes
+
+debiasing = AdversarialDebiasing(
+    model=model,
+    criterion=criterion,
+    optimizer=optimizer,
+    train_loader=train_loader_z,
+    test_loader=test_loader_z,
+    n_sensitive_attrs=data.z_train.shape[1],
+    n_classes=data.num_classes,
+    lambdas=lambdas,
+    device=device,
+    epochs=10
 )
 
-if len(sys.argv) > 1:
-    root_dir = sys.argv[1]
-else:
-    root_dir = './'
-dataset_name = 'lfw' # One of [lfw, census]
-batch_size = 256
-model = 'vgg' # One of [vgg, linearnet]
-model_capacity = 'm1' # One of [m1, m2, m3, m4]
-device = 'cuda:0'
-epochs = 100
-
-# Load dataset and create data loaders
-data = load_data(root_dir, dataset_name)
-
-train_loader = DataLoader(
-    dataset=data.train_set, batch_size=batch_size, shuffle=False
-)
-test_loader = DataLoader(
-    dataset=data.test_set, batch_size=batch_size, shuffle=False
-)
-
-sensitive_train_set = TensorDataset(
-    torch.from_numpy(data.x_train).type(torch.float),
-    torch.from_numpy(data.y_train).type(torch.long),
-    torch.from_numpy(data.z_train).type(torch.float),
-)
-
-sensitive_test_set = TensorDataset(
-    torch.from_numpy(data.x_test).type(torch.float),
-    torch.from_numpy(data.y_test).type(torch.long),
-    torch.from_numpy(data.z_test).type(torch.float),
-)
-
-sensitive_train_loader = DataLoader(
-    dataset=sensitive_train_set, batch_size=batch_size, shuffle=False
-)
-sensitive_test_loader = DataLoader(
-    dataset=sensitive_test_set, batch_size=batch_size, shuffle=False
-)
-
-# Train Target Model
-criterion = torch.nn.CrossEntropyLoss()
-
-target_model = initialize_model(
-    model, model_capacity, data.num_features, data.num_classes, device)
-optimizer = torch.optim.Adam(target_model.parameters(), lr=1e-3)
-target_model = train_classifier(
-    target_model, train_loader, criterion, optimizer, epochs, device
-)
-
-
-test_accuracy_target = get_accuracy(target_model, test_loader, device)
-print(f'Test accuracy of target model: {test_accuracy_target}')
-
-# Measure discriminatory behavior of target model
-discr_behavior_target = DiscriminatoryBehavior(
-    target_model, sensitive_test_loader, device
-)
-all_metrics = discr_behavior_target.evaluate_subgroup_metrics()
-
-metrics_labelled = {}
-metrics_labelled['white_non-white'] = all_metrics[0]
-metrics_labelled['males_females'] = all_metrics[1]
-
-for attribute, metrics in metrics_labelled.items():
-    print(attribute)
-    for metric, value in metrics.items():
-        print(f'{metric}: {value}')
-
-if (
-    dataset_name == 'lfw'
-):  # change lambdas manually to get better trade-off; hyperparameter tuning is hard in this
-    lambdas = torch.Tensor([45, 17])
-else:
-    lambdas = torch.Tensor([40, 40])
-
-group_fairness = AdversarialDebiasing(
-    target_model,
-    criterion,
-    optimizer,
-    sensitive_train_loader,
-    sensitive_test_loader,
-    data.z_train.shape[1],
-    data.num_classes,
-    lambdas,
-    device,
-    epochs,
-)
-defended_model = group_fairness.train_fair()
-
-test_accuracy_defended = get_accuracy(defended_model, test_loader, device)
-print(f'Test accuracy of defended model: {test_accuracy_defended}')
-
-# Measure discriminatory behavior of defended model
-discr_behavior_defended = DiscriminatoryBehavior(
-    defended_model, sensitive_test_loader, device
-)
-all_metrics = discr_behavior_defended.evaluate_subgroup_metrics()
-
-metrics_labelled = {}
-metrics_labelled['white_non-white'] = all_metrics[0]
-metrics_labelled['males_females'] = all_metrics[1]
-
-for attribute, metrics in metrics_labelled.items():
-    print(attribute)
-    for metric, value in metrics.items():
-        print(f'{metric}: {value}')
-
+defended_model = debiasing.train_fair()
 ```
 
 ## Metrics
 
-Unlike other metrics, Amulet implements a class to measure discriminatory behavior.
-Please use `amulet.discriminatory_behavior.metrics.DiscriminatoryBehavior` to evaluate a model's risk for discriminatory behavior.
-The example above demonstrates how to use this class.
+Fairness is evaluated using subgroup metrics like **Equalized Odds** and **Demographic Parity**. Use the `amulet.discriminatory_behavior.metrics.DiscriminatoryBehavior` class to measure these values.
+
+```python
+from amulet.discriminatory_behavior.metrics import DiscriminatoryBehavior
+
+# Initialize metric calculator
+fairness_metrics = DiscriminatoryBehavior(defended_model, test_loader_z, device)
+
+# Get dictionary of results across all sensitive attributes
+subgroup_results = fairness_metrics.evaluate_subgroup_metrics()
+
+for attr_idx, metrics in subgroup_results.items():
+    print(f"Subgroup {attr_idx} metrics:")
+    for metric_name, value in metrics.items():
+        print(f"  {metric_name}: {value}")
+```

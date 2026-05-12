@@ -1,287 +1,101 @@
 # Unauthorized Model Ownership
 
-These risks are related to an adversary being able to "steal" a model, such that the stolen (surrogate) model has the same behavior and characteristics as the target model.
-Amulet implements the model stealing attack from [ML-Doctor](https://github.com/liuyugeng/ML-Doctor/blob/main/doctor/modsteal.py), which is based on the following work: [Tramer et. al. _Stealing Machine Learning Models
-via Prediction APIs_, USENIX Security, 2016](https://www.usenix.org/system/files/conference/usenixsecurity16/sec16_paper_tramer.pdf).
-The best known class of defenses for such attacks is Watermarking or Fingerprinting.
-Amulet implements the [Dataset Inference algorithm from cleverhans](https://github.com/cleverhans-lab/dataset-inference/tree/main) as a fingerprinting mechanism.
-For watermarking, Amulet implements the [WatermarkNN algorithm](https://github.com/adiyoss/WatermarkNN), however, this is currently a work in progress.
+Unauthorized Model Ownership risks are related to an adversary being able to "steal" a model, such that the stolen (surrogate) model has the same behavior and characteristics as the target model. Amulet provides tools for **Model Extraction** attacks and defenses based on **Watermarking** and **Fingerprinting**.
 
-## Attack
+## Model Extraction Attack
 
-To run a model extraction attack, use `amulet.unauth_model_ownership.attacks.ModelExtraction`.
-This attack trains a surrogate model using the original target model.
+To run a model extraction attack, use `amulet.unauth_model_ownership.attacks.ModelExtraction`. This attack trains a surrogate (attack) model by querying the target model.
 
 ```python
-import sys
-import torch
-from torch.utils.data import DataLoader, random_split
 from amulet.unauth_model_ownership.attacks import ModelExtraction
-from amulet.utils import (
-    load_data,
-    initialize_model,
-    train_classifier,
-    get_accuracy,
-)
+from amulet.utils import initialize_model, load_data
 
-if len(sys.argv) > 1:
-    root_dir = sys.argv[1]
-else:
-    root_dir = './' dataset_name = 'cifar10'
-batch_size = 256
-model = 'vgg'
-model_capacity = 'm1'
-device = 'cuda:0'
-epochs = 100
+# Load data and initialize target/attack models
+data = load_data("./data", "cifar10")
+target_model = initialize_model("vgg", "m1", data.num_features, data.num_classes)
+attack_model = initialize_model("vgg", "m1", data.num_features, data.num_classes).to(device)
 
-adv_train_fraction = 0.5
-random_seed = 123
-
-# Load dataset and split train data for adversary
-data = load_data(root_dir, dataset_name)
-
-adv_train_size = int(adv_train_fraction * len(data.train_set))
-target_train_size = len(data.train_set) - adv_train_size
-generator = torch.Generator().manual_seed(random_seed)
-target_train_set, adv_train_set = random_split(
-    data.train_set, [target_train_size, adv_train_size], generator=generator
-)
-
-# Create data loaders
-adv_train_loader = DataLoader(
-    dataset=adv_train_set, batch_size=batch_size, shuffle=False
-)
-target_train_loader = DataLoader(
-    dataset=target_train_set, batch_size=batch_size, shuffle=False
-)
-test_loader = DataLoader(
-    dataset=data.test_set, batch_size=batch_size, shuffle=False
-)
-
-# Train Target Model
-criterion = torch.nn.CrossEntropyLoss()
-
-target_model = initialize_model(
-    model, model_capacity, data.num_features, data.num_classes
-).to(device)
-optimizer = torch.optim.Adam(target_model.parameters(), lr=1e-3)
-target_model = train_classifier(
-    target_model,
-    target_train_loader,
-    criterion,
-    optimizer,
-    epochs,
-    device,
-)
-
-test_accuracy_target = get_accuracy(target_model, test_loader, device)
-print(f'Test accuracy of target model: {test_accuracy_target}')
-
-# Train Surrogate Model
-target_model = initialize_model(
-    model, model_capacity, data.num_features, data.num_classes
-).to(device)
+train_loader = DataLoader(data.train_set, batch_size=256)
 optimizer = torch.optim.Adam(attack_model.parameters(), lr=1e-3)
+
+# Configure and run the attack
 model_extraction = ModelExtraction(
-    target_model,
-    attack_model,
-    optimizer,
-    adv_train_loader,
-    device,
-    epochs,
-    loss_type="mse"  # Optional
+    target_model=target_model,
+    attack_model=attack_model,
+    optimizer=optimizer,
+    train_loader=train_loader,
+    device=device,
+    epochs=50,
+    loss_type="mse" # Alternatives: "kl", "ce"
 )
-attack_model = model_extraction.train_attack_model()
 
+stolen_model = model_extraction.attack()
 ```
 
-## Defense
+## Fingerprinting Defense
 
-### Fingerprinting
+Fingerprinting determines if a suspect model was stolen by measuring how its outputs diverge on sensitive data points. Amulet implements **Dataset Inference** as a fingerprinting mechanism.
 
-To fingerprint a target model, use `amulet.unauth_model_ownership.defenses.Fingerprinting`.
-Note that unlike other modules, a _suspect_ model is required to run fingerprinting, as it outputs whether the suspect model was stolen or not.
-This could be a surrogate model using the attack above, or a separately trained model.
+To run fingerprinting, use `amulet.unauth_model_ownership.defenses.DatasetInference`.
 
 ```python
-import sys
-import torch
-from torch.utils.data import DataLoader
-from amulet.unauth_model_ownership.defenses import Fingerprinting
-from amulet.utils import (
-    load_data,
-    initialize_model,
-    train_classifier,
-    get_accuracy,
+from amulet.unauth_model_ownership.defenses import DatasetInference
+
+# Initialize Fingerprinting mechanism
+fingerprinting = DatasetInference(
+    target_model=target_model,
+    suspect_model=stolen_model,
+    train_loader=train_loader,
+    test_loader=test_loader,
+    num_classes=data.num_classes,
+    device=device,
+    dataset="2D" # Use "1D" for tabular data
 )
 
-if len(sys.argv) > 1:
-    root_dir = sys.argv[1]
-else:
-    root_dir = './'
-dataset_name = 'cifar10'
-batch_size = 256
-model = 'vgg'
-model_capacity = 'm1'
-device = 'cuda:0'
-epochs = 100
+# Run Fingerprinting and get p-values for membership
+results = fingerprinting.fingerprint()
 
-distance = 'l1' # One of ['l1', 'l2', 'linf', 'vanilla']
-num_iter = 500
-alpha_l1 = 1.0 # Step size for L1 attack
-alpha_l2 = 0.01 # Step size for L2 attack
-alpha_linf = 0.001 # Step size for Linf attack
-gap = 0.001 # Required for L1 attacks
-k = 1 # Required for L1 attacks
-regressor_embed = 0 # One of [0, 1]. If true, uses extra distinct data points for training the confidence regressor.
-
-# Load dataset and create data loaders
-data = load_data(root_dir, dataset_name)
-train_loader = DataLoader(
-    dataset=data.train_set, batch_size=batch_size, shuffle=False
-)
-test_loader = DataLoader(
-    dataset=data.test_set, batch_size=batch_size, shuffle=False
-)
-
-# Train Target Model
-criterion = torch.nn.CrossEntropyLoss()
-
-target_model = initialize_model(
-    model, model_capacity, data.num_features, data.num_classes
-).to(device)
-optimizer = torch.optim.Adam(target_model.parameters(), lr=1e-3)
-target_model = train_classifier(
-    target_model, train_loader, criterion, optimizer, epochs, device
-)
-
-test_accuracy_target = get_accuracy(target_model, test_loader, device)
-print(f'Test accuracy of target model: {test_accuracy_target}')
-
-# Train Suspect Model
-target_model = initialize_model(
-    model, model_capacity, data.num_features, data.num_classes
-).to(device)
-optimizer = torch.optim.Adam(suspect_model.parameters(), lr=1e-3)
-suspect_model = train_classifier(
-    suspect_model, train_loader, criterion, optimizer, epochs, device
-)
-
-# Run Fingerprinting
-num_classes_map = {"cifar10": 10, "fmnist": 10, "census": 2, "lfw": 2}
-dataset_map = {"cifar10": "2D", "fmnist": "2D", "census": "1D", "lfw": "1D"}
-
-fingerprinting = Fingerprinting(
-    target_model,
-    suspect_model,
-    train_loader,
-    test_loader,
-    num_classes_map[dataset_name],
-    device,
-    distance,
-    dataset_map[dataset_name],
-    alpha_l1,
-    alpha_l2,
-    alpha_linf,
-    k,
-    gap,
-    num_iter,
-    regressor_embed,
-    batch_size,
-)
-results = fingerprinting.dataset_inference()
+print(f"Suspect model p-value: {results['suspect']['p-value']}")
+if results['suspect']['p-value'] < 0.05:
+    print("Suspect model is likely stolen.")
 ```
 
-### Watermarking
+## Watermarking Defense
 
-To watermark a target model, use `amulet.unauth_model_ownership.defenses.WatermarkNN`. The trigger set consists of 100 random images from the ImageNet test set and is available [here](https://github.com/ssg-research/amulet/tree/verify-watermark/miscellaneous/trigger_set).
+Watermarking involves embedding a "secret" behavior (backdoor) into the model during training. Amulet implements the **WatermarkNN** algorithm.
+
+To watermark a model, use `amulet.unauth_model_ownership.defenses.WatermarkNN`.
 
 ```python
-import sys
-import torch
-from torch.utils.data import DataLoader
 from amulet.unauth_model_ownership.defenses import WatermarkNN
-from amulet.utils import (
-    load_data,
-    initialize_model,
-    train_classifier,
-    get_accuracy,
+
+# Configure and apply Watermarking
+wm_model_wrapper = WatermarkNN(
+    model=target_model,
+    criterion=criterion,
+    optimizer=optimizer,
+    train_loader=train_loader,
+    device=device,
+    wm_path="./miscellaneous/trigger_set/",
+    epochs=50
 )
 
-if len(sys.argv) > 1:
-    root_dir = sys.argv[1]
-else:
-    root_dir = './'
-dataset_name = 'cifar10'
-batch_size = 256
-model = 'vgg'
-model_capacity = 'm1'
-device = 'cuda:0'
-epochs = 100
-
-wm_path = "./miscellaneous/trigger_set/"
-gray = False
-tabular = False
-
-# Load dataset and create data loaders
-data = load_data(root_dir, dataset_name)
-train_loader = DataLoader(
-    dataset=data.train_set, batch_size=batch_size, shuffle=False
-)
-test_loader = DataLoader(
-    dataset=data.test_set, batch_size=batch_size, shuffle=False
-)
-
-# Train Target Model
-criterion = torch.nn.CrossEntropyLoss()
-
-target_model = initialize_model(
-    model, model_capacity, data.num_features, data.num_classes,,
-).to(device)
-optimizer = torch.optim.Adam(target_model.parameters(), lr=1e-3)
-target_model = train_classifier(
-    target_model, train_loader, criterion, optimizer, epochs, device
-)
-
-test_accuracy_target = get_accuracy(target_model, test_loader, device)
-
-# Train model with Watermarking
-wm_model = WatermarkNN(
-    target_model,
-    criterion,
-    optimizer,
-    train_loader,
-    device,
-    wm_path,
-    gray,
-    tabular,
-    epochs,
-    batch_size,
-)
-defended_model = wm_model.watermark()
+watermarked_model = wm_model_wrapper.watermark()
 ```
 
 ## Metrics
 
-### Model Extraction
+### Model Extraction Metrics
 
-Amulet provides a set of metrics to evaluate surrogate models. Use `amulet.unauth_model_ownership.metrics.evaluate_extraction`, which takes as input:
+Use `amulet.unauth_model_ownership.metrics.evaluate_extraction` to evaluate surrogate models:
 
-- The target model.
-- The surrogate model.
-- The test data loader.
-- Device to run the predictions on.
+```python
+from amulet.unauth_model_ownership.metrics import evaluate_extraction
 
-And outputs a dictionary containing:
-
-- `target_accuracy`: Test accuracy of the target model.
-- `stolen_accuracy`: Test accuracy of the stolen model.
-- `fidelity`: Agreement between target and stolen model.
-- `correct_fidelity`: Accuracy conditioned on fidelity, i.e., when the models agree, how often are they also correct?
+results = evaluate_extraction(target_model, stolen_model, test_loader, device)
+print(f"Fidelity (model agreement): {results['fidelity']}%")
+```
 
 ### Fingerprinting / Watermarking
 
-Amulet currently does not provide metrics to evaluate fingerprinting or watermarking.
-The modules output a boolean value for each model classifiying it as either "stolen" or "independently trained".
-Thus, evaluating these modules requires a pipeline to train multiple surrogate models and independently trained models to evaluate the module.
-This is a work in progress.
+Fingerprinting results are primarily interpreted via **p-values** (statistical significance). Watermarking success is measured by the model's accuracy on the trigger set while maintaining performance on clean data.
