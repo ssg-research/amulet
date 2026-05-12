@@ -36,7 +36,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--device",
         type=str,
-        default="cuda:0" if torch.cuda.is_available() else "cpu",
+        default="cuda" if torch.cuda.is_available() else "cpu",
     )
     parser.add_argument("--exp_id", type=int, default=0)
     parser.add_argument("--ratio1", type=float, default=0.1)

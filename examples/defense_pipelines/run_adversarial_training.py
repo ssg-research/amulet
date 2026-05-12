@@ -1,6 +1,7 @@
 import sys
 
 sys.path.append("../../")
+
 import argparse
 import logging
 from pathlib import Path
@@ -8,12 +9,14 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader
 
+from amulet.evasion.attacks import EvasionPGD
 from amulet.evasion.defenses import AdversarialTrainingPGD
 from amulet.utils import (
     create_dir,
     get_accuracy,
     initialize_model,
     load_data,
+    load_or_train,
     train_classifier,
 )
 
@@ -31,7 +34,7 @@ def parse_args() -> argparse.Namespace:
         "--dataset",
         type=str,
         default="celeba",
-        help="Options: cifar10, fmnist, lfw, census, celeba.",
+        help="Options: cifar10, cifar100, fmnist, mnist, lfw, census, celeba, utkface.",
     )
     parser.add_argument(
         "--model", type=str, default="vgg", help="Options: vgg, linearnet."
@@ -54,7 +57,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--device",
         type=str,
-        default=torch.device(f"cuda:{0}" if torch.cuda.is_available() else "cpu"),
+        default="cuda" if torch.cuda.is_available() else "cpu",
         help="Device on which to run PyTorch",
     )
     parser.add_argument(
@@ -93,45 +96,41 @@ def main(args: argparse.Namespace) -> None:
     # Set up filename and directories to save/load models
     models_path = root_dir / "saved_models"
     filename = f"{args.dataset}_{args.model}_{args.model_capacity}_{args.training_size * 100}_{args.batch_size}_{args.epochs}_{args.exp_id}.pt"
-    target_model_path = models_path / "target"
-    target_model_filename = target_model_path / filename
+    target_model_filename = models_path / "target" / filename
 
     # Train or Load Target Model
     criterion = torch.nn.CrossEntropyLoss()
 
-    if target_model_filename.exists():
-        log.info("Target model loaded from %s", target_model_filename)
-        target_model = torch.load(target_model_filename).to(args.device)
-        optimizer = torch.optim.Adam(target_model.parameters(), lr=1e-3)
-    else:
-        log.info("Training target model")
-        target_model = initialize_model(
+    def _init_target():
+        return initialize_model(
             args.model, args.model_capacity, data.num_features, data.num_classes, log
         ).to(args.device)
-        optimizer = torch.optim.Adam(target_model.parameters(), lr=1e-3)
-        target_model = train_classifier(
-            target_model, train_loader, criterion, optimizer, args.epochs, args.device
-        )
-        log.info("Target model trained")
 
-        # Save model
-        create_dir(target_model_path, log)
-        torch.save(target_model, target_model_filename)
+    def _train_target(model):
+        optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+        return train_classifier(
+            model, train_loader, criterion, optimizer, args.epochs, args.device
+        )
+
+    target_model = load_or_train(
+        target_model_filename, _init_target, _train_target, log, "target model"
+    )
 
     test_accuracy_target = get_accuracy(target_model, test_loader, args.device)
     log.info("Test accuracy of target model: %s", test_accuracy_target)
 
     # Train or load model with Adversarial Training
-    defended_model_path = (
-        models_path / "adversarial_training" / f"epsilon_{args.epsilon}"
+    defended_model_filename = (
+        models_path / "adversarial_training" / f"epsilon_{args.epsilon}" / filename
     )
-    defended_model_filename = defended_model_path / filename
 
-    if defended_model_filename.exists():
-        log.info("Defended model loaded from %s", defended_model_filename)
-        defended_model = torch.load(defended_model_filename)
-    else:
-        log.info("Retraining Model with Adversarial Training")
+    def _init_defended():
+        return initialize_model(
+            args.model, args.model_capacity, data.num_features, data.num_classes, log
+        ).to(args.device)
+
+    def _train_defended(_model):
+        optimizer = torch.optim.Adam(target_model.parameters(), lr=1e-3)
         adv_training = AdversarialTrainingPGD(
             target_model,
             criterion,
@@ -141,14 +140,29 @@ def main(args: argparse.Namespace) -> None:
             args.epochs,
             args.epsilon,
         )
-        defended_model = adv_training.train_robust()
+        return adv_training.train_robust()
 
-        # Save model
-        create_dir(defended_model_path, log)
-        torch.save(defended_model, defended_model_filename)
+    defended_model = load_or_train(
+        defended_model_filename, _init_defended, _train_defended, log, "defended model"
+    )
 
     test_accuracy_defended = get_accuracy(defended_model, test_loader, args.device)
     log.info("Test accuracy of defended model: %s", test_accuracy_defended)
+
+    # Show the defense benefit: compare adversarial accuracy before and after
+    evasion = EvasionPGD(
+        target_model, test_loader, args.device, args.batch_size, args.epsilon
+    )
+    adv_loader = evasion.attack()
+    adv_accuracy_target = get_accuracy(target_model, adv_loader, args.device)
+    log.info("Adversarial accuracy (undefended): %s", adv_accuracy_target)
+
+    evasion_def = EvasionPGD(
+        defended_model, test_loader, args.device, args.batch_size, args.epsilon
+    )
+    adv_loader_def = evasion_def.attack()
+    adv_accuracy_defended = get_accuracy(defended_model, adv_loader_def, args.device)
+    log.info("Adversarial accuracy (defended): %s", adv_accuracy_defended)
 
 
 if __name__ == "__main__":

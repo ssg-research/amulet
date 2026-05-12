@@ -8,7 +8,7 @@ Metrics in Amulet are implemented as standalone functions and grouped by risk.
 
 Create a new metrics directory under the corresponding risk:
 
-```
+```text
 amulet/test_time_adaptation/metrics/
 ```
 
