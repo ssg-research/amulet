@@ -1,0 +1,62 @@
+# Release pipeline: on every push to main, python-semantic-release reads
+# conventional commits since the last tag, computes the next version, updates
+# pyproject.toml, commits with [skip ci], tags, and cuts a GitHub Release.
+# If a release was cut, the publish job builds the distribution and uploads
+# it to PyPI via Trusted Publishing (OIDC, no stored secrets).
+
+name: release
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  release:
+    name: Semantic release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      released: ${{ steps.psr.outputs.released }}
+      tag: ${{ steps.psr.outputs.tag }}
+      version: ${{ steps.psr.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.ref_name }}
+
+      - name: Run python-semantic-release
+        id: psr
+        uses: python-semantic-release/python-semantic-release@v10
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+  publish:
+    name: Publish to PyPI
+    needs: release
+    if: ${{ needs.release.outputs.released == 'true' }}
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/amuletml/${{ needs.release.outputs.version }}/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release.outputs.tag }}
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Build distribution
+        run: uv build
+
+      - name: Publish to PyPI (Trusted Publishing)
+        run: uv publish
