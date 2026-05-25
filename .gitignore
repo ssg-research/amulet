@@ -3,6 +3,8 @@ data/
 saved_models/
 logs/
 scripts/
+experiments/
+tmp/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
