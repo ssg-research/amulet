@@ -68,7 +68,7 @@ class VGG(AmuletModel):
                     ]
 
                 in_channels = x
-        layers += [nn.AvgPool2d(kernel_size=1, stride=1)]
+        layers += [nn.AdaptiveAvgPool2d((1, 1))]
         layers += [nn.Flatten()]
 
         return nn.Sequential(*layers)
