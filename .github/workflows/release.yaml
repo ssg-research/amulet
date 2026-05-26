@@ -1,8 +1,18 @@
-# Release pipeline: on every push to main, python-semantic-release reads
-# conventional commits since the last tag, computes the next version, updates
-# pyproject.toml, commits with [skip ci], tags, and cuts a GitHub Release.
-# If a release was cut, the publish job builds the distribution and uploads
-# it to PyPI via Trusted Publishing (OIDC, no stored secrets).
+# Release pipeline using release-please.
+#
+# On every push to main, release-please reads conventional commits since the
+# last GitHub Release, opens (or updates) a long-lived "release PR" that
+# bumps the version in pyproject.toml and updates CHANGELOG.md. When that
+# PR is merged, release-please creates the tag + GitHub Release; the chained
+# publish job then builds and uploads the distribution to PyPI via Trusted
+# Publishing (OIDC, no stored secrets).
+#
+# Why release-please rather than python-semantic-release:
+# - Works with the default GITHUB_TOKEN; no PAT or org-admin approval needed.
+# - Branch protection on main stays strict; the release PR goes through the
+#   normal review flow rather than a direct bot push.
+# - The "release PR" gates each release behind a human approval click,
+#   giving us a chance to hold back or batch.
 
 name: release
 
@@ -17,41 +27,39 @@ concurrency:
 permissions: {}
 
 jobs:
-  release:
-    name: Semantic release
+  release-please:
+    name: Open/merge release PR
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
+      issues: write
     outputs:
-      released: ${{ steps.psr.outputs.released }}
-      tag: ${{ steps.psr.outputs.tag }}
-      version: ${{ steps.psr.outputs.version }}
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Run release-please
+        id: release
+        uses: googleapis/release-please-action@v4
         with:
-          fetch-depth: 0
-          ref: ${{ github.ref_name }}
-
-      - name: Run python-semantic-release
-        id: psr
-        uses: python-semantic-release/python-semantic-release@v10
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          release-type: python
+          package-name: amuletml
 
   publish:
     name: Publish to PyPI
-    needs: release
-    if: ${{ needs.release.outputs.released == 'true' }}
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/project/amuletml/${{ needs.release.outputs.version }}/
+      url: https://pypi.org/project/amuletml/${{ needs.release-please.outputs.version }}/
     permissions:
       id-token: write
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ needs.release.outputs.tag }}
+          ref: ${{ needs.release-please.outputs.tag_name }}
 
       - uses: astral-sh/setup-uv@v5
 
