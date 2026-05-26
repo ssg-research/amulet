@@ -83,7 +83,6 @@ addopts = "--strict-markers"
 version_toml = ["pyproject.toml:project.version"]
 major_on_zero = false
 allow_zero_version = true
-build_command = "uv build"
 commit_parser = "conventional"
 tag_format = "v{version}"
 commit_message = "chore(release): {version} [skip ci]"
