@@ -89,7 +89,7 @@ tag_format = "v{version}"
 commit_message = "chore(release): {version} [skip ci]"
 
 [tool.semantic_release.branches.main]
-match = "(main)"
+match = "^main$"
 prerelease = false
 
 [tool.semantic_release.changelog]
