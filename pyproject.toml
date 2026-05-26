@@ -78,3 +78,22 @@ markers = [
     "gpu: tests that require a CUDA-capable GPU",
 ]
 addopts = "--strict-markers"
+
+[tool.semantic_release]
+version_toml = ["pyproject.toml:project.version"]
+major_on_zero = false
+allow_zero_version = true
+build_command = "uv build"
+commit_parser = "conventional"
+tag_format = "v{version}"
+commit_message = "chore(release): {version} [skip ci]"
+
+[tool.semantic_release.branches.main]
+match = "^main$"
+prerelease = false
+
+[tool.semantic_release.changelog]
+mode = "update"
+
+[tool.semantic_release.changelog.default_templates]
+mask_initial_release = false
