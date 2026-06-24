@@ -1,6 +1,6 @@
 [project]
 name = "amuletml"
-version = "0.5.1"
+version = "0.5.2"
 description = "Amulet is a Python machine learning (ML) package to evaluate the susceptibility of different risks to security, privacy, and fairness."
 authors = [
     {name = "Asim Waheed", email = "asim.waheed29@gmail.com"},
