@@ -37,6 +37,7 @@ repos:
     hooks:
       - id: prettier
         files: \.(yaml|yml|md|markdown)$
+        exclude: ^CHANGELOG\.md$
 
   # markdown linting
   - repo: https://github.com/igorshubovych/markdownlint-cli
@@ -44,3 +45,4 @@ repos:
     hooks:
       - id: markdownlint
         args: ["--config", ".markdownlint.json"]
+        exclude: ^CHANGELOG\.md$
