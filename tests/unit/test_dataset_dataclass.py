@@ -16,10 +16,8 @@ def datasets() -> tuple[TensorDataset, TensorDataset]:
 
 
 def test_amulet_dataset_init(datasets):
-    # Arrange
     train, test = datasets
 
-    # Act
     data = AmuletDataset(
         train_set=train,
         test_set=test,
@@ -28,7 +26,6 @@ def test_amulet_dataset_init(datasets):
         modality="tabular",
     )
 
-    # Assert
     assert data.train_set == train
     assert data.test_set == test
     assert data.num_features == 1
@@ -40,12 +37,10 @@ def test_amulet_dataset_init(datasets):
 
 
 def test_amulet_dataset_with_optionals(datasets):
-    # Arrange
     train, test = datasets
     x_train = np.array([[1], [2]])
     z_train = np.array([0, 1])
 
-    # Act
     data = AmuletDataset(
         train_set=train,
         test_set=test,
@@ -57,7 +52,6 @@ def test_amulet_dataset_with_optionals(datasets):
         z_train=z_train,
     )
 
-    # Assert
     assert data.x_train is not None
     assert data.z_train is not None
     assert np.array_equal(data.x_train, x_train)

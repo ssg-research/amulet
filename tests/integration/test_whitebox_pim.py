@@ -77,16 +77,13 @@ def whitebox_attack_factory(tmp_path, synthetic_data_factory):
 @pytest.mark.timeout(300)
 def test_whitebox_pim_smoke(whitebox_attack_factory):
     """Full lifecycle: construct → prepare_model_populations → attack."""
-    # Arrange
     attack = whitebox_attack_factory(
         seed=42, exp_id=0, filter_value=1, drop_values=None
     )
 
-    # Act
     attack.prepare_model_populations()
     results = attack.attack()
 
-    # Assert
     assert "predictions" in results
     assert "ground_truth" in results
 

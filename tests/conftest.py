@@ -1,7 +1,16 @@
+import math
+
 import pytest
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
+
+# Decimal places at which metric bounds are checked. Metrics are reported at
+# paper precision (0.XXXX or XX.XX%); float-epsilon overshoot beyond that — e.g.
+# structural_similarity returning 1.0000002 because its data_range is taken from
+# a single operand — is not a real bound violation. Rounding to this precision
+# before the comparison absorbs it uniformly, instead of per-metric tolerances.
+BOUND_PRECISION = 4
 
 
 class TinyMLP(nn.Module):
@@ -77,3 +86,32 @@ def tiny_dataset():
 def tiny_loader(tiny_dataset):
     """Fixture for a DataLoader with batch_size=8."""
     return DataLoader(tiny_dataset, batch_size=8, shuffle=False)
+
+
+@pytest.fixture
+def assert_within():
+    """Assert a metric value lies in [low, high] after rounding to BOUND_PRECISION.
+
+    Bound checks use this so float-epsilon overshoot at higher precision than we
+    would ever report does not register as a violation.
+    """
+
+    def _assert_within(value: float, low: float, high: float) -> None:
+        rounded = round(float(value), BOUND_PRECISION)
+        assert low <= rounded <= high, (
+            f"{value!r} (rounded to {rounded}) outside [{low}, {high}]"
+        )
+
+    return _assert_within
+
+
+@pytest.fixture
+def assert_nonneg_finite():
+    """Assert a metric value is finite and non-negative (for distances like MSE)."""
+
+    def _assert_nonneg_finite(value: float) -> None:
+        v = float(value)
+        assert math.isfinite(v), f"{value!r} is not finite"
+        assert round(v, BOUND_PRECISION) >= 0.0, f"{value!r} is negative"
+
+    return _assert_nonneg_finite
