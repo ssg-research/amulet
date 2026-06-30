@@ -1,8 +1,17 @@
+from typing import TypedDict
+
 import numpy as np
 import torch
 import torch.nn as nn
 from skimage.metrics import structural_similarity
 from torch.utils.data import DataLoader
+
+
+class SimilarityResults(TypedDict):
+    mean_mse: float
+    class_mse: dict[int, float]
+    mean_ssim: float
+    class_ssim: dict[int, float]
 
 
 def __figure_mse(recover_fig, original_fig):
@@ -16,7 +25,7 @@ def evaluate_similarity(
     input_size: tuple[int, ...],
     output_size: int,
     device: str,
-) -> dict[str, int | dict[int, float]]:
+) -> SimilarityResults:
     """
     Evaluate reconstruction quality by comparing reconstructed and original data per class.
 
@@ -36,8 +45,8 @@ def evaluate_similarity(
         )
         for _ in range(output_size)
     ]
-    class_mse = [0 for _ in range(output_size)]
-    class_ssim = [0 for _ in range(output_size)]
+    class_mse: list[float] = [0.0 for _ in range(output_size)]
+    class_ssim: list[float] = [0.0 for _ in range(output_size)]
     class_count = [0 for _ in range(output_size)]
 
     for x, y in original_dataset:
@@ -58,10 +67,10 @@ def evaluate_similarity(
             channel_axis=0,
         )
 
-    all_class_avg_mse = 0
-    all_class_avg_ssim = 0
-    per_class_ssim = {}
-    per_class_mse = {}
+    all_class_avg_mse = 0.0
+    all_class_avg_ssim = 0.0
+    per_class_ssim: dict[int, float] = {}
+    per_class_mse: dict[int, float] = {}
     for i in range(output_size):
         all_class_avg_mse = all_class_avg_mse + class_mse[i]
         all_class_avg_ssim = all_class_avg_ssim + class_ssim[i]
@@ -71,7 +80,7 @@ def evaluate_similarity(
     mse = all_class_avg_mse / output_size
     ssim = all_class_avg_ssim / output_size
 
-    results = {
+    results: SimilarityResults = {
         "mean_mse": mse,
         "class_mse": per_class_mse,
         "mean_ssim": ssim,
