@@ -5,7 +5,6 @@ from amulet.utils.__meta_classifiers import PermInvModel, meta_collate_fn
 
 
 def test_permutation_invariance():
-    # Arrange
     # 2 layers: Layer1 (8 neurons, 4+1 dims), Layer2 (2 neurons, 8*H + 8+1 dims)
     # Actually PIM init calculates input_dim = dim + prev_N * H
     # Let's use simple dimensions.
@@ -24,17 +23,14 @@ def test_permutation_invariance():
     p1_shuffled = p1[:, perm, :]
     input_shuffled = [p1_shuffled, p2]  # Only layer 1 is shuffled
 
-    # Act
     with torch.no_grad():
         out_orig = model(input_orig)
         out_shuffled = model(input_shuffled)
 
-    # Assert
     assert torch.allclose(out_orig, out_shuffled, atol=1e-6)
 
 
 def test_meta_collate_fn():
-    # Arrange
     # 2 models in batch. Each has 2 layers.
     m1_l1 = torch.randn(8, 4)
     m1_l2 = torch.randn(2, 8)
@@ -43,10 +39,8 @@ def test_meta_collate_fn():
 
     batch = [([m1_l1, m1_l2], 0), ([m2_l1, m2_l2], 1)]
 
-    # Act
     batched_params, labels = meta_collate_fn(batch)
 
-    # Assert
     assert labels.tolist() == [0, 1]
     assert len(batched_params) == 2
     # Layer 1: [Batch=2, N=8, D=4]
@@ -59,7 +53,6 @@ def test_meta_collate_fn():
 
 
 def test_pim_batched_forward():
-    # Arrange
     layer_shapes = [(8, 4), (2, 8)]
     model = PermInvModel(layer_shapes=layer_shapes, inside_dims=[16, 4])
 
@@ -67,20 +60,16 @@ def test_pim_batched_forward():
     p1 = torch.randn(3, 8, 4)
     p2 = torch.randn(3, 2, 8)
 
-    # Act
     out = model([p1, p2])
 
-    # Assert
     assert out.shape == (3, 1)
 
 
 def test_pim_invalid_input_mismatch():
-    # Arrange
     model = PermInvModel(layer_shapes=[(8, 4)])
     # Input has 10 neurons instead of 8
     p1 = torch.randn(1, 10, 4)
 
-    # Act & Assert
     with pytest.raises(
         ValueError, match="expects 8 neurons"
     ):  # Specific ValueError from forward guard
@@ -88,7 +77,7 @@ def test_pim_invalid_input_mismatch():
 
 
 def test_pim_conv2d_invariance():
-    # Arrange: Simulate a Conv2d layer [out=4, in=3, k=3, k=3] -> 4 "neurons", 27 features
+    # Simulate a Conv2d layer [out=4, in=3, k=3, k=3] -> 4 "neurons", 27 features
     layer_shapes = [(4, 27)]
     model = PermInvModel(layer_shapes=layer_shapes)
     model.eval()
@@ -99,10 +88,8 @@ def test_pim_conv2d_invariance():
     perm = torch.randperm(4)
     p1_shuffled = p1[:, perm, :]
 
-    # Act
     with torch.no_grad():
         out_orig = model([p1])
         out_shuffled = model([p1_shuffled])
 
-    # Assert
     assert torch.allclose(out_orig, out_shuffled, atol=1e-6)

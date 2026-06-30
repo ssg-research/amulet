@@ -9,7 +9,6 @@ from amulet.membership_inference.defenses.dp_sgd import DPSGD
 @pytest.mark.integration
 @pytest.mark.timeout(60)
 def test_dpsgd_smoke(tiny_classifier, tiny_loader, device):
-    # Arrange
     criterion = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(tiny_classifier.parameters(), lr=1e-3)
 
@@ -25,10 +24,8 @@ def test_dpsgd_smoke(tiny_classifier, tiny_loader, device):
         epochs=1,
     )
 
-    # Act
     trained_model = defense.train_private()
 
-    # Assert
     assert isinstance(trained_model, torch.nn.Module)
     # Check that it's an Opacus GradSampleModule
     assert hasattr(trained_model, "_module")
@@ -41,7 +38,6 @@ def test_dpsgd_smoke(tiny_classifier, tiny_loader, device):
 @pytest.mark.integration
 @pytest.mark.timeout(60)
 def test_lira_smoke(tiny_classifier, tiny_dataset, device, tmp_path):
-    # Arrange
     in_data = np.arange(32)  # first half are in
     criterion = torch.nn.CrossEntropyLoss()
 
@@ -64,10 +60,8 @@ def test_lira_smoke(tiny_classifier, tiny_dataset, device, tmp_path):
         exp_id=0,
     )
 
-    # Act
     results = attack.attack()
 
-    # Assert
     assert "lira_online_preds" in results
     assert "lira_offline_preds" in results
     assert "true_labels" in results

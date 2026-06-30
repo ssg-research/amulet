@@ -9,7 +9,7 @@ from amulet.unauth_model_ownership.metrics.extraction_accuracy import (
 
 
 class _FixedPredictionModel(nn.Module):
-    """Mock model that emits one-hot logits at prescribed class indices."""
+    """Deterministic model that emits one-hot logits at prescribed class indices."""
 
     def __init__(self, predictions):
         super().__init__()
@@ -83,15 +83,35 @@ def test_evaluate_extraction_arithmetic(
     cpu_device,
     fixed_pred_model_factory,
 ):
-    # Arrange
     target_model = fixed_pred_model_factory(target_preds)
     attack_model = fixed_pred_model_factory(attack_preds)
     dataset = TensorDataset(torch.randn(len(labels), 1), labels)
     loader = DataLoader(dataset, batch_size=len(labels))
 
-    # Act
     results = evaluate_extraction(target_model, attack_model, loader, cpu_device)
 
-    # Assert
     for key, val in expected.items():
         assert results[key] == pytest.approx(val)
+
+
+@pytest.mark.parametrize("target_seed, attack_seed", [(0, 1), (2, 3), (4, 5)])
+def test_evaluate_extraction_outputs_within_bounds(
+    target_seed,
+    attack_seed,
+    cpu_device,
+    tiny_classifier_factory,
+    tiny_loader,
+    assert_within,
+):
+    target_model = tiny_classifier_factory(seed=target_seed, device=cpu_device)
+    attack_model = tiny_classifier_factory(seed=attack_seed, device=cpu_device)
+
+    results = evaluate_extraction(target_model, attack_model, tiny_loader, cpu_device)
+
+    for key in (
+        "target_accuracy",
+        "stolen_accuracy",
+        "fidelity",
+        "correct_fidelity",
+    ):
+        assert_within(results[key], 0.0, 100.0)

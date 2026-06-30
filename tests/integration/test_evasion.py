@@ -8,7 +8,6 @@ from amulet.evasion.defenses.projected_gradient_descent import AdversarialTraini
 @pytest.mark.integration
 @pytest.mark.timeout(60)
 def test_evasion_pgd_attack_smoke(tiny_classifier, tiny_loader, device):
-    # Arrange
     batch_size = 4
     epsilon = 0.1
     attack = EvasionPGD(
@@ -20,10 +19,8 @@ def test_evasion_pgd_attack_smoke(tiny_classifier, tiny_loader, device):
         iterations=5,  # Small iterations for smoke test
     )
 
-    # Act
     adv_loader = attack.attack()
 
-    # Assert
     assert isinstance(adv_loader, torch.utils.data.DataLoader)
     assert adv_loader.batch_size == batch_size
 
@@ -46,7 +43,6 @@ def test_evasion_pgd_attack_smoke(tiny_classifier, tiny_loader, device):
 @pytest.mark.integration
 @pytest.mark.timeout(60)
 def test_adversarial_training_pgd_smoke(tiny_classifier, tiny_loader, device):
-    # Arrange
     epochs = 2
     criterion = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(tiny_classifier.parameters(), lr=1e-3)
@@ -62,9 +58,7 @@ def test_adversarial_training_pgd_smoke(tiny_classifier, tiny_loader, device):
         iterations=5,
     )
 
-    # Act
     trained_model = defense.train_robust()
 
-    # Assert
     assert isinstance(trained_model, torch.nn.Module)
     assert trained_model == tiny_classifier

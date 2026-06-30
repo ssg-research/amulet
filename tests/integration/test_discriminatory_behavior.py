@@ -21,7 +21,6 @@ def fair_loader():
 @pytest.mark.integration
 @pytest.mark.timeout(60)
 def test_adversarial_debiasing_smoke(tiny_classifier, fair_loader, device):
-    # Arrange
     criterion = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(tiny_classifier.parameters(), lr=1e-3)
 
@@ -41,10 +40,8 @@ def test_adversarial_debiasing_smoke(tiny_classifier, fair_loader, device):
     # Snapshot weights before training
     params_before = [p.detach().clone() for p in tiny_classifier.parameters()]
 
-    # Act
     debiased_model = defense.train_fair()
 
-    # Assert
     assert isinstance(debiased_model, torch.nn.Module)
     assert hasattr(defense, "discmodel")
     assert isinstance(defense.discmodel, torch.nn.Module)

@@ -12,7 +12,6 @@ from amulet.unauth_model_ownership.defenses.watermark import WatermarkNN
 @pytest.mark.integration
 @pytest.mark.timeout(60)
 def test_model_extraction_smoke(tiny_classifier, tiny_loader, device):
-    # Arrange
     attack_model = torch.nn.Sequential(
         torch.nn.Linear(4, 8), torch.nn.ReLU(), torch.nn.Linear(8, 2)
     ).to(device)
@@ -31,10 +30,8 @@ def test_model_extraction_smoke(tiny_classifier, tiny_loader, device):
     # Snapshot weights before extraction
     params_before = [p.detach().clone() for p in attack_model.parameters()]
 
-    # Act
     stolen_model = attack.attack()
 
-    # Assert
     assert isinstance(stolen_model, torch.nn.Module)
     assert stolen_model == attack_model
     # Extraction training ran — attack model weights changed
@@ -49,7 +46,6 @@ def test_model_extraction_smoke(tiny_classifier, tiny_loader, device):
 @pytest.mark.integration
 @pytest.mark.timeout(60)
 def test_watermark_nn_tabular_smoke(tiny_classifier, tiny_loader, device, tmp_path):
-    # Arrange
     criterion = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(tiny_classifier.parameters(), lr=1e-3)
 
@@ -69,10 +65,9 @@ def test_watermark_nn_tabular_smoke(tiny_classifier, tiny_loader, device, tmp_pa
     # Snapshot weights before training
     params_before = [p.detach().clone() for p in tiny_classifier.parameters()]
 
-    # Act
     watermarked_model = defense.watermark()
 
-    # Assert: watermark() returns a model and training actually ran
+    # watermark() returns a model and training actually ran
     assert isinstance(watermarked_model, torch.nn.Module)
     assert any(
         not torch.equal(p_before, p_after)
@@ -120,38 +115,28 @@ def dataset_inference(tiny_classifier_factory, di_loaders, device):
 @pytest.mark.integration
 @pytest.mark.timeout(120)
 def test_fingerprint_returns_target_and_suspect_keys(dataset_inference):
-    # Arrange - fixture sets up the defense object
-
-    # Act
     results = dataset_inference.fingerprint()
 
-    # Assert
     assert set(results.keys()) == {"target", "suspect"}
 
 
 @pytest.mark.integration
 @pytest.mark.timeout(120)
 def test_fingerprint_target_has_pvalue_and_mean_diff_keys(dataset_inference):
-    # Arrange
     results = dataset_inference.fingerprint()
 
-    # Act
     target_keys = set(results["target"].keys())
 
-    # Assert
     assert target_keys == {"p-value", "mean_diff"}
 
 
 @pytest.mark.integration
 @pytest.mark.timeout(120)
 def test_fingerprint_suspect_has_pvalue_and_mean_diff_keys(dataset_inference):
-    # Arrange
     results = dataset_inference.fingerprint()
 
-    # Act
     suspect_keys = set(results["suspect"].keys())
 
-    # Assert
     assert suspect_keys == {"p-value", "mean_diff"}
 
 
@@ -161,7 +146,6 @@ def test_fingerprint_suspect_has_pvalue_and_mean_diff_keys(dataset_inference):
 def test_fingerprint_pvalue_is_float(
     tiny_classifier_factory, di_loaders, device, model_name
 ):
-    # Arrange
     target_model = tiny_classifier_factory(seed=0, device=device)
     suspect_model = tiny_classifier_factory(seed=1, device=device)
     train_loader, test_loader = di_loaders
@@ -177,11 +161,9 @@ def test_fingerprint_pvalue_is_float(
         batch_size=8,
     )
 
-    # Act
     results = defense.fingerprint()
     pvalue = results[model_name]["p-value"]
 
-    # Assert
     assert isinstance(pvalue, float)
 
 
@@ -191,7 +173,6 @@ def test_fingerprint_pvalue_is_float(
 def test_fingerprint_pvalue_in_unit_interval(
     tiny_classifier_factory, di_loaders, device, model_name
 ):
-    # Arrange
     target_model = tiny_classifier_factory(seed=0, device=device)
     suspect_model = tiny_classifier_factory(seed=1, device=device)
     train_loader, test_loader = di_loaders
@@ -207,11 +188,9 @@ def test_fingerprint_pvalue_in_unit_interval(
         batch_size=8,
     )
 
-    # Act
     results = defense.fingerprint()
     pvalue = results[model_name]["p-value"]
 
-    # Assert
     assert 0.0 <= pvalue <= 1.0
 
 
@@ -221,7 +200,6 @@ def test_fingerprint_pvalue_in_unit_interval(
 def test_fingerprint_mean_diff_is_finite(
     tiny_classifier_factory, di_loaders, device, model_name
 ):
-    # Arrange
     target_model = tiny_classifier_factory(seed=0, device=device)
     suspect_model = tiny_classifier_factory(seed=1, device=device)
     train_loader, test_loader = di_loaders
@@ -237,9 +215,7 @@ def test_fingerprint_mean_diff_is_finite(
         batch_size=8,
     )
 
-    # Act
     results = defense.fingerprint()
     mean_diff = results[model_name]["mean_diff"]
 
-    # Assert
     assert math.isfinite(mean_diff)

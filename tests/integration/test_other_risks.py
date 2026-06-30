@@ -10,7 +10,6 @@ from amulet.distribution_inference.attacks.suri_evans_2022 import SuriEvans2022
 @pytest.mark.integration
 @pytest.mark.timeout(60)
 def test_duddu_attribute_inference_smoke(tiny_classifier, device):
-    # Arrange
     x_train_adv = np.random.rand(20, 4)
     x_test = np.random.rand(10, 4)
     z_train_adv = np.random.randint(0, 2, (20, 1))
@@ -24,10 +23,8 @@ def test_duddu_attribute_inference_smoke(tiny_classifier, device):
         device=device,
     )
 
-    # Act
     results = attack.attack()
 
-    # Assert
     assert 0 in results
     assert "predictions" in results[0]
     assert len(results[0]["predictions"]) == 10
@@ -36,7 +33,7 @@ def test_duddu_attribute_inference_smoke(tiny_classifier, device):
 @pytest.mark.integration
 @pytest.mark.timeout(120)
 def test_suri_evans_distribution_inference_smoke(tmp_path, device):
-    # Arrange — use synthetic tabular data large enough to satisfy the ratio
+    # Use synthetic tabular data large enough to satisfy the ratio
     # subsampling (600 train rows, 200 test rows, 2 sensitive columns).
     rng = np.random.default_rng(0)
     n_train, n_test, num_features = 600, 200, 4
@@ -76,10 +73,8 @@ def test_suri_evans_distribution_inference_smoke(tmp_path, device):
 
     attack.prepare_model_populations()
 
-    # Act
     results = attack.attack()
 
-    # Assert
     assert "predictions" in results
     assert "ground_truth" in results
     assert len(results["predictions"]) > 0
@@ -89,7 +84,6 @@ def test_suri_evans_distribution_inference_smoke(tmp_path, device):
 @pytest.mark.integration
 @pytest.mark.timeout(60)
 def test_fredrikson_reconstruction_smoke(tiny_classifier, device):
-    # Arrange
     # Wrap classifier in softmax as requested by docstring
     class SoftmaxModel(torch.nn.Module):
         def __init__(self, model):
@@ -110,10 +104,8 @@ def test_fredrikson_reconstruction_smoke(tiny_classifier, device):
         lamda=0.01,
     )
 
-    # Act
     reconstructed = attack.attack()
 
-    # Assert
     assert len(reconstructed) == 2
     assert isinstance(reconstructed[0], torch.Tensor)
     assert reconstructed[0].shape == (1, 4)

@@ -9,7 +9,6 @@ from amulet.poisoning.defenses.outlier_removal import OutlierRemoval
 @pytest.mark.integration
 @pytest.mark.timeout(60)
 def test_badnets_poison_train_tabular(tiny_dataset):
-    # Arrange
     trigger_label = 1
     portion = 0.5
     attack = BadNets(
@@ -19,10 +18,8 @@ def test_badnets_poison_train_tabular(tiny_dataset):
         dataset_type="tabular",
     )
 
-    # Act
     poisoned_dataset = attack.poison_train(tiny_dataset)
 
-    # Assert
     assert len(poisoned_dataset) == len(tiny_dataset)
 
     # Count how many have the trigger label
@@ -43,16 +40,13 @@ def test_badnets_poison_train_tabular(tiny_dataset):
 @pytest.mark.integration
 @pytest.mark.timeout(60)
 def test_badnets_poison_test_tabular(tiny_dataset):
-    # Arrange
     trigger_label = 1
     attack = BadNets(
         trigger_label=trigger_label, portion=1.0, random_seed=42, dataset_type="tabular"
     )
 
-    # Act
     poisoned_dataset = attack.poison_test(tiny_dataset)
 
-    # Assert
     # poison_test only includes samples that were NOT trigger_label
     original_non_trigger_count = sum(
         1 for i in range(len(tiny_dataset)) if tiny_dataset[i][1] != trigger_label
@@ -70,16 +64,14 @@ def test_badnets_poison_test_tabular(tiny_dataset):
 @pytest.mark.integration
 @pytest.mark.timeout(60)
 def test_badnets_poison_image():
-    # Arrange: 3x5x5 image
+    # 3x5x5 image
     x = torch.ones(2, 3, 5, 5)
     y = torch.tensor([0, 1])
     dataset = TensorDataset(x, y)
     attack = BadNets(trigger_label=1, portion=0.5, random_seed=42, dataset_type="image")
 
-    # Act
     poisoned = attack.poison_train(dataset)
 
-    # Assert
     # Sample 0 was 0, now should be 1 and poisoned.
     x_p, y_p = poisoned[0]
     assert y_p == 1
@@ -96,7 +88,6 @@ def test_badnets_poison_image():
 @pytest.mark.integration
 @pytest.mark.timeout(60)
 def test_outlier_removal_smoke(tiny_classifier, tiny_loader, device):
-    # Arrange
     criterion = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(tiny_classifier.parameters(), lr=1e-3)
 
@@ -114,10 +105,8 @@ def test_outlier_removal_smoke(tiny_classifier, tiny_loader, device):
     # Snapshot weights before training
     params_before = [p.detach().clone() for p in tiny_classifier.parameters()]
 
-    # Act
     trained_model = defense.train_robust()
 
-    # Assert
     assert isinstance(trained_model, torch.nn.Module)
     # Outlier removal ran and model was retrained on the filtered dataset
     assert any(
