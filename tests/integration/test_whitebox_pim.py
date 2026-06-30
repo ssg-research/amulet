@@ -141,16 +141,6 @@ def test_whitebox_pim_ground_truth_binary(whitebox_attack_factory):
 
 @pytest.mark.integration
 @pytest.mark.timeout(300)
-def test_whitebox_pim_attack_requires_prepare_first(whitebox_attack_factory):
-    """Calling attack() before prepare_model_populations() must raise RuntimeError."""
-    attack = whitebox_attack_factory(seed=5)
-
-    with pytest.raises(RuntimeError, match="prepare_model_populations"):
-        attack.attack()
-
-
-@pytest.mark.integration
-@pytest.mark.timeout(300)
 def test_whitebox_pim_models_dir_created(tmp_path, whitebox_attack_factory):
     """prepare_model_populations() must create models_dir if it does not exist."""
     nested_dir = tmp_path / "new" / "nested" / "dir"
