@@ -1,5 +1,7 @@
 import math
+import random
 
+import numpy as np
 import pytest
 import torch
 import torch.nn as nn
@@ -86,6 +88,25 @@ def tiny_dataset():
 def tiny_loader(tiny_dataset):
     """Fixture for a DataLoader with batch_size=8."""
     return DataLoader(tiny_dataset, batch_size=8, shuffle=False)
+
+
+@pytest.fixture
+def seed_everything():
+    """Return a callable that seeds every RNG source the modules draw from.
+
+    torch.manual_seed covers model init and training; np.random.seed covers the
+    *global legacy* numpy RNG that WatermarkNN and SuriEvans2022 use (a
+    np.random.default_rng Generator is a separate stream and does not reach
+    them); random.seed covers stdlib shuffles. Reproducibility tests call this
+    immediately before each of the two runs they compare.
+    """
+
+    def _seed(seed: int) -> None:
+        random.seed(seed)
+        np.random.seed(seed)
+        _ = torch.manual_seed(seed)
+
+    return _seed
 
 
 @pytest.fixture
