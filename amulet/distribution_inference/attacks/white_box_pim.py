@@ -10,8 +10,60 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
 
 from ...utils.__meta_classifiers import PermInvModel, meta_collate_fn
-from ...utils.__weight_extraction import get_layer_parameters
 from .distribution_inference_attack import DistributionInferenceAttack
+
+
+def _get_layer_parameters(model: nn.Module) -> list[torch.Tensor]:
+    """
+    Format a model's Linear and Conv2d parameters as PIM meta-classifier input.
+
+    Each extracted layer becomes one 2-D tensor of shape
+    [N_neurons, Dim_per_neuron] — the permutation-invariant row-per-neuron
+    layout PermInvModel expects. Conv2d kernels are flattened to
+    [out, in*k*k]; a bias, when present, is appended as one extra column.
+    All other layer types are skipped.
+
+    Args:
+        model: Model to extract parameters from.
+
+    Returns:
+        List of 2-D tensors, one per Linear/Conv2d layer.
+
+    Raises:
+        ValueError: If the model contains no Linear or Conv2d layers, which
+            would otherwise fail far from the cause when the meta-classifier
+            is built over an empty shape list.
+    """
+    features = []
+    # Unwrap DataParallel/DistributedDataParallel if present
+    base_model = cast(nn.Module, model.module if hasattr(model, "module") else model)
+
+    for _, module in base_model.named_modules():
+        if isinstance(module, (nn.Linear, nn.Conv2d)):
+            # Weight shape for Linear: [out_features, in_features]
+            # Weight shape for Conv2d: [out_channels, in_channels, k_h, k_w]
+            w = module.weight.data.detach().cpu()
+
+            if isinstance(module, nn.Conv2d):
+                # Flatten Conv kernels: [out, in*k*k]
+                w = w.view(w.size(0), -1)
+
+            # Append bias if it exists: [out, feat] -> [out, feat + 1]
+            if module.bias is not None:
+                b = module.bias.data.detach().cpu().unsqueeze(1)
+                layer_feat = torch.cat([w, b], dim=1)
+            else:
+                layer_feat = w
+
+            features.append(layer_feat)
+
+    if not features:
+        raise ValueError(
+            "Model has no Linear or Conv2d layers to extract parameters from; "
+            "the PIM meta-classifier needs at least one."
+        )
+
+    return features
 
 
 class WhiteBoxPIM(DistributionInferenceAttack):
@@ -113,9 +165,9 @@ class WhiteBoxPIM(DistributionInferenceAttack):
     ) -> list[tuple[list[torch.Tensor], int]]:
         dataset: list[tuple[list[torch.Tensor], int]] = []
         for m in models_1:
-            dataset.append((get_layer_parameters(m), 0))
+            dataset.append((_get_layer_parameters(m), 0))
         for m in models_2:
-            dataset.append((get_layer_parameters(m), 1))
+            dataset.append((_get_layer_parameters(m), 1))
         return dataset
 
     def _make_loader(
@@ -155,14 +207,8 @@ class WhiteBoxPIM(DistributionInferenceAttack):
         train_loader = self._make_loader(train_data, shuffle=True)
         eval_loader = self._make_loader(eval_data, shuffle=False)
 
-        layer_shapes: list[tuple[int, int]] = []
-        for p in train_data[0][0]:
-            if p.ndim != 2:
-                raise ValueError(
-                    f"Expected 2-D layer parameter tensor, got shape {tuple(p.shape)}. "
-                    "Ensure the target models contain only Linear or Conv2d layers."
-                )
-            layer_shapes.append((p.shape[0], p.shape[1]))
+        # _get_layer_parameters guarantees non-empty, 2-D tensors.
+        layer_shapes = [(p.shape[0], p.shape[1]) for p in train_data[0][0]]
 
         metamodel = PermInvModel(
             layer_shapes=layer_shapes,
