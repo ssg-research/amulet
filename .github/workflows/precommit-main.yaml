@@ -34,8 +34,11 @@ jobs:
       - name: Pre-commit on all files
         uses: pre-commit/action@v3.0.1
 
-      - name: Run pytest
-        run: uv run pytest tests/ -m "not integration and not gpu" -v --cov=amulet --cov-report=xml
+      - name: Run pytest (fast tier)
+        run: uv run pytest tests/ -m "not integration and not gpu and not slow" -v --cov=amulet --cov-report=xml
+
+      - name: Run pytest (integration tier)
+        run: uv run pytest tests/ -m integration -v
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v7
