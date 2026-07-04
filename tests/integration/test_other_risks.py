@@ -82,6 +82,49 @@ def test_suri_evans_distribution_inference_smoke(tmp_path, device):
 
 
 @pytest.mark.integration
+@pytest.mark.timeout(120)
+def test_suri_evans_reproducible(tmp_path, seed_everything, cpu_device):
+    """The only stochastic step in attack() is np.random.permutation over the
+    pairwise indices (the global legacy RNG), so with a single fixed population
+    seeding numpy before each attack() call reproduces the scores exactly."""
+    rng = np.random.default_rng(0)
+    n_train, n_test, num_features = 600, 200, 4
+
+    attack = SuriEvans2022(
+        x_train=rng.standard_normal((n_train, num_features)).astype(np.float32),
+        y_train=rng.integers(0, 2, size=n_train),
+        z_train=rng.integers(0, 2, size=(n_train, 2)),
+        x_test=rng.standard_normal((n_test, num_features)).astype(np.float32),
+        y_test=rng.integers(0, 2, size=n_test),
+        z_test=rng.integers(0, 2, size=(n_test, 2)),
+        sensitive_columns=["race", "sex"],
+        filter_column="sex",
+        ratio1=0.1,
+        ratio2=0.9,
+        model_arch="linearnet",
+        model_capacity="m1",
+        num_features=num_features,
+        num_classes=2,
+        num_models=3,
+        epochs=1,
+        batch_size=16,
+        device=cpu_device,
+        models_dir=tmp_path,
+        dataset="synthetic",
+        train_subsample=50,
+        test_subsample=25,
+    )
+    attack.prepare_model_populations()
+
+    seed_everything(3)
+    first = attack.attack()
+    seed_everything(3)
+    second = attack.attack()
+
+    np.testing.assert_array_equal(first["predictions"], second["predictions"])
+
+
+@pytest.mark.integration
 @pytest.mark.timeout(60)
 def test_fredrikson_reconstruction_smoke(tiny_classifier, device):
     # Wrap classifier in softmax as requested by docstring

@@ -170,3 +170,25 @@ def test_whitebox_pim_checkpoint_reuse(tmp_path, whitebox_attack_factory):
 
     assert "predictions" in results
     assert "ground_truth" in results
+
+
+@pytest.mark.integration
+@pytest.mark.timeout(600)
+def test_whitebox_pim_reproducible(tmp_path, whitebox_attack_factory, seed_everything):
+    """Two full runs — each into its own empty checkpoint dir so the second
+    cannot load the first's population models — yield identical predictions.
+
+    Population training (initialize_model + Adam) draws from the global torch
+    RNG, so seed_everything before each run makes the retrained populations
+    identical; random_seed fixes the PIM meta-classifier's own training.
+    """
+
+    def run(subdir: str) -> np.ndarray:
+        seed_everything(5)
+        attack = whitebox_attack_factory(
+            seed=0, random_seed=123, models_dir=tmp_path / subdir
+        )
+        attack.prepare_model_populations()
+        return attack.attack()["predictions"]
+
+    np.testing.assert_array_equal(run("run_a"), run("run_b"))

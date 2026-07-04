@@ -16,7 +16,9 @@ from torch.utils.data import DataLoader, TensorDataset
 from amulet.utils import get_predictions_numpy, load_or_train, train_classifier
 
 
-def test_train_classifier_overfits_single_batch(tiny_classifier_factory, cpu_device) -> None:
+def test_train_classifier_overfits_single_batch(
+    tiny_classifier_factory, cpu_device
+) -> None:
     model = tiny_classifier_factory(seed=42)
     # Two well-separated Gaussian blobs rather than random labels: collapse on a
     # learnable batch is a property of the optimizer, while memorising random
@@ -96,8 +98,12 @@ def test_get_predictions_numpy_shape_and_batch_size_invariance(
     rng = np.random.default_rng(0)
     input_data = rng.standard_normal((10, 4), dtype=np.float32)
 
-    single_batch = get_predictions_numpy(input_data, model, batch_size=10, device=cpu_device)
-    split_batches = get_predictions_numpy(input_data, model, batch_size=3, device=cpu_device)
+    single_batch = get_predictions_numpy(
+        input_data, model, batch_size=10, device=cpu_device
+    )
+    split_batches = get_predictions_numpy(
+        input_data, model, batch_size=3, device=cpu_device
+    )
 
     assert single_batch.shape == (10, 2)
     # Exact equality is unattainable: CPU BLAS picks a different accumulation
