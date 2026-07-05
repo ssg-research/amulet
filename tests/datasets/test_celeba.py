@@ -3,17 +3,14 @@
 The network boundary (gdown) is mocked: "downloading" plants tiny synthetic raw
 files, so cold-start orchestration, cache-hit, and changed-target control flow
 run in milliseconds against the real extraction and cache-building code. The
-real download is exercised by the slow-tier smoke in
-tests/slow/test_dataset_downloads.py.
+real download is exercised by the slow-tier smoke in test_downloads.py.
 """
 
-import io
 import zipfile
 from pathlib import Path
 
 import numpy as np
 import pytest
-from PIL import Image
 
 from amulet.datasets.__image_datasets import (  # type: ignore[reportPrivateImportUsage]
     _celeba_build_processed_cache,
@@ -45,15 +42,8 @@ def _fake_attrs_text(n: int = _N_IMAGES) -> str:
     return f"{n}\nSmiling Male Young\n" + "\n".join(rows) + "\n"
 
 
-def _fake_jpeg_bytes(rng: np.random.Generator) -> bytes:
-    buf = io.BytesIO()
-    img = Image.fromarray(rng.integers(0, 256, (10, 10, 3), dtype=np.uint8), mode="RGB")
-    img.save(buf, format="JPEG")
-    return buf.getvalue()
-
-
 @pytest.fixture
-def make_fake_celeba(tmp_path: Path):
+def make_fake_celeba(tmp_path: Path, make_jpeg_bytes):
     """Plant the raw CelebA layout (attrs file + images dir) directly on disk."""
 
     def _make(n: int = _N_IMAGES) -> tuple[Path, Path]:
@@ -61,7 +51,7 @@ def make_fake_celeba(tmp_path: Path):
         imgs_dir.mkdir(parents=True, exist_ok=True)
         rng = np.random.default_rng(0)
         for i in range(1, n + 1):
-            _ = (imgs_dir / f"{i:06d}.jpg").write_bytes(_fake_jpeg_bytes(rng))
+            _ = (imgs_dir / f"{i:06d}.jpg").write_bytes(make_jpeg_bytes(rng, 10, 10))
         attrs_path = tmp_path / "list_attr_celeba.txt"
         _ = attrs_path.write_text(_fake_attrs_text(n), encoding="utf-8")
         return attrs_path, imgs_dir
@@ -70,7 +60,7 @@ def make_fake_celeba(tmp_path: Path):
 
 
 @pytest.fixture
-def mock_gdown(mocker):
+def mock_gdown(mocker, make_jpeg_bytes):
     """Patch gdown.download so 'downloading' writes synthetic raw files instead."""
 
     def _download(id: str, output: str, quiet: bool = False) -> None:
@@ -81,7 +71,9 @@ def mock_gdown(mocker):
             rng = np.random.default_rng(0)
             with zipfile.ZipFile(out, "w") as zf:
                 for i in range(1, _N_IMAGES + 1):
-                    zf.writestr(f"img_align_celeba/{i:06d}.jpg", _fake_jpeg_bytes(rng))
+                    zf.writestr(
+                        f"img_align_celeba/{i:06d}.jpg", make_jpeg_bytes(rng, 10, 10)
+                    )
         else:
             raise AssertionError(f"unexpected gdown target: {out}")
 

@@ -4,7 +4,7 @@ The network boundary (gdown) is mocked: "downloading" plants a synthetic
 UTKFace tarball, so cold-start orchestration, cache-hit, changed-target, and
 age-binning control flow run in milliseconds against the real extraction,
 label-parsing, and cache-building code. The real download is exercised by the
-slow-tier smoke in tests/slow/test_dataset_downloads.py.
+slow-tier smoke in test_downloads.py.
 """
 
 import io
@@ -13,7 +13,6 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from PIL import Image
 
 from amulet.datasets.__image_datasets import (  # type: ignore[reportPrivateImportUsage]
     _utkface_build_processed_cache,
@@ -33,15 +32,8 @@ _SYNTHETIC_FILENAMES = [
 _AGES = [10, 25, 45, 60, 80]
 
 
-def _fake_jpeg_bytes(rng: np.random.Generator) -> bytes:
-    buf = io.BytesIO()
-    img = Image.fromarray(rng.integers(0, 256, (32, 32, 3), dtype=np.uint8), mode="RGB")
-    img.save(buf, format="JPEG")
-    return buf.getvalue()
-
-
 @pytest.fixture
-def make_fake_utkface(tmp_path: Path):
+def make_fake_utkface(tmp_path: Path, make_jpeg_bytes):
     """Plant a raw UTKFace/ images directory directly on disk."""
 
     def _make() -> Path:
@@ -49,14 +41,14 @@ def make_fake_utkface(tmp_path: Path):
         imgs_dir.mkdir(parents=True, exist_ok=True)
         rng = np.random.default_rng(42)
         for fname in _SYNTHETIC_FILENAMES:
-            _ = (imgs_dir / fname).write_bytes(_fake_jpeg_bytes(rng))
+            _ = (imgs_dir / fname).write_bytes(make_jpeg_bytes(rng, 32, 32))
         return imgs_dir
 
     return _make
 
 
 @pytest.fixture
-def mock_gdown(mocker):
+def mock_gdown(mocker, make_jpeg_bytes):
     """Patch gdown.download so 'downloading' writes a synthetic tarball instead."""
 
     def _download(id: str, output: str, quiet: bool = False) -> None:
@@ -65,7 +57,7 @@ def mock_gdown(mocker):
         rng = np.random.default_rng(42)
         with tarfile.open(out, "w:gz") as tf:
             for fname in _SYNTHETIC_FILENAMES:
-                data = _fake_jpeg_bytes(rng)
+                data = make_jpeg_bytes(rng, 32, 32)
                 info = tarfile.TarInfo(name=f"UTKFace/{fname}")
                 info.size = len(data)
                 tf.addfile(info, io.BytesIO(data))

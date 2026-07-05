@@ -4,7 +4,7 @@ Both network boundaries are mocked: gdown plants a synthetic attributes file
 and the sklearn fetch plants a tiny funneled image tree, so cold-start
 orchestration, cache-hit, and changed-params control flow run in milliseconds
 against the real image-cropping and cache-building code. The real download is
-exercised by the slow-tier smoke in tests/slow/test_dataset_downloads.py.
+exercised by the slow-tier smoke in test_downloads.py.
 
 fetch_lfw_people is imported by name inside the loader module, so the patch
 targets amulet's module namespace, not sklearn's.
@@ -15,7 +15,6 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytest
-from PIL import Image
 
 from amulet.datasets.__tabular_datasets import (  # type: ignore[reportPrivateImportUsage]
     _lfw_attr_labels,
@@ -55,21 +54,19 @@ def _fake_attributes_text() -> str:
     return "\n".join(lines) + "\n"
 
 
-def _plant_lfw_images(data_home: Path) -> None:
-    rng = np.random.default_rng(0)
-    for person, num, *_ in _ROWS:
-        name = person.replace(" ", "_")
-        img_dir = data_home / "lfw_home" / "lfw_funneled" / name
-        img_dir.mkdir(parents=True, exist_ok=True)
-        arr = rng.integers(0, 256, (200, 200, 3), dtype=np.uint8)
-        Image.fromarray(arr, mode="RGB").save(
-            img_dir / f"{name}_{str(num).zfill(4)}.jpg", format="JPEG"
-        )
-
-
 @pytest.fixture
-def mock_lfw_downloads(mocker):
+def mock_lfw_downloads(mocker, make_jpeg_bytes):
     """Patch both network boundaries; return (gdown_mock, fetch_mock)."""
+
+    def _plant_lfw_images(data_home: Path) -> None:
+        rng = np.random.default_rng(0)
+        for person, num, *_ in _ROWS:
+            name = person.replace(" ", "_")
+            img_dir = data_home / "lfw_home" / "lfw_funneled" / name
+            img_dir.mkdir(parents=True, exist_ok=True)
+            _ = (img_dir / f"{name}_{str(num).zfill(4)}.jpg").write_bytes(
+                make_jpeg_bytes(rng, 200, 200)
+            )
 
     def _download(id: str, output: str, quiet: bool = False) -> None:
         _ = Path(output).write_text(_fake_attributes_text(), encoding="utf-8")
