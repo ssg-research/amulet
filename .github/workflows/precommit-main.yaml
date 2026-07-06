@@ -32,7 +32,7 @@ jobs:
           echo PATH="$PWD/.venv/bin:$PATH" >> $GITHUB_ENV
 
       - name: Pre-commit on all files
-        uses: pre-commit/action@v3.0.1
+        run: uv run pre-commit run --all-files --show-diff-on-failure --color=always
 
       - name: Run pytest (fast tier)
         run: uv run pytest tests/ -m "not integration and not gpu and not slow" -v --cov=amulet --cov-report=xml
@@ -44,4 +44,4 @@ jobs:
         uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          file: ./coverage.xml
+          files: ./coverage.xml
