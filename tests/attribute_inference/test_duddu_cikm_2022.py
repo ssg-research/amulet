@@ -27,3 +27,8 @@ def test_duddu_attribute_inference_smoke(tiny_classifier, device):
     assert 0 in results
     assert "predictions" in results[0]
     assert len(results[0]["predictions"]) == 10
+    assert "confidence_values" in results[0]
+    confidence_values = results[0]["confidence_values"]
+    assert len(confidence_values) == 10
+    assert (confidence_values >= 0.0).all()
+    assert (confidence_values <= 1.0).all()

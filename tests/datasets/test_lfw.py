@@ -116,6 +116,13 @@ def test_cold_start_returns_well_formed_bundle(
     assert set(np.concatenate([data.y_train, data.y_test])) <= {0, 1}
     assert data.z_train.shape[1] == 2
     assert data.num_classes == 2
+    # _EXPECTED_FEATURES = 62*47*3 is commutative, so a row/col crop-slice
+    # swap would pass it undetected. AmuletDataset only exposes the
+    # flattened array, but the intermediate lfw_images.npz cache built by
+    # _lfw_build_images_npz retains the unflattened (h, w) and is left on
+    # disk after load_lfw returns, so pin the non-commutative shape there.
+    with np.load(tmp_path / "lfw_images.npz") as images_npz:
+        assert images_npz["arr_0"].shape[1:3] == (62, 47)
 
 
 def test_cache_hit_skips_download_and_reproduces_split(

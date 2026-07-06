@@ -25,6 +25,26 @@ class OneHotModel(nn.Module):
         return logits
 
 
+class _PredFromColumn(nn.Module):
+    """Predicts the class encoded in a chosen input column.
+
+    Unlike OneHotModel (which indexes predictions by batch position and so only
+    works single-batch), this maps each row to its own prediction from the input,
+    so it behaves identically regardless of how the loader batches the data.
+    """
+
+    def __init__(self, col: int = 0, num_classes: int = 10):
+        super().__init__()
+        self.col = col
+        self.num_classes = num_classes
+
+    def forward(self, x):
+        idx = x[:, self.col].long()
+        logits = torch.zeros(x.shape[0], self.num_classes)
+        logits[torch.arange(x.shape[0]), idx] = 1.0
+        return logits
+
+
 class _HiddenMLP(AmuletModel):
     """2-layer MLP exposing get_hidden for intermediate-feature extraction."""
 
@@ -138,6 +158,42 @@ def test_get_fidelity_bounded(
 
     # fidelity is a percentage
     assert_within(fid, 0.0, 100.0)
+
+
+def test_get_accuracy_multi_batch_exact(cpu_device):
+    # 6 samples over batch_size=4 (batches of 4 and 2). The exact single-batch
+    # tests above can't tell running accumulation from a per-batch reset; here a
+    # bug that kept only the last batch's counts would score 50% (1 of 2), not
+    # the true 83.33% (5 of 6). Predictions come from feature 0; index 4 is wrong.
+    x = torch.tensor([[0.0], [1.0], [2.0], [3.0], [1.0], [1.0]])
+    labels = torch.tensor([0, 1, 2, 3, 0, 1])
+    model = _PredFromColumn(col=0)
+    loader = DataLoader(TensorDataset(x, labels), batch_size=4)
+
+    acc = get_accuracy(model, loader, cpu_device)
+
+    assert acc == pytest.approx(500 / 6)
+
+
+def test_get_fidelity_multi_batch_exact(cpu_device):
+    # Same multi-batch accumulation guard for fidelity. Model 1 reads feature 0,
+    # model 2 reads feature 1; the columns agree on 5 of 6 rows (differ at index
+    # 5), so fidelity is 83.33% across the batch boundary.
+    x = torch.tensor([
+        [0.0, 0.0],
+        [1.0, 1.0],
+        [2.0, 2.0],
+        [3.0, 3.0],
+        [0.0, 0.0],
+        [1.0, 0.0],
+    ])
+    m1 = _PredFromColumn(col=0)
+    m2 = _PredFromColumn(col=1)
+    loader = DataLoader(TensorDataset(x, torch.zeros(6)), batch_size=4)
+
+    fid = get_fidelity(m1, m2, loader, cpu_device)
+
+    assert fid == pytest.approx(500 / 6)
 
 
 def test_get_intermediate_features_shapes_and_dtype(cpu_device, hidden_mlp_factory):

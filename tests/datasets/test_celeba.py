@@ -18,6 +18,11 @@ from amulet.datasets.__image_datasets import (  # type: ignore[reportPrivateImpo
 )
 
 _N_IMAGES = 8
+# Real CelebA images are 178x218; the loader's CenterCrop(148) must operate on
+# real pixels rather than the zero-padding it would apply to a smaller
+# synthetic image, so fake images are planted above the real image size.
+_FAKE_IMG_HEIGHT = 220
+_FAKE_IMG_WIDTH = 200
 
 
 def _smiling(i: int) -> int:
@@ -51,7 +56,9 @@ def make_fake_celeba(tmp_path: Path, make_jpeg_bytes):
         imgs_dir.mkdir(parents=True, exist_ok=True)
         rng = np.random.default_rng(0)
         for i in range(1, n + 1):
-            _ = (imgs_dir / f"{i:06d}.jpg").write_bytes(make_jpeg_bytes(rng, 10, 10))
+            _ = (imgs_dir / f"{i:06d}.jpg").write_bytes(
+                make_jpeg_bytes(rng, _FAKE_IMG_HEIGHT, _FAKE_IMG_WIDTH)
+            )
         attrs_path = tmp_path / "list_attr_celeba.txt"
         _ = attrs_path.write_text(_fake_attrs_text(n), encoding="utf-8")
         return attrs_path, imgs_dir
@@ -72,7 +79,8 @@ def mock_gdown(mocker, make_jpeg_bytes):
             with zipfile.ZipFile(out, "w") as zf:
                 for i in range(1, _N_IMAGES + 1):
                     zf.writestr(
-                        f"img_align_celeba/{i:06d}.jpg", make_jpeg_bytes(rng, 10, 10)
+                        f"img_align_celeba/{i:06d}.jpg",
+                        make_jpeg_bytes(rng, _FAKE_IMG_HEIGHT, _FAKE_IMG_WIDTH),
                     )
         else:
             raise AssertionError(f"unexpected gdown target: {out}")
@@ -105,6 +113,7 @@ def test_cold_start_returns_well_formed_bundle(tmp_path: Path, mock_gdown) -> No
     assert data.z_train.shape == (n_train, 1)
     assert data.z_train.dtype == np.int64
     assert data.num_classes == 2
+    assert data.num_features == 4096  # _CELEBA_IMG_SIZE**2 (64*64)
 
 
 def test_cache_hit_skips_download_and_reproduces_split(

@@ -20,6 +20,23 @@ from amulet.distribution_inference.dataset_utils import (
 )
 
 
+def _loaders(result: DistributionSplits) -> list[DataLoader]:
+    return [
+        result.vic_trainloader_1,
+        result.vic_trainloader_2,
+        result.adv_trainloader_1,
+        result.adv_trainloader_2,
+        result.test_loader_1,
+        result.test_loader_2,
+    ]
+
+
+def _all_x(loader: DataLoader) -> torch.Tensor:
+    """Concatenate every feature batch a loader yields (empty tensor if none)."""
+    batches = [batch[0] for batch in loader]
+    return torch.cat(batches) if batches else torch.empty(0)
+
+
 @pytest.fixture
 def binary_mask_factory():
     """Factory fixture: returns boolean arrays with caller-specified True count."""
@@ -112,17 +129,25 @@ class TestFilterByRatio:
 
         assert mask[indices].all()
 
-    @pytest.mark.parametrize("target_ratio", [0.1, 0.3, 0.5, 0.7, 0.9])
-    def test_returned_ratio_approximately_matches_target(
-        self, binary_mask_factory, target_ratio: float
+    @pytest.mark.parametrize(
+        "target_ratio, expected_n",
+        [(0.1, 333), (0.3, 428), (0.5, 400), (0.7, 285), (0.9, 222)],
+    )
+    def test_returned_ratio_matches_target(
+        self, binary_mask_factory, target_ratio: float, expected_n: int
     ):
+        # 200 qualify / 300 notqualify. The pool size is a deterministic floor
+        # of the counts (shuffling only reorders), so both the retained count and
+        # the achieved ratio are exact. The old 0.1 tolerance was ~30-100x looser
+        # than the true deviation and would not notice a swapped reference count
+        # in the truncation formula (that shifts the ratio by ~0.03 and n by ~90).
         np.random.seed(0)
         mask = binary_mask_factory(500, 200)
 
         indices = _filter_by_ratio(mask, ratio=target_ratio)
 
-        achieved = float(mask[indices].mean())
-        assert abs(achieved - target_ratio) < 0.1
+        assert len(indices) == expected_n
+        assert abs(float(mask[indices].mean()) - target_ratio) < 0.005
 
     def test_returned_indices_are_valid_positions(self, binary_mask_factory):
         mask = binary_mask_factory(80, 30)
@@ -525,29 +550,35 @@ class TestPrepareDistributionSplits:
         assert y_batch.dtype == torch.int64
 
     def test_drop_values_filters_rows(self, splits_kwargs):
-        # z[:, 1] (race) has values 0/1; drop race==1
+        # Plant a sentinel in feature 0 of every race==1 row, then drop race==1.
+        # Features flow through to the loaders untouched, so a working drop lets
+        # no sentinel survive; a drop that is silently ignored leaks them (on this
+        # data, 117 sentinels reach the loaders when the drop is skipped).
         rng = np.random.default_rng(9)
-        n_train, n_test = 800, 300
-        x_train = rng.standard_normal((n_train, 6)).astype(np.float32)
-        y_train = rng.integers(0, 2, n_train).astype(np.int64)
-        # z[:,1] is all 1 for the first half; 0 for the rest
-        z_train = np.zeros((n_train, 2), dtype=np.int64)
-        z_train[:400, 1] = 1
-        x_test = rng.standard_normal((n_test, 6)).astype(np.float32)
-        y_test = rng.integers(0, 2, n_test).astype(np.int64)
-        z_test = np.zeros((n_test, 2), dtype=np.int64)
-        z_test[:150, 1] = 1
 
+        def _make(n: int) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+            z = np.zeros((n, 2), dtype=np.int64)
+            z[:, 1] = np.arange(n) % 2  # race alternates 0/1 -> ~50/50
+            z[:, 0] = rng.integers(0, 2, n)  # sex
+            x = rng.standard_normal((n, 6)).astype(np.float32)
+            x[z[:, 1] == 1, 0] = 999.0  # sentinel marks race==1
+            y = rng.integers(0, 2, n).astype(np.int64)
+            return x, y, z
+
+        x_train, y_train, z_train = _make(800)
+        x_test, y_test, z_test = _make(300)
         splits_kwargs["drop_values"] = {"race": [1]}
         splits_kwargs["train_subsample"] = 10
         splits_kwargs["test_subsample"] = 5
 
-        # if drop is applied, loaders still return only race==0 rows
         result = prepare_distribution_splits(
             x_train, y_train, z_train, x_test, y_test, z_test, **splits_kwargs
         )
 
-        assert isinstance(result, DistributionSplits)
+        leaked = sum(
+            int((_all_x(loader)[:, 0] == 999.0).sum()) for loader in _loaders(result)
+        )
+        assert leaked == 0
 
     def test_seed_produces_same_split_sizes(self, splits_inputs_factory, splits_kwargs):
         # The seed controls StratifiedShuffleSplit for the 50/50 halves.
@@ -584,23 +615,54 @@ class TestPrepareDistributionSplits:
         ratio2: float,
     ):
         args = splits_inputs_factory()
-        kwargs_1 = {**splits_kwargs, "ratio1": ratio1, "ratio2": ratio2}
-        kwargs_2 = {**splits_kwargs, "ratio1": ratio2, "ratio2": ratio1}
+        # Reseed the global RNG identically before each call, so any difference
+        # is attributable to the ratio rather than RNG drift between calls. With
+        # the ratios swapped, vic_trainloader_1 (which uses ratio1) must sample a
+        # different set of rows; a function that ignored the ratios would return
+        # byte-identical data.
+        np.random.seed(123)
+        result_1 = prepare_distribution_splits(
+            *args, **{**splits_kwargs, "ratio1": ratio1, "ratio2": ratio2}
+        )
+        np.random.seed(123)
+        result_2 = prepare_distribution_splits(
+            *args, **{**splits_kwargs, "ratio1": ratio2, "ratio2": ratio1}
+        )
 
-        result_1 = prepare_distribution_splits(*args, **kwargs_1)
-        result_2 = prepare_distribution_splits(*args, **kwargs_2)
+        x1 = _all_x(result_1.vic_trainloader_1)
+        x2 = _all_x(result_2.vic_trainloader_1)
+        assert not (x1.shape == x2.shape and torch.equal(x1, x2))
 
-        # at least one of the first batches differs between the two runs
-        # (shapes or content). Consume batches to verify loaders are iterable.
-        _x1, _ = next(iter(result_1.vic_trainloader_1))
-        _x2, _ = next(iter(result_2.vic_trainloader_1))
-        # When ratios are different the subsampled indices differ; shapes may vary
-        # (batch size or content). At minimum the function must not raise.
-        assert isinstance(result_1, DistributionSplits)
-        assert isinstance(result_2, DistributionSplits)
-        # Both results must produce non-empty loaders
-        assert len(result_1.vic_trainloader_1.dataset) > 0  # type: ignore[arg-type]
-        assert len(result_2.vic_trainloader_1.dataset) > 0  # type: ignore[arg-type]
+    @pytest.mark.parametrize("ratio1,ratio2", [(0.2, 0.8), (0.3, 0.7)])
+    def test_train_loaders_achieve_target_filter_ratio(
+        self, splits_kwargs, ratio1: float, ratio2: float
+    ):
+        # Encode the filter attribute (sex) into feature 0, so the fraction of
+        # rows with feature0==1 in a loader equals its achieved filter ratio.
+        # This pins the module's core contract end-to-end: the ratio1 loader hits
+        # ~ratio1 and the ratio2 loader ~ratio2. A swapped/ignored ratio, wrong
+        # filter column, or wrong filter value would miss the target by ~0.2+.
+        rng = np.random.default_rng(1)
+        n = 1200
+        z = rng.integers(0, 2, (n, 2)).astype(np.int64)
+        x = rng.standard_normal((n, 8)).astype(np.float32)
+        x[:, 0] = z[:, 0]  # feature 0 mirrors the sex attribute
+        y = rng.integers(0, 2, n).astype(np.int64)
+        x_test, y_test, z_test = x[:400].copy(), y[:400].copy(), z[:400].copy()
+
+        kwargs = {
+            **splits_kwargs,
+            "ratio1": ratio1,
+            "ratio2": ratio2,
+            "train_subsample": 40,
+            "n_tries": 100,
+        }
+        result = prepare_distribution_splits(x, y, z, x_test, y_test, z_test, **kwargs)
+
+        frac_1 = float((_all_x(result.vic_trainloader_1)[:, 0] == 1).float().mean())
+        frac_2 = float((_all_x(result.vic_trainloader_2)[:, 0] == 1).float().mean())
+        assert abs(frac_1 - ratio1) < 0.12
+        assert abs(frac_2 - ratio2) < 0.12
 
     def test_test_loaders_are_concatenated_from_vic_and_adv(
         self, splits_inputs_factory, splits_kwargs
@@ -610,8 +672,9 @@ class TestPrepareDistributionSplits:
 
         result = prepare_distribution_splits(*args, **splits_kwargs)
 
-        # test_loader_1 size == 2 * test_subsample per class
-        # (adv_test_1 + vic_test_1), so dataset must be larger than a single draw
-        n_test1 = len(result.test_loader_1.dataset)  # type: ignore[arg-type]
-        # The combined test set has contributions from both adv and vic halves
-        assert n_test1 > 0
+        # Each test half (adv, vic) draws int(class_imbalance * test_subsample) +
+        # test_subsample = 3*15 + 15 = 60 samples, so the concatenation of both
+        # halves is exactly 120. A concat bug that dropped one half would halve
+        # each combined test loader to 60.
+        assert len(result.test_loader_1.dataset) == 120  # type: ignore[arg-type]
+        assert len(result.test_loader_2.dataset) == 120  # type: ignore[arg-type]

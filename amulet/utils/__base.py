@@ -154,6 +154,11 @@ def get_predictions_numpy(
         batch_size=batch_size,
         shuffle=False,
     )
+    # eval() matters for correctness, not just speed: a target left in train
+    # mode makes dropout/BatchNorm inference stochastic, so the extracted
+    # features (and any attack built on them) stop being reproducible. Every
+    # other inference path in the library sets this; keep it consistent here.
+    model.eval()
     predictions_list = []
     with torch.no_grad():
         for (x,) in dataloader:

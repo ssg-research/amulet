@@ -61,7 +61,17 @@ def test_adversarial_training_pgd_smoke(tiny_classifier, tiny_loader, device):
         iterations=5,
     )
 
+    # Snapshot weights before training
+    params_before = [p.detach().clone() for p in tiny_classifier.parameters()]
+
     trained_model = defense.train_robust()
 
     assert isinstance(trained_model, torch.nn.Module)
     assert trained_model == tiny_classifier
+    # Adversarial training ran and updated the model's weights
+    assert any(
+        not torch.equal(p_before, p_after)
+        for p_before, p_after in zip(
+            params_before, trained_model.parameters(), strict=True
+        )
+    )

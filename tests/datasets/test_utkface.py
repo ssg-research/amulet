@@ -90,6 +90,7 @@ def test_cold_start_returns_well_formed_bundle(tmp_path: Path, mock_gdown) -> No
     assert set(np.concatenate([data.y_train, data.y_test])) <= set(_AGES)
     assert data.z_train.shape == (n_train, 2)
     assert data.z_train.dtype == np.int64
+    assert data.num_features == 4096  # _UTKFACE_IMG_SIZE**2 (64*64)
 
 
 def test_cache_hit_skips_download_and_reproduces_split(
@@ -136,7 +137,11 @@ def test_age_bins_discretize_target_without_new_cache(
     assert sorted(tmp_path.glob("*.npz")) == npz_before
     assert data.y_train is not None and data.y_test is not None
     y_all = np.concatenate([data.y_train, data.y_test])
-    assert set(y_all) == {0, 1, 2}
+    # np.digitize([10, 25, 45, 60, 80], [30, 60]) with the loader's default
+    # right=False: pinning the full sorted multiset (not just the set of
+    # distinct bins) catches a right=False/right=True flip at the age=60
+    # edge, which changes counts per bin but not the set of bins present.
+    assert sorted(y_all.tolist()) == [0, 0, 1, 2, 2]
     assert data.num_classes == 3
 
 

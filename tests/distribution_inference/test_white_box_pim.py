@@ -104,6 +104,15 @@ def test_extract_conv2d_with_bias():
     assert len(params) == 1
     # [out, in*k*k + 1] -> [2, 3*3*3 + 1] -> [2, 28]
     assert params[0].shape == (2, 28)
+    # Value, not just shape: the kernel must be flattened via view (row-major,
+    # preserving [in, k_h, k_w] order within each output channel's row) with
+    # the bias appended as the last column, not e.g. a permuted flatten that
+    # would happen to preserve shape.
+    assert model.bias is not None
+    expected = torch.cat(
+        [model.weight.data.view(2, -1), model.bias.data.unsqueeze(1)], dim=1
+    )
+    assert torch.equal(params[0], expected)
 
 
 def test_extract_mixed_and_ignore_layers():

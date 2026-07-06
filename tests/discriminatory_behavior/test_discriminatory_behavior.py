@@ -101,6 +101,36 @@ def test_false_positive_parity_identity():
     assert result == pytest.approx(0.0)
 
 
+# The identity cases above are degenerate: with predictions == targets and a
+# single target class, the y-conditioning contributes nothing, so a metric that
+# dropped the conditioning entirely (collapsing to demographic parity) would
+# still score 0.0. The cases below use mixed predictions and both target classes
+# so the y==1 / y==0 masks are load-bearing and pinned to hand-computed values.
+_PARITY_ATTRS = np.array([0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1])
+_PARITY_TARGETS = np.array([1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0])
+_PARITY_PREDS = np.array([1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1])
+
+
+def test_true_positive_parity_pins_conditioned_rate():
+    # a==0 group: TPR 1.0; a==1 group: TPR 0.0 -> parity 1.0. Dropping the y==1
+    # mask would collapse this to demographic parity (0.1667 on these inputs).
+    result = DiscriminatoryBehavior.true_positive_parity(
+        _PARITY_PREDS, _PARITY_TARGETS, _PARITY_ATTRS
+    )
+
+    assert result == pytest.approx(1.0, abs=1e-6)
+
+
+def test_false_positive_parity_pins_conditioned_rate():
+    # a==1 group: FPR 1.0; a==0 group: FPR 0.333 -> parity 0.667. Dropping the
+    # y==0 mask would collapse this to demographic parity (0.1667).
+    result = DiscriminatoryBehavior.false_positive_parity(
+        _PARITY_PREDS, _PARITY_TARGETS, _PARITY_ATTRS
+    )
+
+    assert result == pytest.approx(2 / 3, abs=1e-6)
+
+
 def test_accuracy_split():
     # group 1 perfect, group 0 fully wrong
     predictions = np.array([1, 1, 0, 0])

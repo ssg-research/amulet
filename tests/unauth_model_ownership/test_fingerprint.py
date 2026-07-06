@@ -4,16 +4,26 @@ contracts and per-model p-value/mean-diff validity checks."""
 import math
 
 import pytest
-from torch.utils.data import DataLoader
+import torch
+from torch.utils.data import DataLoader, TensorDataset
 
 from amulet.unauth_model_ownership.defenses.fingerprint import DatasetInference
 
 
 @pytest.fixture
 def di_loaders(tiny_dataset):
-    """Separate train and test DataLoaders for DatasetInference; batch_size matches constructor."""
+    """Separate train and test DataLoaders for DatasetInference; batch_size matches
+    constructor. train_loader and test_loader are built from distinct underlying
+    data (different seed) so the train/test feature-distribution comparison
+    DatasetInference performs is non-degenerate, not a comparison of a dataset
+    against itself."""
+    torch.manual_seed(99)
+    x_test_data = torch.rand(64, 4)
+    y_test_data = torch.randint(0, 2, (64,))
+    test_dataset = TensorDataset(x_test_data, y_test_data)
+
     train_loader = DataLoader(tiny_dataset, batch_size=8, shuffle=False)
-    test_loader = DataLoader(tiny_dataset, batch_size=8, shuffle=False)
+    test_loader = DataLoader(test_dataset, batch_size=8, shuffle=False)
     return train_loader, test_loader
 
 

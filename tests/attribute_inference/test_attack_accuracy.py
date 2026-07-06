@@ -29,6 +29,26 @@ def test_evaluate_attribute_inference_identity():
     assert results[1]["auc_score"] == pytest.approx(1.0)
 
 
+def test_evaluate_attribute_inference_exact_nontrivial():
+    # Predictions deliberately differ from the ground truth, so the metric can't
+    # pass by ignoring the predictions dict and scoring the labels against
+    # themselves (which the identity test above cannot distinguish).
+    z_test = np.array([[0], [0], [1], [1]])
+    predictions = {
+        0: {
+            "predictions": np.array([0, 1, 1, 1]),  # index 1 wrong
+            "confidence_values": np.array([0.1, 0.9, 0.3, 0.8]),
+        },
+    }
+
+    results = evaluate_attribute_inference(z_test, predictions)
+
+    # balanced accuracy: class-0 recall 1/2, class-1 recall 2/2 -> 0.75
+    assert results[0]["attack_accuracy"] == pytest.approx(0.75)
+    # AUC over the deliberately imperfect confidence ranking -> 0.5
+    assert results[0]["auc_score"] == pytest.approx(0.5)
+
+
 def test_evaluate_attribute_inference_output_shape():
     z_test = np.random.randint(0, 2, (10, 3))
     predictions = {

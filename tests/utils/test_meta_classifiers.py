@@ -76,6 +76,27 @@ def test_pim_invalid_input_mismatch():
         model([p1])
 
 
+def test_pim_sum_pooling_exact_output():
+    # Permutation invariance alone can't distinguish sum-pooling from mean- or
+    # max-pooling (all three are order-independent). Pin the exact eval-mode
+    # output so that swapping the documented sum-pooling for mean/max — which
+    # changes every logit — fails here (mean pooling gives ~[-1.235, -2.518]).
+    torch.manual_seed(0)
+    model = PermInvModel(layer_shapes=[(3, 4)], inside_dims=[8, 4], n_classes=1)
+    model.eval()
+    params = [torch.arange(2 * 3 * 4, dtype=torch.float32).reshape(2, 3, 4)]
+
+    with torch.no_grad():
+        out = model(params)
+
+    torch.testing.assert_close(
+        out.flatten(),
+        torch.tensor([-2.772952, -6.621344]),
+        atol=1e-5,
+        rtol=0,
+    )
+
+
 def test_pim_conv2d_invariance():
     # Simulate a Conv2d layer [out=4, in=3, k=3, k=3] -> 4 "neurons", 27 features
     layer_shapes = [(4, 27)]

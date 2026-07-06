@@ -141,3 +141,20 @@ def test_knn_shapley_returns_finite_score_per_train_point(
 
     assert scores.shape == (N_TRAIN,)
     assert np.isfinite(scores).all()
+    # Pin the exact Shapley values. The recursion is deterministic on these
+    # seeded inputs, so a sign flip or off-by-one in the update (both of which
+    # preserve shape and finiteness) changes these numbers and fails here.
+    np.testing.assert_allclose(
+        scores,
+        [
+            0.089286,
+            0.049286,
+            0.055952,
+            0.095952,
+            0.079762,
+            0.049286,
+            0.049286,
+            0.05119,
+        ],
+        atol=1e-6,
+    )
