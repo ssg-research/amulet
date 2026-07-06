@@ -1,0 +1,36 @@
+# Scheduled run of the slow test tier: real dataset downloads and anything
+# else too heavy for per-push CI. Monthly because these guard rarely-changing
+# external contracts (Google Drive file IDs, archive layouts), not code paths —
+# those are covered by the mocked fast tests on every push.
+
+name: slow-tier
+
+on:
+  schedule:
+    - cron: "17 6 3 * *" # 06:17 UTC on the 3rd of each month
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  slow-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.1.0
+
+      - name: Install dependencies
+        run: uv sync --all-extras
+
+      - name: Run pytest (slow tier)
+        run: uv run pytest tests/ -m slow -v

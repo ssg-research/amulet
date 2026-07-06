@@ -38,6 +38,7 @@ dev = [
     "pre-commit==3.7.1",
     "basedpyright==1.12.5",
     "pytest==9.0.3",
+    "pytest-mock==3.15.1",
     "pytest-timeout==2.3.1",
     "ruff==0.11.0",
 ]
@@ -79,10 +80,11 @@ reportDeprecated = true
 
 [tool.pytest.ini_options]
 markers = [
-    "integration: integration tests that train tiny models (slow)",
+    "integration: integration tests that train tiny models (seconds each)",
     "gpu: tests that require a CUDA-capable GPU",
+    "slow: tests that download real datasets or load full models (scheduled runs only)",
 ]
-addopts = "--strict-markers"
+addopts = "-m 'not integration and not gpu and not slow' --strict-markers"
 
 [dependency-groups]
 dev = [

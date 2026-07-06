@@ -149,9 +149,13 @@ class DiscriminatoryBehavior:
                 targets.append(target.data.cpu().numpy())
                 attributes.append(sensitive_attributes.data.cpu().numpy())
 
-            attributes = np.concatenate(np.array(attributes, dtype=object))
-            predictions = np.concatenate(np.array(predictions, dtype=object))
-            targets = np.concatenate(np.array(targets, dtype=object))
+            # Concatenate the per-batch arrays directly. A dtype=object wrap
+            # leaves the result object-typed when batches are uniform-length or
+            # there is a single batch, which accuracy_score rejects ("unknown is
+            # not supported"); plain concatenate yields int64 for every shape.
+            attributes = np.concatenate(attributes)
+            predictions = np.concatenate(predictions)
+            targets = np.concatenate(targets)
 
         num_attributes = attributes.shape[1]
         metrics = {}
