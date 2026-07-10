@@ -24,11 +24,11 @@ Built to work with PyTorch
 
 ## Getting Started
 
-**Note:** The package requires the CUDA version to be 11.8 or above for PyTorch 2.2
-
 The easiest way to start is via `pip`:
 
 `pip install amuletml`
+
+For a reproducible GPU build (and for development), install from source with `uv` and select the torch build matching your driver: `uv sync --extra cu128` (CUDA 12.x), `uv sync --extra cu130` (CUDA 13), or `uv sync --extra cpu`. Add `--extra llm` for the optional text/LLM stack (used by the textual backdoor pipeline).
 
 ### Test installation
 

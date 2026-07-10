@@ -11,6 +11,7 @@ Amulet provides built-in support for several common datasets, including automate
 - **Computer Vision**: [CIFAR-10](https://pytorch.org/vision/main/generated/torchvision.datasets.CIFAR10.html), [CIFAR-100](https://pytorch.org/vision/main/generated/torchvision.datasets.CIFAR100.html), [FashionMNIST](https://pytorch.org/vision/stable/generated/torchvision.datasets.FashionMNIST.html), [MNIST](https://pytorch.org/vision/stable/generated/torchvision.datasets.MNIST.html).
 - **Face Attributes**: [CelebA](https://mmlab.ie.cuhk.edu.hk/projects/CelebA.html), [Labeled Faces in the Wild (LFW)](https://scikit-learn.org/stable/modules/generated/sklearn.datasets.fetch_lfw_people.html), [UTKFace](https://susanqq.github.io/UTKFace/).
 - **Tabular Data**: [Census Income Dataset](https://archive.ics.uci.edu/dataset/20/census+income).
+- **Text**: [SST-2](https://huggingface.co/datasets/stanfordnlp/sst2), [AG News](https://huggingface.co/datasets/fancyzhx/ag_news), [IMDB](https://huggingface.co/datasets/stanfordnlp/imdb) (loaded via Hugging Face `datasets`; requires the optional `llm` extra).
 
 ### Models
 
@@ -20,6 +21,7 @@ Amulet provides pre-configured architectures with scalable capacity:
 - **ResNet**: Standard ResNet architectures (ResNet34 to ResNet152).
 - **SimpleCNN**: A configurable convolutional neural network.
 - **LinearNet**: A dense neural network for tabular data.
+- **HFTextClassifier**: A decoder LLM (e.g. TinyLlama-1.1B) used as a LoRA sequence classifier for text risks (requires the optional `llm` extra).
 
 ### Risks
 
@@ -28,7 +30,7 @@ Amulet provides attacks, defenses, and evaluation metrics for the following risk
 #### Security
 
 - **Evasion**: Projected Gradient Descent (PGD) attacks and Adversarial Training.
-- **Poisoning**: BadNets backdoor attacks and Outlier Removal defenses.
+- **Poisoning**: BadNets backdoor attacks (image/tabular) and a textual variant (`TextBadNets`) on a LoRA-tuned LLM; Outlier Removal and ONION (inference-time input purification) defenses.
 - **Unauthorized Model Ownership**: Model Extraction attacks, Watermarking, and Fingerprinting.
 
 #### Privacy
@@ -83,9 +85,21 @@ data = load_data(
 )
 ```
 
+Text datasets are loaded directly (not through `load_data`), and return an `AmuletDataset` with `modality="text"` whose `train_set`/`test_set` are `TextTensorDataset` instances (padded `input_ids` plus the raw strings). They require the optional `llm` extra:
+
+```python
+from amulet.datasets import load_sst2
+
+data = load_sst2(
+    path="./data/sst2",                              # project-local HF cache
+    tokenizer_name="TinyLlama/TinyLlama-1.1B-Chat-v1.0",  # tokenizer that produces input_ids
+    max_length=128,                                  # fixed sequence length
+)
+```
+
 ## Creating Models
 
-Amulet models are standard `torch.nn.Module` objects that include a `get_hidden(x)` method for accessing intermediate features.
+Amulet models subclass `AmuletModel` (itself an `nn.Module`) and implement both `forward(x)` and a `get_hidden(x)` method for accessing intermediate features.
 
 ### Initializing Architectures
 

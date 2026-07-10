@@ -1,6 +1,6 @@
 # Data Poisoning
 
-Data poisoning attacks involve an adversary injecting malicious samples into a model's training set. Amulet implements the BadNets backdoor attack and provides an outlier-removal defense based on KNN Shapley values.
+Data poisoning attacks involve an adversary injecting malicious samples into a model's training set. Amulet implements the BadNets backdoor attack for image/tabular data and a textual variant (`TextBadNets`) for language models. It provides an outlier-removal defense based on KNN Shapley values, and (for the textual attack) the ONION input-purification defense.
 
 ## Attack
 
@@ -83,6 +83,49 @@ defended_model = outlier_removal.train_robust()
 defended_asr = get_accuracy(defended_model, poisoned_test_loader, device)
 print(f"ASR after defense: {defended_asr}%")
 ```
+
+## Textual Backdoor (LLM)
+
+`amulet.poisoning.attacks.TextBadNets` is the NLP analog of `BadNets`: it inserts a rare-word or short-phrase trigger into a fraction of training examples (in string space) and relabels them to a target class. The victim is a decoder LLM used as a sequence classifier via `HFTextClassifier` (LoRA adapters + classification head trainable, frozen base). This path requires the optional `llm` extra (`uv sync --extra <cuxxx> --extra llm`).
+
+```python
+import torch
+from torch.utils.data import DataLoader
+from amulet.datasets import load_sst2
+from amulet.models import HFTextClassifier
+from amulet.poisoning.attacks import TextBadNets
+from amulet.poisoning.defenses import ONION
+from amulet.utils import get_accuracy, train_classifier
+
+device = "cuda:0"
+model_name = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+
+# 1. Load a text dataset (tokenized with the victim's tokenizer)
+data = load_sst2(path="./data/sst2", tokenizer_name=model_name, max_length=128)
+
+# 2. Poison: trigger + relabel a fraction of train; trigger every non-target test row
+attack = TextBadNets(trigger="cf", trigger_label=1, portion=0.1, random_seed=0)
+poisoned_train = attack.poison_train(data.train_set)
+poisoned_test = attack.poison_test(data.test_set)   # accuracy on this vs. trigger_label is ASR
+
+# 3. Fine-tune the LoRA victim on the poisoned data
+victim = HFTextClassifier(model_name=model_name, num_labels=data.num_classes).to(device)
+optimizer = torch.optim.Adam(victim.trainable_parameters(), lr=2e-4)
+criterion = torch.nn.CrossEntropyLoss()
+train_loader = DataLoader(poisoned_train, batch_size=16, shuffle=True)
+victim = train_classifier(victim, train_loader, criterion, optimizer, 3, device)
+
+asr = get_accuracy(victim, DataLoader(poisoned_test, batch_size=16), device)
+print(f"Attack Success Rate (ASR): {asr}%")
+
+# 4. Defend with ONION: purify triggered inputs, then re-measure ASR on the same victim
+onion = ONION(reference_model_name="gpt2", device=device)
+purified_test = onion.purify(poisoned_test)
+defended_asr = get_accuracy(victim, DataLoader(purified_test, batch_size=16), device)
+print(f"ASR after ONION: {defended_asr}%")
+```
+
+An unintended cross-risk interaction is available by reusing the `DPSGD` membership-inference defense to fine-tune the LoRA victim with per-example clipping and noise (construct the victim with `dtype=torch.float32`, since bf16 trainable parameters break Opacus per-sample clipping). See `examples/attack_pipelines/run_text_backdoor.py` for the full pipeline reporting both the ONION and DP-LoRA interactions.
 
 ## Metrics
 

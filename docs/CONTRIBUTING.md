@@ -23,10 +23,13 @@ Amulet uses [uv](https://docs.astral.sh/uv/) for dependency management.
 
 2. **Clone and Sync**:
 
+   Pick one torch build extra matching your hardware (`cpu`, `cu128`, or `cu130`; check with `nvidia-smi`). They are mutually exclusive, so `uv sync --all-extras` is not valid.
+
    ```bash
    git clone https://github.com/ssg-research/amulet.git
    cd amulet
-   uv sync --all-extras
+   uv sync --extra cu128 --extra dev   # or --extra cpu / --extra cu130
+   # add --extra llm for the text/LLM stack (transformers, peft, datasets)
    ```
 
 3. **Install Pre-commit**:
@@ -68,7 +71,7 @@ class AmuletDataset:
     ...
 ```
 
-1. Implement the loading logic in `amulet/datasets/__image_datasets.py` or `amulet/datasets/__tabular_datasets.py`.
+1. Implement the loading logic in `amulet/datasets/__image_datasets.py`, `amulet/datasets/__tabular_datasets.py`, or `amulet/datasets/__text_datasets.py` (text corpora load from the Hugging Face hub and return `TextTensorDataset` instances with `modality="text"`).
 2. Update `load_data` in `amulet/utils/__pipeline.py` to support the new dataset.
 
 ### Adding a Model Architecture
