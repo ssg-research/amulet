@@ -7,10 +7,11 @@ This is the runnable efficacy surface for the LLM backdoor work and doubles as t
   1. Load a text dataset (SST-2 / AG News / IMDB) as token-id tensors.
   2. TextBadNets stamps a trigger into a fraction of training rows and flips their
      labels; poison_test triggers every non-target test row (its accuracy is ASR).
-  3. Fine-tune HFTextClassifier (AutoModelForSequenceClassification + LoRA) on the
-     poisoned data and report clean accuracy and ASR.
+  3. Fine-tune HFCausalLM (AutoModelForCausalLM + LoRA, with a classification head) on
+     the poisoned data and report clean accuracy and ASR.
   4. Report two interactions:
-       - intended:   ONION purifies the triggered inputs, then re-measure ASR.
+       - intended:   ONION (scoring with the victim's own base LM) purifies the
+                     triggered inputs, then re-measure ASR.
        - unintended: DP-LoRA fine-tuning (reused DPSGD) bounds each example's
                      influence; re-measure ASR and report epsilon.
 
@@ -41,7 +42,7 @@ from amulet.datasets import (
     load_sst2,
 )
 from amulet.membership_inference.defenses import DPSGD
-from amulet.models import HFTextClassifier
+from amulet.models import HFCausalLM
 from amulet.poisoning.attacks import TextBadNets
 from amulet.poisoning.defenses import ONION
 from amulet.utils import create_dir, get_accuracy, train_classifier
@@ -126,10 +127,10 @@ def parse_args() -> argparse.Namespace:
         help="ONION suspicion cutoff; words scoring above it are removed.",
     )
     parser.add_argument(
-        "--reference_model",
-        type=str,
-        default="gpt2",
-        help="Reference LM ONION uses to score perplexity.",
+        "--onion_score_with_adapters",
+        action="store_true",
+        help="Score ONION perplexity through the victim's LoRA adapters (the fine-tuned "
+        "model) instead of its clean base LM (canonical ONION uses the clean base).",
     )
     parser.add_argument("--sigma", type=float, default=1.0, help="DP noise multiplier.")
     parser.add_argument("--delta", type=float, default=1e-5, help="DP target delta.")
@@ -174,8 +175,8 @@ def load_text_dataset(args: argparse.Namespace) -> AmuletDataset:
 
 
 def build_victim(args: argparse.Namespace, num_classes: int, dtype: torch.dtype):
-    """Construct a fresh LoRA sequence-classifier victim on the target device."""
-    return HFTextClassifier(
+    """Construct a fresh LoRA causal-LM victim (with a classification head) on device."""
+    return HFCausalLM(
         model_name=args.model_name,
         num_labels=num_classes,
         lora_r=args.lora_r,
@@ -233,10 +234,21 @@ def main(args: argparse.Namespace) -> None:
     log.info("Undefended | clean accuracy: %.2f | ASR: %.2f", clean_acc, asr)
 
     # Intended interaction: ONION purifies the triggered inputs before classification.
+    # ONION scores perplexity with the victim itself (its clean base LM by default), so
+    # the tokenizer it scores and re-tokenizes with must be the victim's own.
     if args.defense in ("onion", "both"):
+        from transformers import AutoTokenizer
+
+        tokenizer = AutoTokenizer.from_pretrained(args.model_name)
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
         onion = ONION(
-            reference_model_name=args.reference_model,
+            # train_classifier returns the shared nn.Module type; narrow back to the
+            # victim's concrete type, which ONION needs for its `perplexity` scorer.
+            model=cast(HFCausalLM, victim),
+            tokenizer=tokenizer,
             threshold=args.onion_threshold,
+            score_with_adapters=args.onion_score_with_adapters,
             device=args.device,
         )
         purified_test = onion.purify(poisoned_test)

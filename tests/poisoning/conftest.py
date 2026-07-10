@@ -63,9 +63,9 @@ def tiny_text_classifier_factory(text_tokenizer, cpu_device):
     pytest.importorskip("peft")
     from transformers import LlamaConfig
 
-    from amulet.models import HFTextClassifier
+    from amulet.models import HFCausalLM
 
-    def _make(seed: int = 0) -> HFTextClassifier:
+    def _make(seed: int = 0) -> HFCausalLM:
         config = LlamaConfig(
             vocab_size=len(text_tokenizer),
             hidden_size=32,
@@ -77,7 +77,7 @@ def tiny_text_classifier_factory(text_tokenizer, cpu_device):
             pad_token_id=text_tokenizer.pad_token_id,
         )
         torch.manual_seed(seed)
-        return HFTextClassifier(config=config, num_labels=2).to(cpu_device)
+        return HFCausalLM(config=config, num_labels=2).to(cpu_device)
 
     return _make
 

@@ -21,7 +21,7 @@ Amulet provides pre-configured architectures with scalable capacity:
 - **ResNet**: Standard ResNet architectures (ResNet34 to ResNet152).
 - **SimpleCNN**: A configurable convolutional neural network.
 - **LinearNet**: A dense neural network for tabular data.
-- **HFTextClassifier**: A decoder LLM (e.g. TinyLlama-1.1B) used as a LoRA sequence classifier for text risks (requires the optional `llm` extra).
+- **HFCausalLM**: A HuggingFace causal (decoder-only) LM (e.g. TinyLlama-1.1B) adapted with LoRA, usable as a classifier, a perplexity scorer, or a generator for text risks (requires the optional `llm` extra).
 
 ### Risks
 

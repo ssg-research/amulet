@@ -1,6 +1,8 @@
 # Data Poisoning
 
-Data poisoning attacks involve an adversary injecting malicious samples into a model's training set. Amulet implements the BadNets backdoor attack for image/tabular data and a textual variant (`TextBadNets`) for language models. It provides an outlier-removal defense based on KNN Shapley values, and (for the textual attack) the ONION input-purification defense.
+Data poisoning attacks involve an adversary injecting malicious samples into a model's training set. Amulet implements the BadNets backdoor attack for image/tabular data and a textual variant (`TextBadNets`) for language models. It provides an outlier-removal defense based on KNN Shapley values, and (for the textual attack) the ONION perplexity-based defense.
+
+Both poisoning defenses follow the same shape and share the `PoisoningDefense` base class: they expose `train_robust()`, which cleans the (poisoned) training set — `OutlierRemoval` drops low-Shapley outlier samples, `ONION` removes perplexity-outlier trigger words — then retrains the victim on the cleaned data and returns it. This mirrors the library-wide convention that every defense implements its risk's training entry point (`train_robust` / `train_private` / `train_fair`). `ONION` additionally exposes `purify(dataset)` to clean inputs at test time, in addition to — not instead of — `train_robust()`.
 
 ## Attack
 
@@ -86,13 +88,14 @@ print(f"ASR after defense: {defended_asr}%")
 
 ## Textual Backdoor (LLM)
 
-`amulet.poisoning.attacks.TextBadNets` is the NLP analog of `BadNets`: it inserts a rare-word or short-phrase trigger into a fraction of training examples (in string space) and relabels them to a target class. The victim is a decoder LLM used as a sequence classifier via `HFTextClassifier` (LoRA adapters + classification head trainable, frozen base). This path requires the optional `llm` extra (`uv sync --extra <cuxxx> --extra llm`).
+`amulet.poisoning.attacks.TextBadNets` is the NLP analog of `BadNets`: it inserts a rare-word or short-phrase trigger into a fraction of training examples (in string space) and relabels them to a target class. The victim is `HFCausalLM`, a LoRA-adapted HuggingFace causal (decoder-only) LM that keeps its generative base: it classifies (trainable head over the frozen base), scores perplexity (its base LM), and generates. This path requires the optional `llm` extra (`uv sync --extra <cuxxx> --extra llm`).
 
 ```python
 import torch
 from torch.utils.data import DataLoader
+from transformers import AutoTokenizer
 from amulet.datasets import load_sst2
-from amulet.models import HFTextClassifier
+from amulet.models import HFCausalLM
 from amulet.poisoning.attacks import TextBadNets
 from amulet.poisoning.defenses import ONION
 from amulet.utils import get_accuracy, train_classifier
@@ -109,7 +112,7 @@ poisoned_train = attack.poison_train(data.train_set)
 poisoned_test = attack.poison_test(data.test_set)   # accuracy on this vs. trigger_label is ASR
 
 # 3. Fine-tune the LoRA victim on the poisoned data
-victim = HFTextClassifier(model_name=model_name, num_labels=data.num_classes).to(device)
+victim = HFCausalLM(model_name=model_name, num_labels=data.num_classes).to(device)
 optimizer = torch.optim.Adam(victim.trainable_parameters(), lr=2e-4)
 criterion = torch.nn.CrossEntropyLoss()
 train_loader = DataLoader(poisoned_train, batch_size=16, shuffle=True)
@@ -118,8 +121,11 @@ victim = train_classifier(victim, train_loader, criterion, optimizer, 3, device)
 asr = get_accuracy(victim, DataLoader(poisoned_test, batch_size=16), device)
 print(f"Attack Success Rate (ASR): {asr}%")
 
-# 4. Defend with ONION: purify triggered inputs, then re-measure ASR on the same victim
-onion = ONION(reference_model_name="gpt2", device=device)
+# 4. Defend with ONION: purify triggered inputs, then re-measure ASR on the same victim.
+#    ONION scores perplexity with the victim's own base LM (its clean, pre-fine-tuning
+#    base by default), so it re-tokenizes with the victim's tokenizer.
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+onion = ONION(model=victim, tokenizer=tokenizer, device=device)
 purified_test = onion.purify(poisoned_test)
 defended_asr = get_accuracy(victim, DataLoader(purified_test, batch_size=16), device)
 print(f"ASR after ONION: {defended_asr}%")

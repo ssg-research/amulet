@@ -34,8 +34,9 @@ class VisionTransformer(AmuletModel):
 ```
 
 For a full worked example that subclasses `AmuletModel` around a real pretrained
-backbone, see `amulet/models/hf_text_classifier.py` (`HFTextClassifier`), which wraps a
-Hugging Face decoder LLM as a LoRA sequence classifier.
+backbone, see `amulet/models/hf_causal_lm.py` (`HFCausalLM`), which wraps a Hugging Face
+causal (decoder-only) LM with LoRA and exposes classification, perplexity scoring, and
+generation over one shared adapted decoder.
 
 ## Step 2: Export the Model
 
