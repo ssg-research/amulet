@@ -1,8 +1,9 @@
-"""End-to-end integration wiring for the text-backdoor pipeline.
+"""End-to-end integration for the text-backdoor pipeline.
 
-These train tiny random-init LoRA victims for a few steps on CPU, so they are marked
-``integration`` and time-bounded. They assert the pipeline runs and returns the right
-types/ranges (finite ASR in [0, 100]; a valid privacy budget), not efficacy numbers.
+These build tiny random-init LoRA victims and train them a few steps on CPU, so they are
+marked ``integration`` and time-bounded. The north star is that the pipeline runs and
+reproduces (same seed -> same result); the overfit test guards that the victim can learn
+at all (gradients reach the LoRA adapters and the classification head).
 """
 
 import math
@@ -15,29 +16,68 @@ from amulet.poisoning.attacks import TextBadNets
 from amulet.utils import get_accuracy, train_classifier
 
 
+def _state_dicts_equal(a: dict, b: dict) -> bool:
+    return a.keys() == b.keys() and all(torch.equal(a[k], b[k]) for k in a)
+
+
+@pytest.mark.integration
+@pytest.mark.timeout(120)
+def test_lora_victim_overfits_single_batch(tiny_text_classifier, tiny_text_dataset):
+    """The victim can memorize one tiny batch: proof gradients reach LoRA + the head.
+
+    A plateauing loss would mean broken gradient flow (frozen adapters, an untrained
+    head, a wrong loss reduction). This is the load-bearing "does it learn" check.
+    """
+    input_ids, labels = tiny_text_dataset.tensors
+    model = tiny_text_classifier
+    model.train()
+    optimizer = torch.optim.Adam(model.trainable_parameters(), lr=1e-2)
+    criterion = torch.nn.CrossEntropyLoss()
+
+    initial = criterion(model(input_ids), labels).item()
+    for _ in range(100):
+        optimizer.zero_grad()
+        criterion(model(input_ids), labels).backward()
+        optimizer.step()
+    final = criterion(model(input_ids), labels).item()
+
+    assert final < initial * 0.1
+
+
 @pytest.mark.integration
 @pytest.mark.timeout(180)
-def test_poison_train_and_measure_asr(
-    tiny_text_classifier, tiny_text_dataset, cpu_device
+def test_text_backdoor_pipeline_runs_and_reproduces(
+    tiny_text_classifier_factory, tiny_text_dataset, cpu_device
 ):
-    """poison -> LoRA-train a few steps -> compute ASR via get_accuracy."""
+    """North star: poison -> train -> measure ASR runs, and a seeded rerun matches.
+
+    Trains on the poisoned set and computes ASR as ``get_accuracy`` on the fully
+    triggered test set against ``trigger_label`` (the pipeline's real metric path). The
+    artifact is sane (ASR finite, in [0, 100]) and bit-reproducible on CPU with a fixed
+    seed and an unshuffled loader.
+    """
     attack = TextBadNets(trigger="cf", trigger_label=1, portion=0.5, random_seed=0)
     poisoned_train = attack.poison_train(tiny_text_dataset)
     poisoned_test = attack.poison_test(tiny_text_dataset)
 
-    train_loader = DataLoader(poisoned_train, batch_size=2, shuffle=True)
-    asr_loader = DataLoader(poisoned_test, batch_size=2)
+    def run() -> tuple[dict, float]:
+        model = tiny_text_classifier_factory(seed=0)
+        optimizer = torch.optim.Adam(model.trainable_parameters(), lr=1e-3)
+        criterion = torch.nn.CrossEntropyLoss()
+        train_loader = DataLoader(poisoned_train, batch_size=2, shuffle=False)
+        model = train_classifier(
+            model, train_loader, criterion, optimizer, 3, cpu_device
+        )
+        asr = get_accuracy(model, DataLoader(poisoned_test, batch_size=2), cpu_device)
+        return model.state_dict(), asr
 
-    criterion = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(tiny_text_classifier.trainable_parameters(), lr=1e-3)
-    model = train_classifier(
-        tiny_text_classifier, train_loader, criterion, optimizer, 3, cpu_device
-    )
+    state_a, asr_a = run()
+    state_b, asr_b = run()
 
-    # ASR is get_accuracy on the fully-triggered test set against trigger_label.
-    asr = get_accuracy(model, asr_loader, cpu_device)
-    assert math.isfinite(asr)
-    assert 0.0 <= asr <= 100.0
+    assert math.isfinite(asr_a)
+    assert 0.0 <= asr_a <= 100.0
+    assert _state_dicts_equal(state_a, state_b)
+    assert asr_a == asr_b
 
 
 @pytest.mark.integration
@@ -77,17 +117,25 @@ def test_dpsgd_runs_one_epoch_on_lora_victim(
 
 @pytest.mark.integration
 @pytest.mark.timeout(120)
-def test_victim_forward_is_single_tensor_bare_logits(
-    tiny_text_classifier, tiny_text_dataset, cpu_device
-):
-    """The DPSGD/get_accuracy contract: one input tensor in, a bare logits tensor out."""
-    loader = DataLoader(tiny_text_dataset, batch_size=2)
-    input_ids, _ = next(iter(loader))
-    output = tiny_text_classifier(input_ids.to(cpu_device))
+def test_victim_forward_returns_bare_logits(tiny_text_classifier, tiny_text_dataset):
+    """The DPSGD/get_accuracy contract: one input tensor in, a bare logits tensor out.
+
+    Returning the raw ``(batch, num_labels)`` tensor (not ``SequenceClassifierOutput``)
+    is what lets ``torch.max(output, 1)`` in those loops work unchanged.
+    """
+    input_ids = tiny_text_dataset.tensors[0][:2]
+    output = tiny_text_classifier(input_ids)
     assert isinstance(output, torch.Tensor)
     assert output.shape == (2, 2)
-    # get_hidden pools to one vector per row.
-    hidden = tiny_text_classifier.get_hidden(input_ids.to(cpu_device))
+
+
+@pytest.mark.integration
+@pytest.mark.timeout(120)
+def test_victim_get_hidden_pools_per_row(tiny_text_classifier, tiny_text_dataset):
+    """get_hidden returns one pooled hidden vector per input row."""
+    input_ids = tiny_text_dataset.tensors[0][:2]
+    hidden = tiny_text_classifier.get_hidden(input_ids)
+    assert hidden.dim() == 2
     assert hidden.shape[0] == 2
 
 

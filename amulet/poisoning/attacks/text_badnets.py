@@ -95,12 +95,19 @@ class TextBadNets(PoisoningAttack):
         words.insert(position, self.trigger)
         return " ".join(words)
 
-    def _select_poison_indices(self, labels: list[int], length: int) -> set[int]:
+    def select_poison_indices(self, labels: list[int], length: int) -> set[int]:
         """Pick which rows to poison: non-target rows up to ``int(length*portion)``.
 
         Mirrors the image ``BadNets`` selection so the two attacks are consistent: draw
         from a seeded permutation, keep only rows not already at ``trigger_label``, and
         cap at the requested count (bounded by how many such rows exist).
+
+        Args:
+            labels: Integer label of each row, in dataset order.
+            length: Number of rows to select from.
+
+        Returns:
+            The set of row indices to poison. Deterministic given ``random_seed``.
         """
         perm = np.random.default_rng(seed=self.random_seed).permutation(length)
         target_count = int(length * self.portion)
@@ -158,7 +165,7 @@ class TextBadNets(PoisoningAttack):
             the relabeled targets, in the original row order.
         """
         texts, labels = self._read(dataset)
-        poison_indices = self._select_poison_indices(labels, len(texts))
+        poison_indices = self.select_poison_indices(labels, len(texts))
 
         poisoned_texts = [
             self.poison_text(text) if i in poison_indices else text

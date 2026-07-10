@@ -51,27 +51,38 @@ def tiny_text_dataset(text_tokenizer) -> TextTensorDataset:
 
 
 @pytest.fixture
-def tiny_text_classifier(text_tokenizer, cpu_device):
-    """A 2-layer random-init Llama LoRA classifier on CPU (no weights downloaded).
+def tiny_text_classifier_factory(text_tokenizer, cpu_device):
+    """Factory returning fresh, seeded 2-layer random-init Llama LoRA classifiers on CPU.
 
     Uses the real tokenizer's vocab size and pad id so that ``input_ids`` produced by
     ``tiny_text_dataset`` are valid embedding indices, while keeping the transformer
-    itself tiny (hidden 32, 2 layers) for a sub-second forward/backward.
+    itself tiny (hidden 32, 2 layers) for a sub-second forward/backward. Seeding just
+    before construction makes two builds byte-identical, which the reproducibility test
+    relies on (weight init and LoRA init both draw from the torch RNG).
     """
     pytest.importorskip("peft")
     from transformers import LlamaConfig
 
     from amulet.models import HFTextClassifier
 
-    config = LlamaConfig(
-        vocab_size=len(text_tokenizer),
-        hidden_size=32,
-        intermediate_size=64,
-        num_hidden_layers=2,
-        num_attention_heads=4,
-        num_key_value_heads=4,
-        max_position_embeddings=_MAX_LEN,
-        pad_token_id=text_tokenizer.pad_token_id,
-    )
-    torch.manual_seed(0)
-    return HFTextClassifier(config=config, num_labels=2).to(cpu_device)
+    def _make(seed: int = 0) -> HFTextClassifier:
+        config = LlamaConfig(
+            vocab_size=len(text_tokenizer),
+            hidden_size=32,
+            intermediate_size=64,
+            num_hidden_layers=2,
+            num_attention_heads=4,
+            num_key_value_heads=4,
+            max_position_embeddings=_MAX_LEN,
+            pad_token_id=text_tokenizer.pad_token_id,
+        )
+        torch.manual_seed(seed)
+        return HFTextClassifier(config=config, num_labels=2).to(cpu_device)
+
+    return _make
+
+
+@pytest.fixture
+def tiny_text_classifier(tiny_text_classifier_factory):
+    """A single seeded 2-layer random-init Llama LoRA classifier on CPU."""
+    return tiny_text_classifier_factory(seed=0)

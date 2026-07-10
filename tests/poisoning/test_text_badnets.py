@@ -29,14 +29,12 @@ def _attack(insert_position: str = "start", **kwargs) -> TextBadNets:
 # --- Pure string-space transform: no tokenizer, always runs ---------------------------
 
 
-def test_poison_text_start_prepends_trigger():
-    attack = _attack("start")
-    assert attack.poison_text("a good movie") == "cf a good movie"
-
-
-def test_poison_text_end_appends_trigger():
-    attack = _attack("end")
-    assert attack.poison_text("a good movie") == "a good movie cf"
+@pytest.mark.parametrize(
+    "position, expected",
+    [("start", "cf a good movie"), ("end", "a good movie cf")],
+)
+def test_poison_text_inserts_trigger_at_position(position, expected):
+    assert _attack(position).poison_text("a good movie") == expected
 
 
 def test_poison_text_random_inserts_trigger_deterministically():
@@ -57,6 +55,37 @@ def test_poison_text_random_inserts_trigger_deterministically():
 def test_invalid_insert_position_raises():
     with pytest.raises(ValueError):
         _attack("middle")
+
+
+# --- Poison-index selection: pure, no tokenizer, runs in the fast tier ----------------
+# poison_train/test re-tokenize (needing the llm extra), but the row-selection logic is a
+# pure function of labels + seed, so it is guarded here without a tokenizer.
+
+_LABELS = [1, 0, 1, 0, 0, 1, 0, 0]  # 3 target (label 1), 5 non-target (label 0)
+
+
+def test_select_poison_indices_only_picks_non_target_rows():
+    selected = _attack(portion=0.5).select_poison_indices(_LABELS, len(_LABELS))
+    assert all(_LABELS[i] != 1 for i in selected)
+
+
+@pytest.mark.parametrize(
+    "portion, expected",
+    [
+        (0.0, 0),  # nothing requested
+        (0.5, 4),  # int(8 * 0.5) = 4, and 5 non-target rows exist
+        (1.0, 5),  # int(8 * 1.0) = 8, capped by the 5 non-target rows
+    ],
+)
+def test_select_poison_indices_count_capped_by_non_target(portion, expected):
+    selected = _attack(portion=portion).select_poison_indices(_LABELS, len(_LABELS))
+    assert len(selected) == expected
+
+
+def test_select_poison_indices_is_deterministic():
+    a = _attack(portion=0.5).select_poison_indices(_LABELS, len(_LABELS))
+    b = _attack(portion=0.5).select_poison_indices(_LABELS, len(_LABELS))
+    assert a == b
 
 
 # --- poison_train / poison_test: need the tokenizer (skips offline if unavailable) ----

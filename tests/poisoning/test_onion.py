@@ -45,6 +45,30 @@ def test_onion_removes_injected_outlier_token(onion):
 
 @pytest.mark.integration
 @pytest.mark.timeout(120)
+def test_onion_preserves_clean_text(onion):
+    """With no outlier to flag, a fluent sentence keeps its content words."""
+    clean = "the film was genuinely moving and beautifully acted"
+    purified = onion.purify_text(clean)
+    # Purification of clean text should not strip its salient content.
+    assert "film" in purified.split()
+    assert "moving" in purified.split()
+
+
+@pytest.mark.integration
+@pytest.mark.timeout(120)
+def test_onion_falls_back_to_original_when_purification_empties(onion):
+    """A threshold so low every word is removed must not yield an empty string.
+
+    ``purify_text`` returns the original (stripped) text rather than an empty input,
+    so the victim always receives something to classify.
+    """
+    onion.threshold = -1e9  # remove every word
+    text = "a genuinely wonderful film"
+    assert onion.purify_text(text) == text
+
+
+@pytest.mark.integration
+@pytest.mark.timeout(120)
 def test_onion_purify_round_trips_dataset(onion, tiny_text_dataset):
     max_len = tiny_text_dataset.tensors[0].shape[1]
     purified = onion.purify(tiny_text_dataset)
