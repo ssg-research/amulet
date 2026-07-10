@@ -1,0 +1,16 @@
+# Codecov is temporarily disabled. CI no longer uploads a coverage report (the
+# upload step and --cov flags are removed from .github/workflows/precommit-main.yaml),
+# and these switches stop the Codecov app from posting any status check, PR comment,
+# or check annotation in the meantime.
+#
+# To bring Codecov back:
+#   1. Restore `--cov=amulet --cov-report=xml` on the fast-tier pytest step and the
+#      "Upload coverage reports to Codecov" step in precommit-main.yaml.
+#   2. Set the switches below back to real values (or delete this file for defaults).
+#   3. Re-add the codecov badge to README.md.
+coverage:
+  status:
+    project: false
+    patch: false
+comment: false
+github_checks: false

@@ -2,7 +2,6 @@
 
 [![CI Status](https://github.com/ssg-research/amulet/actions/workflows/precommit-main.yaml/badge.svg)](https://github.com/ssg-research/amulet/actions/workflows/precommit-main.yaml)
 [![CodeQL](https://github.com/ssg-research/amulet/actions/workflows/codeql.yaml/badge.svg)](https://github.com/ssg-research/amulet/actions/workflows/codeql.yaml)
-[![codecov](https://codecov.io/gh/ssg-research/amulet/graph/badge.svg)](https://codecov.io/gh/ssg-research/amulet)
 [![PyPI version](https://img.shields.io/pypi/v/amuletml.svg)](https://pypi.org/project/amuletml/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/amuletml.svg)](https://pypi.org/project/amuletml/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)

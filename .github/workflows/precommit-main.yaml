@@ -45,14 +45,11 @@ jobs:
       - name: Pre-commit on all files
         run: uv run pre-commit run --all-files --show-diff-on-failure --color=always
 
+      # Codecov is temporarily disabled (see codecov.yml). To re-enable: add back
+      # `--cov=amulet --cov-report=xml` to the fast-tier run below and restore the
+      # Codecov upload step, then flip the switches in codecov.yml.
       - name: Run pytest (fast tier)
-        run: uv run pytest tests/ -m "not integration and not gpu and not slow" -v --cov=amulet --cov-report=xml
+        run: uv run pytest tests/ -m "not integration and not gpu and not slow" -v
 
       - name: Run pytest (integration tier)
         run: uv run pytest tests/ -m integration -v
-
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v7
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage.xml
