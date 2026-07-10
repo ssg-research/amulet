@@ -30,14 +30,39 @@ def onion(tiny_text_classifier, text_tokenizer, cpu_device):
     )
 
 
-def _fake_ppl(text: str) -> float:
-    """A controlled perplexity oracle: the rare trigger 'cf' inflates perplexity.
+def _fake_ppls(texts: list[str]) -> list[float]:
+    """A controlled batched perplexity oracle: the rare trigger 'cf' inflates perplexity.
 
-    Any string still containing 'cf' scores high (100); removing 'cf' drops it to 10, so
-    only 'cf' earns a positive suspicion score. Removing any fluent word leaves 'cf' in and
-    the score unchanged, i.e. zero suspicion.
+    Stubs ONION's batched scoring seam (``_perplexities``). Any candidate still containing
+    'cf' scores high (100); removing 'cf' drops it to 10, so only 'cf' earns a positive
+    suspicion score. Removing any fluent word leaves 'cf' in and the score unchanged, i.e.
+    zero suspicion. This pins the removal algorithm independently of the real LM.
     """
-    return 100.0 if "cf" in text.split() else 10.0
+    return [100.0 if "cf" in text.split() else 10.0 for text in texts]
+
+
+def _sequential_purify(model, tokenizer, text: str, threshold: float) -> str:
+    """Reference ONION purification scoring one candidate at a time.
+
+    Uses the trusted single-sequence ``perplexity`` oracle for each leave-one-out
+    candidate — the pre-batching computation — so the batched ``purify_text`` can be proven
+    to remove the identical words.
+    """
+    words = text.strip().split()
+    if len(words) <= 1:
+        return text.strip()
+
+    def ppl(s: str) -> float:
+        ids = torch.tensor(tokenizer(s).input_ids, dtype=torch.long)
+        return model.perplexity(ids)
+
+    base = ppl(text.strip())
+    kept = [
+        w
+        for i, w in enumerate(words)
+        if base - ppl(" ".join(words[:i] + words[i + 1 :])) <= threshold
+    ]
+    return " ".join(kept) or text.strip()
 
 
 @pytest.mark.integration
@@ -51,7 +76,7 @@ def test_onion_is_poisoning_defense(onion):
 @pytest.mark.timeout(120)
 def test_purify_text_removes_high_suspicion_word(onion, mocker):
     """Only the perplexity-outlier word ('cf') is removed; fluent words survive."""
-    mocker.patch.object(onion, "_perplexity", side_effect=_fake_ppl)
+    mocker.patch.object(onion, "_perplexities", side_effect=_fake_ppls)
     purified = onion.purify_text("the film was genuinely moving cf")
     assert "cf" not in purified.split()
     assert "film" in purified.split()
@@ -62,7 +87,7 @@ def test_purify_text_removes_high_suspicion_word(onion, mocker):
 @pytest.mark.timeout(120)
 def test_purify_text_preserves_clean_text(onion, mocker):
     """With no outlier to flag, every content word is kept."""
-    mocker.patch.object(onion, "_perplexity", side_effect=_fake_ppl)
+    mocker.patch.object(onion, "_perplexities", side_effect=_fake_ppls)
     clean = "the film was genuinely moving and beautifully acted"
     assert onion.purify_text(clean).split() == clean.split()
 
@@ -75,10 +100,41 @@ def test_purify_text_falls_back_to_original_when_emptied(onion, mocker):
     ``purify_text`` returns the original (stripped) text rather than an empty input, so the
     victim always receives something to classify.
     """
-    mocker.patch.object(onion, "_perplexity", side_effect=_fake_ppl)
+    mocker.patch.object(onion, "_perplexities", side_effect=_fake_ppls)
     onion.threshold = -1e9  # remove every word
     text = "a genuinely wonderful film"
     assert onion.purify_text(text) == text
+
+
+@pytest.mark.integration
+@pytest.mark.timeout(120)
+def test_purify_text_batched_matches_sequential(onion, tiny_text_classifier):
+    """Batching changes speed, not results: purify_text removes the same words as scoring
+    each candidate one at a time through the trusted single-sequence perplexity oracle."""
+    text = "the film was genuinely moving and beautifully acted cf"
+    assert onion.purify_text(text) == _sequential_purify(
+        tiny_text_classifier, onion.tokenizer, text, onion.threshold
+    )
+
+
+@pytest.mark.integration
+@pytest.mark.timeout(120)
+def test_purify_text_scores_row_in_one_forward(onion, tiny_text_classifier):
+    """A row's candidates are scored in one batched forward, not one forward per word.
+
+    This is the speedup itself: the old path ran a reference-LM forward per leave-one-out
+    candidate. A forward hook counts calls; six words (seven candidates) fit under the
+    default ``score_batch_size`` (32), so scoring must issue a single forward.
+    """
+    calls = {"n": 0}
+    handle = tiny_text_classifier.lm.register_forward_hook(
+        lambda *_: calls.__setitem__("n", calls["n"] + 1)
+    )
+    try:
+        onion.purify_text("the film was genuinely moving cf")
+    finally:
+        handle.remove()
+    assert calls["n"] == 1
 
 
 @pytest.mark.integration

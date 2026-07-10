@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from .base import AmuletModel
 
@@ -251,6 +252,75 @@ class HFCausalLM(AmuletModel):
         with torch.no_grad(), adapter_ctx:
             loss = self.lm(input_ids=ids, labels=ids).loss
         return math.exp(loss.item())
+
+    def perplexity_batch(
+        self,
+        sequences: list[torch.Tensor],
+        use_adapter: bool = False,
+        batch_size: int = 32,
+    ) -> list[float]:
+        """Per-sequence perplexity for many token sequences in few padded forwards.
+
+        Equivalent to calling ``perplexity`` on each sequence — the same masked mean token
+        cross-entropy, and ``inf`` for sub-two-token sequences — but scores up to
+        ``batch_size`` sequences per forward instead of one. This is ONION's hot path: it
+        replaces a forward per leave-one-out candidate with a single batched forward.
+
+        Sequences are **right-padded** so every real token keeps its original position;
+        under the causal mask a real token then attends to exactly the same tokens it would
+        unpadded, so its logits — and the resulting per-sequence perplexity — are unchanged
+        by batching (up to float reduction-order noise). Per-sequence loss is computed here
+        as the masked mean token cross-entropy, never ``outputs.loss`` (which would average
+        over the whole batch and corrupt every score).
+
+        Args:
+            sequences: Token-id tensors, each ``(seq,)`` or ``(1, seq)``, of possibly
+                differing lengths.
+            use_adapter: Score through the LoRA adapters (the fine-tuned model) rather than
+                the clean pretrained base. Defaults to the clean base, matching
+                ``perplexity``.
+            batch_size: Maximum sequences per padded forward. Tune down if memory is tight.
+
+        Returns:
+            A perplexity per input sequence, in input order; ``inf`` where a sequence has
+            fewer than two tokens.
+        """
+        flat = [s.squeeze(0) if s.dim() == 2 else s for s in sequences]
+        results = [float("inf")] * len(flat)
+        scorable = [(i, s) for i, s in enumerate(flat) if s.numel() >= 2]
+
+        device = next(self.parameters()).device
+        adapter_ctx = nullcontext() if use_adapter else self.lm.disable_adapter()
+        with torch.no_grad(), adapter_ctx:
+            for start in range(0, len(scorable), batch_size):
+                chunk = scorable[start : start + batch_size]
+                lengths = [int(s.numel()) for _, s in chunk]
+                max_len = max(lengths)
+                padded = torch.full(
+                    (len(chunk), max_len), self.pad_id, dtype=torch.long, device=device
+                )
+                mask = torch.zeros(
+                    (len(chunk), max_len), dtype=torch.long, device=device
+                )
+                for row, ((_, seq), n) in enumerate(zip(chunk, lengths, strict=True)):
+                    padded[row, :n] = seq.to(device)
+                    mask[row, :n] = 1
+                logits = self.lm(input_ids=padded, attention_mask=mask).logits
+                # Causal shift by one; drop positions whose target token is padding.
+                shift_logits = logits[:, :-1, :]
+                shift_labels = padded[:, 1:].clone()
+                keep = mask[:, 1:].bool()
+                shift_labels[~keep] = -100
+                tok_loss = F.cross_entropy(
+                    shift_logits.reshape(-1, shift_logits.size(-1)),
+                    shift_labels.reshape(-1),
+                    ignore_index=-100,
+                    reduction="none",
+                ).view(shift_labels.shape)
+                per_seq = tok_loss.sum(dim=1) / keep.sum(dim=1)
+                for row, (orig_i, _) in enumerate(chunk):
+                    results[orig_i] = math.exp(per_seq[row].item())
+        return results
 
     def generate(self, input_ids: torch.Tensor, **kwargs: Any) -> torch.Tensor:
         """Autoregressively generate a continuation of ``input_ids``.

@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, cast
 
+import torch
 import torch.nn as nn
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
@@ -55,6 +56,7 @@ class ONION(PoisoningDefense):
         tokenizer: PreTrainedTokenizerBase,
         threshold: float = 0.0,
         score_with_adapters: bool = False,
+        score_batch_size: int = 32,
         criterion: nn.Module | None = None,
         optimizer: Optimizer | None = None,
         train_loader: DataLoader | None = None,
@@ -74,6 +76,8 @@ class ONION(PoisoningDefense):
             threshold: Suspicion cutoff for removing a word.
             score_with_adapters: Score perplexity through the victim's LoRA adapters (the
                 fine-tuned model) instead of its clean pretrained base.
+            score_batch_size: Candidate strings scored per padded forward when purifying a
+                row. Higher is faster but uses more memory; tune down if it is tight.
             criterion: Loss function for ``train_robust``.
             optimizer: Optimizer for ``train_robust``.
             train_loader: Loader over the (poisoned) training data, carrying a
@@ -98,18 +102,25 @@ class ONION(PoisoningDefense):
         self.tokenizer = tokenizer
         self.threshold = threshold
         self.score_with_adapters = score_with_adapters
+        self.score_batch_size = score_batch_size
         self._train_fn = train_function
 
-    def _perplexity(self, text: str) -> float:
-        """Compute the victim's perplexity of ``text``.
+    def _perplexities(self, texts: list[str]) -> list[float]:
+        """Compute the victim's perplexity of each string in one batched pass.
 
-        Returns ``inf`` for texts too short to score (fewer than two tokens), so a one-word
-        candidate never looks like a fluent outlier to keep.
+        Scores all candidates for a row (the full string plus every leave-one-out
+        variant) in as few padded forwards as ``score_batch_size`` allows, instead of one
+        forward per candidate. Each ``inf`` marks a text too short to score (fewer than two
+        tokens), so a one-word candidate never looks like a fluent outlier to keep.
         """
-        encoded: Any = self.tokenizer(text, return_tensors="pt")
-        input_ids = encoded.input_ids
+        encoded: Any = self.tokenizer(texts)
+        sequences = [torch.tensor(ids, dtype=torch.long) for ids in encoded.input_ids]
         scorer = cast("HFCausalLM", self.model)
-        return scorer.perplexity(input_ids, use_adapter=self.score_with_adapters)
+        return scorer.perplexity_batch(
+            sequences,
+            use_adapter=self.score_with_adapters,
+            batch_size=self.score_batch_size,
+        )
 
     def purify_text(self, text: str) -> str:
         """Return ``text`` with likely-trigger (perplexity-outlier) words removed.
@@ -125,13 +136,19 @@ class ONION(PoisoningDefense):
         if len(words) <= 1:
             return text.strip()
 
-        base_ppl = self._perplexity(text.strip())
-        kept: list[str] = []
-        for i, word in enumerate(words):
-            reduced = " ".join(words[:i] + words[i + 1 :])
-            suspicion = base_ppl - self._perplexity(reduced)
-            if suspicion <= self.threshold:
-                kept.append(word)
+        # Score the full string and every leave-one-out candidate together, then keep a
+        # word when removing it does not drop perplexity past the threshold. candidates[0]
+        # is the base; candidates[i + 1] drops word i. Scoring them in one batched pass is
+        # the whole speedup — the suspicion arithmetic is unchanged.
+        candidates = [text.strip()]
+        candidates += [" ".join(words[:i] + words[i + 1 :]) for i in range(len(words))]
+        ppls = self._perplexities(candidates)
+        base_ppl = ppls[0]
+        kept = [
+            word
+            for i, word in enumerate(words)
+            if base_ppl - ppls[i + 1] <= self.threshold
+        ]
 
         purified = " ".join(kept)
         return purified if purified else text.strip()

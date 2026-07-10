@@ -133,6 +133,39 @@ def test_perplexity_is_deterministic(tiny_causal_lm_factory):
 
 @pytest.mark.integration
 @pytest.mark.timeout(120)
+def test_perplexity_batch_matches_sequential(tiny_causal_lm_factory):
+    """Batched per-sequence perplexity equals scoring each sequence on its own.
+
+    ``perplexity`` (one padded-free forward per sequence) is the trusted oracle; the
+    batched path pads, masks, and scores many at once. Right padding under a causal mask
+    cannot change a real token's logits, so the two must agree to a tight tolerance for
+    every sequence — mixed lengths and order included — and both return ``inf`` for a
+    sub-two-token sequence. If they diverge, batching has perturbed the score and ONION
+    would remove different words.
+    """
+    model = tiny_causal_lm_factory()
+    model.eval()
+    torch.manual_seed(1)
+    sequences = [
+        torch.randint(0, _VOCAB, (7,)),
+        torch.randint(0, _VOCAB, (3,)),
+        torch.randint(0, _VOCAB, (12,)),
+        torch.randint(0, _VOCAB, (1,)),  # too short -> inf
+        torch.randint(0, _VOCAB, (5,)),
+    ]
+    batched = model.perplexity_batch(sequences, batch_size=2)
+    sequential = [model.perplexity(s) for s in sequences]
+
+    assert batched[3] == float("inf") and sequential[3] == float("inf")
+    for b, s in zip(batched, sequential, strict=True):
+        if math.isinf(s):
+            assert math.isinf(b)
+        else:
+            assert math.isclose(b, s, rel_tol=1e-4)
+
+
+@pytest.mark.integration
+@pytest.mark.timeout(120)
 def test_generate_extends_prompt(tiny_causal_lm_factory):
     """Generation grows the sequence and preserves the prompt as a prefix."""
     model = tiny_causal_lm_factory()
