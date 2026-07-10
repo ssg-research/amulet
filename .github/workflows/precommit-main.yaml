@@ -14,6 +14,17 @@ jobs:
   code-quality:
     runs-on: ubuntu-latest
 
+    # Runners are CPU-only, so install the `cpu` torch build (the cpu/cu128/cu130
+    # extras are mutually exclusive, so `--all-extras` is invalid). `llm` is needed at
+    # install time so basedpyright can resolve the guarded transformers/peft/datasets
+    # imports, but the offline env vars below stop the pytest steps from downloading any
+    # Hugging Face models: the text/LLM tests skip on the cacheless runner (by design;
+    # they run locally and on the GPU tier).
+    env:
+      HF_HUB_OFFLINE: "1"
+      TRANSFORMERS_OFFLINE: "1"
+      HF_DATASETS_OFFLINE: "1"
+
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -28,7 +39,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          uv sync --all-extras
+          uv sync --extra cpu --extra dev --extra llm
           echo PATH="$PWD/.venv/bin:$PATH" >> $GITHUB_ENV
 
       - name: Pre-commit on all files
