@@ -30,7 +30,10 @@ jobs:
         uses: astral-sh/setup-uv@v8.1.0
 
       - name: Install dependencies
-        run: uv sync --all-extras
+        # CPU runner, so install the `cpu` torch build (the cpu/cu128/cu130 extras are
+        # mutually exclusive, so `--all-extras` is invalid). No `llm` extra: the slow
+        # tier has no text tests, and the text test modules import without the HF stack.
+        run: uv sync --extra cpu --extra dev
 
       - name: Run pytest (slow tier)
         run: uv run pytest tests/ -m slow -v

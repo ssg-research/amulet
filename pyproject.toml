@@ -27,6 +27,10 @@ dependencies = [
     "scikit-learn==1.8.0",
     "scikit-image==0.25.1",
     "scipy==1.12.0",
+    # torch/torchvision keep a loose floor here so `pip install amuletml` still works
+    # off PyPI. For a reproducible, driver-correct GPU build, sync with one of the
+    # cpu/cu128/cu130 extras below, which pin the version and route it to the matching
+    # PyTorch index (see the comment on those extras).
     "torch>=2.3.0",
     "torchvision>=0.18.0",
     "tqdm==4.67.3",
@@ -34,6 +38,32 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Torch build selection. Pick the extra matching your hardware and always sync with it,
+# e.g. `uv sync --extra cu128 --extra llm` on a CUDA 12.x box, `uv sync --extra cu130
+# --extra llm` on a CUDA 13 box, or `uv sync --extra cpu --extra dev` on a GPU-less/CI
+# machine to skip the CUDA runtime download entirely. Check the max CUDA your driver
+# supports with `nvidia-smi`. These pin the same torch/torchvision but route to the
+# matching PyTorch index (tool.uv.sources below); without them an unqualified resolve
+# grabs a cu13 wheel that older drivers cannot run and torch silently drops to CPU.
+# torch 2.11.0 is the newest release carrying both cu128 and cu130 wheels. The three
+# extras are mutually exclusive (tool.uv.conflicts).
+cpu = ["torch==2.11.0", "torchvision==0.26.0"]
+cu128 = ["torch==2.11.0", "torchvision==0.26.0"]
+cu130 = ["torch==2.11.0", "torchvision==0.26.0"]
+# LLM stack for the text-backdoor pipeline (TextBadNets attack, HFTextClassifier
+# victim, ONION defense). Kept optional so the base install stays lean and the
+# macOS dev machine / fast CI tier never pull the heavy Hugging Face stack. Every
+# module that imports these guards the import and raises a clear
+# "install amuletml[llm]" message when an LLM component is actually constructed.
+# Versions are the set the Phase-1 spike resolved and validated (2026-07-10).
+# bitsandbytes (4-bit load path) is GPU/Linux-only; it is deliberately left out of
+# this extra and its import is guarded, so it is never touched under DP or on macOS.
+llm = [
+    "transformers==5.13.0",
+    "peft==0.19.1",
+    "accelerate==1.14.0",
+    "datasets==5.0.0",
+]
 dev = [
     "pre-commit==3.7.1",
     "basedpyright==1.12.5",
@@ -53,6 +83,39 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["amulet"]
+
+[tool.uv]
+# Make the CUDA-build extras mutually exclusive so a lock can carry all three.
+conflicts = [[{ extra = "cpu" }, { extra = "cu128" }, { extra = "cu130" }]]
+
+[tool.uv.sources]
+# Route torch/torchvision to the matching PyTorch index for whichever CUDA extra is
+# active. With no cpu/cu12x/cu13x extra selected, both fall back to the default index.
+torch = [
+    { index = "pytorch-cpu", extra = "cpu" },
+    { index = "pytorch-cu128", extra = "cu128" },
+    { index = "pytorch-cu130", extra = "cu130" },
+]
+torchvision = [
+    { index = "pytorch-cpu", extra = "cpu" },
+    { index = "pytorch-cu128", extra = "cu128" },
+    { index = "pytorch-cu130", extra = "cu130" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
 
 [tool.ruff]
 line-length = 88

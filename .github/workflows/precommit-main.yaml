@@ -14,6 +14,17 @@ jobs:
   code-quality:
     runs-on: ubuntu-latest
 
+    # Runners are CPU-only, so install the `cpu` torch build (the cpu/cu128/cu130
+    # extras are mutually exclusive, so `--all-extras` is invalid). `llm` is needed at
+    # install time so basedpyright can resolve the guarded transformers/peft/datasets
+    # imports, but the offline env vars below stop the pytest steps from downloading any
+    # Hugging Face models: the text/LLM tests skip on the cacheless runner (by design;
+    # they run locally and on the GPU tier).
+    env:
+      HF_HUB_OFFLINE: "1"
+      TRANSFORMERS_OFFLINE: "1"
+      HF_DATASETS_OFFLINE: "1"
+
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -28,20 +39,17 @@ jobs:
 
       - name: Install dependencies
         run: |
-          uv sync --all-extras
+          uv sync --extra cpu --extra dev --extra llm
           echo PATH="$PWD/.venv/bin:$PATH" >> $GITHUB_ENV
 
       - name: Pre-commit on all files
         run: uv run pre-commit run --all-files --show-diff-on-failure --color=always
 
+      # Codecov is temporarily disabled (see codecov.yml). To re-enable: add back
+      # `--cov=amulet --cov-report=xml` to the fast-tier run below and restore the
+      # Codecov upload step, then flip the switches in codecov.yml.
       - name: Run pytest (fast tier)
-        run: uv run pytest tests/ -m "not integration and not gpu and not slow" -v --cov=amulet --cov-report=xml
+        run: uv run pytest tests/ -m "not integration and not gpu and not slow" -v
 
       - name: Run pytest (integration tier)
         run: uv run pytest tests/ -m integration -v
-
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v7
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage.xml

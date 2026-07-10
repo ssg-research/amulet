@@ -2,7 +2,6 @@
 
 [![CI Status](https://github.com/ssg-research/amulet/actions/workflows/precommit-main.yaml/badge.svg)](https://github.com/ssg-research/amulet/actions/workflows/precommit-main.yaml)
 [![CodeQL](https://github.com/ssg-research/amulet/actions/workflows/codeql.yaml/badge.svg)](https://github.com/ssg-research/amulet/actions/workflows/codeql.yaml)
-[![codecov](https://codecov.io/gh/ssg-research/amulet/graph/badge.svg)](https://codecov.io/gh/ssg-research/amulet)
 [![PyPI version](https://img.shields.io/pypi/v/amuletml.svg)](https://pypi.org/project/amuletml/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/amuletml.svg)](https://pypi.org/project/amuletml/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
@@ -24,11 +23,11 @@ Built to work with PyTorch
 
 ## Getting Started
 
-**Note:** The package requires the CUDA version to be 11.8 or above for PyTorch 2.2
-
 The easiest way to start is via `pip`:
 
 `pip install amuletml`
+
+For a reproducible GPU build (and for development), install from source with `uv` and select the torch build matching your driver: `uv sync --extra cu128` (CUDA 12.x), `uv sync --extra cu130` (CUDA 13), or `uv sync --extra cpu`. Add `--extra llm` for the optional text/LLM stack (used by the textual backdoor pipeline).
 
 ### Test installation
 
