@@ -173,8 +173,11 @@ cython_debug/
 # macOS
 .DS_Store
 
-# AI Agent Specifics (symlinks to AGENT.md and local metadata)
-CLAUDE.md
+# AI Agent Specifics (agent instruction symlinks and local metadata)
+# CLAUDE.md is a committed symlink to AGENTS.md so Claude Code always loads the shared
+# guidance; users of other agents can create their own symlink (e.g. `ln -s AGENTS.md
+# GEMINI.md`), which stay ignored below so each contributor self-serves without polluting
+# the repo.
 GEMINI.md
 .claude/
 .gemini

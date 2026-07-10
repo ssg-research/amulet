@@ -66,20 +66,28 @@ Attacks and defenses must not emit metrics.
 They return outputs (e.g. adversarial `DataLoader`, defended `nn.Module`) consumed by metrics in `amulet/utils/__metrics.py` or the risk's own `metrics/`.
 
 Each risk has an ABC base class in `amulet/<risk>/attacks/` and `amulet/<risk>/defenses/`.
-The standard entry-point methods are:
+**Every defense must implement its risk's training-shaped entry-point method** — this is a
+hard convention, not a suggestion, and it is enforced by `tests/test_api_conformance.py`
+(a defense exposing only a bespoke method fails CI). The standard entry-point methods are:
 
 | Role                           | Method                                             |
 | ------------------------------ | -------------------------------------------------- |
 | All attacks (except poisoning) | `attack()`                                         |
 | Poisoning attacks              | `poison_train(dataset)` and `poison_test(dataset)` |
 | Evasion + poisoning defenses   | `train_robust()`                                   |
-| Inference-time defense (ONION) | `purify(dataset)`                                  |
 | Membership inference defense   | `train_private()`                                  |
 | Fairness defense               | `train_fair()`                                     |
 | Watermarking defense           | `watermark()`                                      |
 | Fingerprinting defense         | `fingerprint()`                                    |
 
-`ONION` purifies inputs at inference instead of retraining, so it subclasses a separate `InferenceTimeDefense` base (in `amulet/poisoning/defenses/`) rather than `PoisoningDefense`, and returns a purified dataset. The textual backdoor attack `TextBadNets` and the LoRA-LLM victim `HFTextClassifier` need the optional `llm` extra; see [Optional extras](#optional-extras).
+A defense may expose extra public helpers in addition to its entry point, never instead
+of it. `ONION` is the reference case: it is a poisoning defense subclassing
+`PoisoningDefense` alongside `OutlierRemoval`, so it implements `train_robust()` (purify the
+poisoned training data, then retrain the victim) — and it also exposes
+`purify(dataset)` for cleaning inputs at test time. Do not add a defense on a bespoke base
+class with a non-standard entry point; reshape the shared base instead. The textual backdoor
+attack `TextBadNets` and the LoRA-LLM victim `HFCausalLM` need the optional `llm` extra; see
+[Optional extras](#optional-extras).
 
 Some classes expose additional public helpers for experimentation — for example, `MembershipInferenceAttack` has `train_shadow_model()` / `prepare_shadow_models()` and `DistributionInferenceAttack` has `train_model_population()` / `prepare_model_populations()`.
 Check the base class before assuming `attack()` is the only callable.
@@ -90,9 +98,9 @@ Any model under `amulet/models/` must subclass `AmuletModel` ([`amulet/models/ba
 Several modules depend on intermediate activations; omitting `get_hidden` breaks them silently.
 Match the base signature's parameter name `x` on both `forward` and `get_hidden` (basedpyright enforces override compatibility), even when the input is token ids rather than pixels.
 
-`HFTextClassifier` ([`amulet/models/hf_text_classifier.py`](amulet/models/hf_text_classifier.py)) is the reference example of subclassing `AmuletModel` around a real pretrained backbone (a LoRA-tuned decoder LLM). Its `forward` returns the bare logits tensor, not the `SequenceClassifierOutput`, so the single-tensor training loops (`train_classifier`, `DPSGD.train_private`) and `get_accuracy` drive it unchanged. It needs the `llm` extra.
+`HFCausalLM` ([`amulet/models/hf_causal_lm.py`](amulet/models/hf_causal_lm.py)) is the reference example of subclassing `AmuletModel` around a real pretrained backbone: a LoRA-adapted HuggingFace **causal (decoder-only) LM** (Llama, GPT-2, Mistral, …) that keeps its generative base. One shared adapted decoder backs three roles — classification (`forward` returns the bare logits tensor, not the `SequenceClassifierOutput`, so `train_classifier`, `DPSGD.train_private`, and `get_accuracy` drive it unchanged), perplexity scoring (`perplexity`, what `ONION` consumes — the victim itself is the reference LM), and generation (`generate`). Encoder-only (BERT) and seq2seq (T5) models do not fit and are out of scope. It needs the `llm` extra.
 
-`initialize_model` uses a central capacity map and only covers the built-in CNNs; models whose constructors do not fit its `(arch, capacity, num_features, num_classes)` signature (e.g. `HFTextClassifier`) are constructed directly. See #104.
+`initialize_model` uses a central capacity map and only covers the built-in CNNs; models whose constructors do not fit its `(arch, capacity, num_features, num_classes)` signature (e.g. `HFCausalLM`) are constructed directly. See #104.
 
 `WatermarkNN` and `DatasetInference` have separate ABC base classes (`WatermarkDefense`, `FingerprintDefense`).
 There is no shared parent — this is intentional.
@@ -110,8 +118,8 @@ Text loaders ([`amulet/datasets/__text_datasets.py`](amulet/datasets/__text_data
 ### Optional extras
 
 - **Torch build (`cpu` / `cu128` / `cu130`):** mutually exclusive (declared in `[tool.uv] conflicts`), each pinning the same `torch`/`torchvision` but routed to the matching PyTorch index via `[tool.uv.sources]`. Always sync with exactly one. The base `torch`/`torchvision` floor stays loose so `pip install amuletml` works off PyPI; the extras exist so a `uv sync` produces a driver-correct GPU build instead of a cu13 wheel that silently runs on CPU.
-- **`llm`:** the Hugging Face stack (`transformers`, `peft`, `accelerate`, `datasets`) for the textual backdoor pipeline (`TextBadNets`, `HFTextClassifier`, `ONION`, the text loaders). Kept optional so the base install stays lean and the macOS dev machine / fast CI tier never pull it. Every HF import is lazy and guarded, so `import amulet` works without the extra and constructing an LLM component without it raises a clear "install amuletml[llm]" error.
-- **`bitsandbytes`** (4-bit load path in `HFTextClassifier`) is GPU/Linux-only and deliberately **not** in the `llm` extra. Its import is guarded, off by default, and never used under DP (Opacus per-sample hooks do not compose with 4-bit layers).
+- **`llm`:** the Hugging Face stack (`transformers`, `peft`, `accelerate`, `datasets`) for the textual backdoor pipeline (`TextBadNets`, `HFCausalLM`, `ONION`, the text loaders). Kept optional so the base install stays lean and the macOS dev machine / fast CI tier never pull it. Every HF import is lazy and guarded, so `import amulet` works without the extra and constructing an LLM component without it raises a clear "install amuletml[llm]" error.
+- **`bitsandbytes`** (4-bit load path in `HFCausalLM`) is GPU/Linux-only and deliberately **not** in the `llm` extra. Its import is guarded, off by default, and never used under DP (Opacus per-sample hooks do not compose with 4-bit layers).
 
 ### Tooling
 
