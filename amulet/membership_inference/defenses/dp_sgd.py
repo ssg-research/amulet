@@ -1,8 +1,11 @@
 """Differential Privacy implementation"""
 
+from contextlib import nullcontext
+
 import torch
 import torch.nn as nn
 from opacus import PrivacyEngine
+from opacus.utils.batch_memory_manager import BatchMemoryManager
 from torch.utils.data import DataLoader
 
 from .membership_inference_defense import MembershipInferenceDefense
@@ -31,6 +34,11 @@ class DPSGD(MembershipInferenceDefense):
             Whether to use secure RNG for trustworthy privacy guarantees. Comes at a privacy cost.
         epochs: int
             Determines number of iterations over training data.
+        max_physical_batch_size: int | None
+            When set, each logical batch is split into physical micro-batches of at most
+            this size (via Opacus' ``BatchMemoryManager``) to bound peak per-sample-gradient
+            memory. The logical batch size — and therefore the privacy accounting and expected
+            utility — is unchanged. ``None`` (default) iterates the loader without splitting.
     """
 
     def __init__(
@@ -45,10 +53,12 @@ class DPSGD(MembershipInferenceDefense):
         sigma: float,
         secure_rng: bool = False,
         epochs: int = 5,
+        max_physical_batch_size: int | None = None,
     ):
         super().__init__(model, criterion, optimizer, train_loader, device, epochs)
         self.privacy_engine = PrivacyEngine(secure_mode=secure_rng)
         self.delta = delta
+        self.max_physical_batch_size = max_physical_batch_size
         self.model.train()
         self.model, self.optimizer, self.train_loader = (
             self.privacy_engine.make_private(
@@ -74,21 +84,33 @@ class DPSGD(MembershipInferenceDefense):
             acc = 0
             total = 0
             last_loss: torch.Tensor | None = None
-            for batch_idx, (data, target) in enumerate(self.train_loader):
-                data, target = data.to(self.device), target.to(self.device)
-                self.optimizer.zero_grad()
-                output = self.model(data)
-                _, pred = torch.max(output, 1)
-                loss = self.criterion(output, target)
-                loss.backward()
-                self.optimizer.step()
-                acc += pred.eq(target).sum().item()
-                total += len(target)
-                last_loss = loss
-                if batch_idx % 2000 == 0:
-                    print(
-                        f"Train Epoch: {epoch} Loss: {loss.item():.6f} Acc: {acc / total * 100:.2f}"
-                    )
+            # BatchMemoryManager splits each logical batch into physical micro-batches to
+            # bound peak per-sample-gradient memory; nullcontext preserves today's behavior
+            # exactly when no cap is set. Either way the per-step loop body is unchanged.
+            if self.max_physical_batch_size is not None:
+                batch_loader = BatchMemoryManager(
+                    data_loader=self.train_loader,
+                    max_physical_batch_size=self.max_physical_batch_size,
+                    optimizer=self.optimizer,
+                )
+            else:
+                batch_loader = nullcontext(self.train_loader)
+            with batch_loader as loader:
+                for batch_idx, (data, target) in enumerate(loader):
+                    data, target = data.to(self.device), target.to(self.device)
+                    self.optimizer.zero_grad()
+                    output = self.model(data)
+                    _, pred = torch.max(output, 1)
+                    loss = self.criterion(output, target)
+                    loss.backward()
+                    self.optimizer.step()
+                    acc += pred.eq(target).sum().item()
+                    total += len(target)
+                    last_loss = loss
+                    if batch_idx % 2000 == 0:
+                        print(
+                            f"Train Epoch: {epoch} Loss: {loss.item():.6f} Acc: {acc / total * 100:.2f}"
+                        )
             if last_loss is not None:
                 epsilon = self.privacy_engine.accountant.get_epsilon(delta=self.delta)
                 print(
