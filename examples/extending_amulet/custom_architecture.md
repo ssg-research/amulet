@@ -45,18 +45,28 @@ Update the models namespace.
 **File:** `amulet/models/__init__.py`
 
 ```python
-from .vgg import VGG
+from .base import AmuletModel
+from .cnn import SimpleCNN
+from .hf_causal_lm import HFCausalLM
 from .linear_net import LinearNet
 from .resnet import ResNet
-from .cnn import SimpleCNN
+from .vgg import VGG
 from .vit import VisionTransformer
 
-__all__ = ["VGG", "LinearNet", "ResNet", "SimpleCNN", "VisionTransformer"]
+__all__ = [
+    "VGG",
+    "AmuletModel",
+    "HFCausalLM",
+    "LinearNet",
+    "ResNet",
+    "SimpleCNN",
+    "VisionTransformer",
+]
 ```
 
 ## Step 3: Register the Model in the Pipeline
 
-Add a new case in the model initialization pipeline.
+Add a new case in the model initialization pipeline (`initialize_model` in `amulet/utils/__pipeline.py`).
 
 ```python
 elif model_arch == "vit":

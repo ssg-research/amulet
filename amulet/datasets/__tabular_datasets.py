@@ -245,8 +245,8 @@ def load_lfw(
     """
     Load the LFW dataset combined with face attributes for property inference.
 
-    Combines Scikit-Learn's LFW images with attribute annotations from the PubFig
-    dataset to enable distribution inference experiments.
+    Combines scikit-learn's LFW images with the attribute annotations shipped in
+    `lfw_attributes.txt` to enable distribution inference experiments.
 
     On first use the attributes file is downloaded from Google Drive and images are
     fetched via scikit-learn. Processed arrays are cached in a parameter-keyed .npz
@@ -256,9 +256,11 @@ def load_lfw(
 
     Args:
         path: Directory where raw and cached dataset files are stored.
-        target: Attribute to use as classification target. Options: "age", "gender", "race".
-        attribute_1: First sensitive attribute. Options: "age", "gender", "race".
-        attribute_2: Second sensitive attribute. Options: "age", "gender", "race".
+        target: Attribute to use as classification target. Options: "age",
+            "gender", "race", "glasses", "hair". "smile" is declared but not yet
+            implemented and raises ValueError.
+        attribute_1: First sensitive attribute. Same options as target.
+        attribute_2: Second sensitive attribute. Same options as target.
         test_size: Proportion of data used for testing.
         random_seed: Random seed for reproducible train/test splitting.
 

@@ -12,10 +12,10 @@ from .poisoning_defense import PoisoningDefense
 
 
 class OutlierRemoval(PoisoningDefense):
-    """
-    Implementation of algorithm to remove outliers from a dataset
-    using the KNN Shapley values. These values are calculated
-    using the algorithm presented in https://github.com/AI-secure/KNN-shapley.
+    """Remove dataset outliers via KNN Shapley values, then retrain the model.
+
+    Outliers are the lowest-scoring samples under KNN Shapley values, computed
+    following the algorithm at https://github.com/AI-secure/KNN-shapley.
 
     Reference:
         A Privacy-Friendly Approach to Data Valuation,
@@ -24,27 +24,16 @@ class OutlierRemoval(PoisoningDefense):
         https://openreview.net/forum?id=FAZ3i0hvm0
 
     Attributes:
-        model: torch.nn.Module
-            The model to retrain after removing outliers.
-        criterion: torch.nn.Module
-            Loss function for training model.
-        optimizer: torch.optim.Optimizer
-            Optimizer for training model.
-        train_loader: torch.utils.data.DataLoader
-            Training data loader to train model.
-        test_loader: torch.utils.data.DataLoader
-            Test data loader to calculate Shapley values.
-        train_function: Callable
-            Function used to train the model. Default function
-            used from src.utils.
-        percent: int
-            Percentage of data to remove as outlier.
-        device: str
-            Device used to train model. Example: "cuda:0".
-        epochs: int
-            Determines number of iterations over training data.
-        batch_size: int
-            Batch size of training data.
+        model: The model to retrain after removing outliers.
+        criterion: Loss function for training model.
+        optimizer: Optimizer for training model.
+        train_loader: Training data loader to train model.
+        test_loader: Test data loader to calculate Shapley values.
+        train_function: Function used to train the model. Defaults to train_classifier from amulet.utils.
+        percent: Percentage of data to remove as outliers.
+        device: Device used to train model. Example: "cuda:0".
+        epochs: Number of iterations over the training data.
+        batch_size: Batch size of training data.
     """
 
     def __init__(
@@ -111,17 +100,14 @@ class OutlierRemoval(PoisoningDefense):
             ..., tuple[np.ndarray, np.ndarray, np.ndarray]
         ] = get_intermediate_features,
     ):
-        """
-        Trains model after removing outliers.
+        """Train the model after removing outliers.
 
         Args:
-            get_hidden: Callable
-                Function to output the intermediate layer outputs of the model,
-                along with the labels and input data. See example get_intermediate_features
-                in src.utils.
+            get_hidden: Function returning the model's intermediate-layer outputs along
+                with the labels and input data. See get_intermediate_features in amulet.utils.
 
         Returns:
-            Model trained with outlier removal of type :class:`torch.nn.Module'.
+            The model retrained after outlier removal.
         """
         # Get the penultimate layer activations of the model
         train_features, train_targets, train_inputs = get_hidden(

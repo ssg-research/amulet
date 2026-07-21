@@ -13,11 +13,11 @@ Requires Python ~=3.11.0. Torch is selected via a hardware-specific extra (`cpu`
 ## Where to find things
 
 - **Dev setup, deps, lint/typecheck config:** [`pyproject.toml`](pyproject.toml) and [`.pre-commit-config.yaml`](.pre-commit-config.yaml)
-- **Risk modules:** `amulet/<risk>/` — each has `attacks/`, `defenses/`, and optionally `metrics/` subpackages
+- **Risk modules:** `amulet/<risk>/`, each with `attacks/`, `defenses/`, and optionally `metrics/` subpackages
   - Security: [`evasion/`](amulet/evasion/), [`poisoning/`](amulet/poisoning/), [`unauth_model_ownership/`](amulet/unauth_model_ownership/)
   - Privacy: [`membership_inference/`](amulet/membership_inference/), [`attribute_inference/`](amulet/attribute_inference/), [`distribution_inference/`](amulet/distribution_inference/), [`data_reconstruction/`](amulet/data_reconstruction/)
   - Fairness: [`discriminatory_behavior/`](amulet/discriminatory_behavior/)
-- **Shared training/eval utilities:** [`amulet/utils/`](amulet/utils/) — check here before implementing your own helpers. If a needed utility is missing, add it to `amulet/utils/` and submit a PR — functionality useful in one risk module is likely useful elsewhere.
+- **Shared training/eval utilities:** [`amulet/utils/`](amulet/utils/). Check here before implementing your own helpers. If a needed utility is missing, add it to `amulet/utils/` and submit a PR. Functionality useful in one risk module is likely useful elsewhere.
 - **Dataset loaders:** [`amulet/datasets/`](amulet/datasets/)
 - **Model base class and architectures:** [`amulet/models/`](amulet/models/)
 - **Runnable pipelines:** [`examples/attack_pipelines/`](examples/attack_pipelines/) and [`examples/defense_pipelines/`](examples/defense_pipelines/)
@@ -50,7 +50,9 @@ uv run ruff format .
 uv run basedpyright                # standard mode; venv is .venv (configured in pyproject.toml)
 ```
 
-Tests live in `tests/` (`unit/` and `integration/`).
+Tests live in `tests/`, organized by module (`tests/<risk>/` per risk, plus `models/`, `datasets/`, `utils/`, and the top-level `tests/test_api_conformance.py`).
+They are tiered by pytest markers (`integration`, `gpu`, `slow`) declared in `[tool.pytest.ini_options]`.
+The default `addopts` deselects all three (`-m 'not integration and not gpu and not slow'`), so a bare `uv run pytest` runs only the fast, unmarked tests.
 Run examples as end-to-end smoke tests:
 
 ```bash
@@ -66,7 +68,7 @@ Attacks and defenses must not emit metrics.
 They return outputs (e.g. adversarial `DataLoader`, defended `nn.Module`) consumed by metrics in `amulet/utils/__metrics.py` or the risk's own `metrics/`.
 
 Each risk has an ABC base class in `amulet/<risk>/attacks/` and `amulet/<risk>/defenses/`.
-**Every defense must implement its risk's training-shaped entry-point method** — this is a
+**Every defense must implement its risk's training-shaped entry-point method.** This is a
 hard convention, not a suggestion, and it is enforced by `tests/test_api_conformance.py`
 (a defense exposing only a bespoke method fails CI). The standard entry-point methods are:
 
@@ -83,13 +85,13 @@ hard convention, not a suggestion, and it is enforced by `tests/test_api_conform
 A defense may expose extra public helpers in addition to its entry point, never instead
 of it. `ONION` is the reference case: it is a poisoning defense subclassing
 `PoisoningDefense` alongside `OutlierRemoval`, so it implements `train_robust()` (purify the
-poisoned training data, then retrain the victim) — and it also exposes
+poisoned training data, then retrain the victim), and it also exposes
 `purify(dataset)` for cleaning inputs at test time. Do not add a defense on a bespoke base
 class with a non-standard entry point; reshape the shared base instead. The textual backdoor
 attack `TextBadNets` and the LoRA-LLM victim `HFCausalLM` need the optional `llm` extra; see
 [Optional extras](#optional-extras).
 
-Some classes expose additional public helpers for experimentation — for example, `MembershipInferenceAttack` has `train_shadow_model()` / `prepare_shadow_models()` and `DistributionInferenceAttack` has `train_model_population()` / `prepare_model_populations()`.
+Some classes expose additional public helpers for experimentation. For example, `MembershipInferenceAttack` has `train_shadow_model()` / `prepare_shadow_models()` and `DistributionInferenceAttack` has `train_model_population()` / `prepare_model_populations()`.
 Check the base class before assuming `attack()` is the only callable.
 
 ### Models
@@ -98,12 +100,12 @@ Any model under `amulet/models/` must subclass `AmuletModel` ([`amulet/models/ba
 Several modules depend on intermediate activations; omitting `get_hidden` breaks them silently.
 Match the base signature's parameter name `x` on both `forward` and `get_hidden` (basedpyright enforces override compatibility), even when the input is token ids rather than pixels.
 
-`HFCausalLM` ([`amulet/models/hf_causal_lm.py`](amulet/models/hf_causal_lm.py)) is the reference example of subclassing `AmuletModel` around a real pretrained backbone: a LoRA-adapted HuggingFace **causal (decoder-only) LM** (Llama, GPT-2, Mistral, …) that keeps its generative base. One shared adapted decoder backs three roles — classification (`forward` returns the bare logits tensor, not the `SequenceClassifierOutput`, so `train_classifier`, `DPSGD.train_private`, and `get_accuracy` drive it unchanged), perplexity scoring (`perplexity`, what `ONION` consumes — the victim itself is the reference LM), and generation (`generate`). Encoder-only (BERT) and seq2seq (T5) models do not fit and are out of scope. It needs the `llm` extra.
+`HFCausalLM` ([`amulet/models/hf_causal_lm.py`](amulet/models/hf_causal_lm.py)) is the reference example of subclassing `AmuletModel` around a real pretrained backbone: a LoRA-adapted HuggingFace **causal (decoder-only) LM** (Llama, GPT-2, Mistral, …) that keeps its generative base. One shared adapted decoder backs three roles: classification (`forward` returns the bare logits tensor, not the `SequenceClassifierOutput`, so `train_classifier`, `DPSGD.train_private`, and `get_accuracy` drive it unchanged), perplexity scoring (`perplexity`, what `ONION` consumes, since the victim itself is the reference LM), and generation (`generate`). Encoder-only (BERT) and seq2seq (T5) models do not fit and are out of scope. It needs the `llm` extra.
 
 `initialize_model` uses a central capacity map and only covers the built-in CNNs; models whose constructors do not fit its `(arch, capacity, num_features, num_classes)` signature (e.g. `HFCausalLM`) are constructed directly. See #104.
 
 `WatermarkNN` and `DatasetInference` have separate ABC base classes (`WatermarkDefense`, `FingerprintDefense`).
-There is no shared parent — this is intentional.
+There is no shared parent. This is intentional.
 
 ### Datasets
 
@@ -111,9 +113,9 @@ Image loaders follow a 3-step fallback to ensure availability:
 
 1. **Processed local** (e.g. `celeba.npz`, `lfw_images.npz`)
 2. **Raw local** (e.g. `img_align_celeba/`, `lfw_home/`)
-3. **GDrive download** — IDs are hard-coded in [`amulet/datasets/__image_datasets.py`](amulet/datasets/__image_datasets.py) (similar to how PyTorch ships dataset URLs), so no configuration is needed.
+3. **GDrive download**: IDs are hard-coded in [`amulet/datasets/__image_datasets.py`](amulet/datasets/__image_datasets.py) (similar to how PyTorch ships dataset URLs), so no configuration is needed.
 
-Text loaders ([`amulet/datasets/__text_datasets.py`](amulet/datasets/__text_datasets.py): `load_sst2`, `load_agnews`, `load_imdb`) instead pull from the Hugging Face hub via `datasets` into a project-local `./data/<name>` cache. That divergence is intentional: HF manages text corpora and their splits. They return an `AmuletDataset` with `modality="text"` whose `train_set`/`test_set` are `TextTensorDataset` instances — a `TensorDataset` of padded `input_ids` that also carries the raw `.texts` (so ONION can re-score perplexity before the victim tokenizer runs) and the `tokenizer_name`. `AmuletDataset.modality` is `Literal["image", "tabular", "text"]`. Text loaders need the `llm` extra.
+Text loaders ([`amulet/datasets/__text_datasets.py`](amulet/datasets/__text_datasets.py): `load_sst2`, `load_agnews`, `load_imdb`) instead pull from the Hugging Face hub via `datasets` into a project-local `./data/<name>` cache. That divergence is intentional: HF manages text corpora and their splits. They return an `AmuletDataset` with `modality="text"` whose `train_set`/`test_set` are `TextTensorDataset` instances, a `TensorDataset` of padded `input_ids` that also carries the raw `.texts` (so ONION can re-score perplexity before the victim tokenizer runs) and the `tokenizer_name`. `AmuletDataset.modality` is `Literal["image", "tabular", "text"]`. Text loaders need the `llm` extra.
 
 ### Optional extras
 
@@ -125,7 +127,7 @@ Text loaders ([`amulet/datasets/__text_datasets.py`](amulet/datasets/__text_data
 
 - Keep the `ruff-pre-commit` hook rev in sync with `ruff==` in `pyproject.toml`. A mismatch silently skips rules.
 - `B903` (class-could-be-dataclass) is globally ignored. Base classes that provide shared state for subclasses are a valid pattern here.
-- Pandas stubs: use `# type: ignore[reportArgumentType]` for `columns=list[str]` and `# type: ignore[reportAttributeAccessIssue]` for `.isin()`. Do not use `cast()` — established repo convention.
+- Pandas stubs: use `# type: ignore[reportArgumentType]` for `columns=list[str]` and `# type: ignore[reportAttributeAccessIssue]` for `.isin()`. Do not use `cast()`, an established repo convention.
 - Dependency versions are pinned exactly. `cleverhans`, `opacus`, and `captum` are sensitive to version drift. Do not loosen pins without a reason.
 - The package is published to PyPI as `amuletml`; the import name is `amulet`.
 - Docstrings use Google style: imperative summary line, `Args:` / `Returns:` / `Raises:` sections, no type repetition from the signature, no RST markup.

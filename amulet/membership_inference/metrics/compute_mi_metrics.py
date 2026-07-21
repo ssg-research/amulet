@@ -1,3 +1,5 @@
+"""Metrics for evaluating membership inference attacks."""
+
 import numpy as np
 from sklearn import metrics
 
@@ -11,15 +13,16 @@ def compute_mi_metrics(
     Compute key metrics for membership inference attack evaluation.
 
     Args:
-        preds (np.ndarray): Predicted membership scores or probabilities (higher means more likely member).
-        true_labels (np.ndarray): True membership labels (1 for member, 0 for non-member).
-        fpr_threshold (float): False Positive Rate threshold at which to compute True Positive Rate (default 0.01 for 1%).
+        preds: Predicted membership scores or probabilities (higher means more likely member).
+        true_labels: True membership labels (1 for member, 0 for non-member).
+        fpr_threshold: False Positive Rate threshold at which to compute True Positive Rate (default 0.01 for 1%).
 
     Returns:
-        dict: Dictionary containing:
-            - 'auc': Area Under ROC Curve.
-            - 'balanced_acc': Maximum balanced accuracy over all thresholds.
-            - 'tpr_at_fpr': True Positive Rate at specified false positive rate threshold.
+        Dictionary containing:
+            auc: Area Under ROC Curve.
+            balanced_acc: Maximum balanced accuracy over all thresholds.
+            tpr_at_fpr: True Positive Rate at specified false positive rate threshold.
+            threshold_score: Score threshold maximizing balanced accuracy.
     """
     fpr, tpr, thresholds = metrics.roc_curve(true_labels, preds, pos_label=1)
     auc_score = metrics.auc(fpr, tpr)

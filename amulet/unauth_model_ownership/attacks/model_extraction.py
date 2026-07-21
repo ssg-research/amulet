@@ -1,4 +1,4 @@
-"""Model Extraction implementation"""
+"""Model extraction attack that distills a target model into a surrogate."""
 
 import torch
 import torch.nn as nn
@@ -10,10 +10,10 @@ from .unauth_model_ownership_attack import UnauthModelOwnershipAttack
 
 
 class ModelExtraction(UnauthModelOwnershipAttack):
-    """
-    Implementation of algorithm to extract parameters of a model to
-    obtain a "stolen" model. Code taken from:
-    https://github.com/liuyugeng/ML-Doctor/blob/main/doctor/modsteal.py
+    """Extract a target model into a "stolen" surrogate by distillation.
+
+    Code adapted from
+    https://github.com/liuyugeng/ML-Doctor/blob/main/doctor/modsteal.py.
 
     Reference:
         ML-Doctor: Holistic Risk Assessment of Inference Attacks Against Machine Learning Models,
@@ -22,20 +22,19 @@ class ModelExtraction(UnauthModelOwnershipAttack):
         31st USENIX Security Symposium (USENIX Security 22)
         https://www.usenix.org/conference/usenixsecurity22/presentation/liu-yugeng
 
-
     Attributes:
-        target_model: torch.nn.Module
-            This model will be extracted.
-        attack_model: torch.nn.Module
-            The model trained by extracting target_model.
-        optimizer: torch.optim.Optimizer
-            Optimizer for training model.
-        train_loader: torch.utils.data.DataLoader
-            Dataloader for training model.
-        device: str
-            Device used to train model. Example: "cuda:0".
-        epochs: int
-            Determines number of iterations over training data.
+        target_model: The model to extract (steal from).
+        attack_model: The surrogate model trained to imitate the target.
+        optimizer: Optimizer for training the surrogate.
+        train_loader: Data loader used to query the target and train the surrogate.
+        device: Device used to train the model. Example: "cuda:0".
+        epochs: Number of iterations over the training data.
+        loss_type: Distillation loss matching the surrogate to the target. One of
+            "mse" (regress logits), "kl" (match softmax distributions), or "ce"
+            (train on the target's hard labels).
+
+    Raises:
+        ValueError: If `loss_type` is not one of "mse", "kl", or "ce".
     """
 
     def __init__(
@@ -64,11 +63,10 @@ class ModelExtraction(UnauthModelOwnershipAttack):
             raise ValueError(f"Unsupported loss_type: {self.loss_type}")
 
     def attack(self) -> nn.Module:
-        """
-        Trains attack model by extracting the target model.
+        """Train the surrogate model by extracting the target model.
 
         Returns:
-            Stolen model of type :class:`torch.nn.Module'.
+            The stolen (surrogate) model.
         """
         self.attack_model.train()
         self.target_model.eval()

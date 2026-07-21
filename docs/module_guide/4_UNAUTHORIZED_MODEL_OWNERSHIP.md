@@ -71,7 +71,7 @@ from amulet.unauth_model_ownership.defenses import WatermarkNN
 
 # Configure and apply Watermarking
 wm_model_wrapper = WatermarkNN(
-    model=target_model,
+    target_model=target_model,
     criterion=criterion,
     optimizer=optimizer,
     train_loader=train_loader,

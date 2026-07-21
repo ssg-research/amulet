@@ -7,18 +7,17 @@ from .base import AmuletModel
 
 
 class VGG(AmuletModel):
-    """
-    Builds a VGG network. Code taken from
-    https://github.com/kuangliu/pytorch-cifar/blob/master/models/vgg.py
+    """Build a VGG-style convolutional network.
+
+    Code adapted from
+    https://github.com/kuangliu/pytorch-cifar/blob/master/models/vgg.py.
 
     Args:
-        num_classes: int
-            Number of output classes in the data.
-        vgg_name: str
-            String to define which version of vgg to build.
-            Possible values: ['VGG11','VGG13','VGG16','VGG19'].
-        batch_norm: bool
-            Whether or not to use batch norm.
+        num_classes: Number of output classes in the data.
+        layer_config: Feature-extractor specification. Each int is a convolution's
+            output channel count and each "M" inserts a max-pool layer. Defaults to a
+            built-in VGG-style configuration.
+        batch_norm: Whether to add batch normalization after each convolution.
     """
 
     def __init__(
@@ -74,29 +73,26 @@ class VGG(AmuletModel):
         return nn.Sequential(*layers)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Runs the forward pass on the neural network.
+        """Run the forward pass and return classification logits.
 
         Args:
-            x: torch.Tensor
-                Input data
+            x: Input image batch.
 
         Returns:
-            Output from the model of type torch.Tensor
+            A (batch, num_classes) logits tensor.
         """
         out = self.features(x)
         out = self.classifier(out)
         return out
 
     def get_hidden(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Gets the intermediate layer output from the model.
+        """Return the flattened feature-extractor output.
 
         Args:
-            x: torch.Tensor
-                Input data to the model.
+            x: Input image batch.
 
         Returns:
-            Output from the model of type torch.Tensor.
+            A (batch, features) tensor of globally pooled, flattened convolutional
+            features (512 with the default configuration).
         """
         return self.features(x)

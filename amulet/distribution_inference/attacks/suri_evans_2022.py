@@ -24,8 +24,9 @@ class SuriEvans2022(DistributionInferenceAttack):
 
     Given two adversary model populations (one per distribution) and two victim
     model populations, the attack measures how each victim's output distribution
-    diverges from each adversary baseline. The sign of the pairwise KL
-    difference yields a binary distinguishing prediction per victim model.
+    diverges from each adversary baseline. The resulting pairwise KL differences
+    are min-max normalized into continuous distinguishing scores in [0, 1], one
+    per victim model.
 
     Inherits all constructor parameters from DistributionInferenceAttack.
     Call prepare_model_populations() before attack(), or pass populations and
@@ -171,12 +172,31 @@ class SuriEvans2022(DistributionInferenceAttack):
         prepare_model_populations(). Pass any subset explicitly to run the
         attack against externally produced populations or loaders.
 
+        Args:
+            models_adv_1: Adversary models trained on distribution 1. Defaults to
+                the prepared adversary-D1 population.
+            models_adv_2: Adversary models trained on distribution 2. Defaults to
+                the prepared adversary-D2 population.
+            models_vic_1: Victim models trained on distribution 1. Defaults to the
+                prepared victim-D1 population.
+            models_vic_2: Victim models trained on distribution 2. Defaults to the
+                prepared victim-D2 population.
+            test_loader_1: Test loader for distribution 1. Defaults to the prepared
+                distribution-1 test loader.
+            test_loader_2: Test loader for distribution 2. Defaults to the prepared
+                distribution-2 test loader.
+
         Returns:
             A dictionary with two 1-D arrays of equal length:
                 - "predictions": attack scores in [0, 1]. Thresholding at 0.5
                   yields the distinguishing decision.
                 - "ground_truth": 0 for distribution-1 victims, 1 for
                   distribution-2 victims.
+
+        Raises:
+            RuntimeError: If the test loaders are not supplied and
+                prepare_model_populations() has not been called, or if any of the
+                four model populations is empty.
         """
         models_adv_1 = models_adv_1 if models_adv_1 is not None else self.models_adv_1
         models_adv_2 = models_adv_2 if models_adv_2 is not None else self.models_adv_2

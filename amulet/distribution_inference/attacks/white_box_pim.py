@@ -194,6 +194,9 @@ class WhiteBoxPIM(DistributionInferenceAttack):
                   indicate the model is more likely from distribution 2.
                 - "ground_truth": 0 for distribution-1 victims, 1 for
                   distribution-2 victims.
+
+        Raises:
+            RuntimeError: If prepare_model_populations() has not been called.
         """
         if not self.models_adv_1:
             raise RuntimeError("Call prepare_model_populations() before attack().")

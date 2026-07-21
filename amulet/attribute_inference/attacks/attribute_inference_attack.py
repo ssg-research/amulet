@@ -7,20 +7,14 @@ import torch.nn as nn
 
 
 class AttributeInferenceAttack(ABC):
-    """
-    Base class for attribute inference attacks
+    """Base class for attribute inference attacks.
 
     Attributes:
-        target_model: torch.nn.Module
-            This model will be extracted.
-        x_train_adv: numpy.ndarray
-            input features for training adversary' attack model
-        x_test: numpy.ndarray
-            input features for testing adversary' attack model
-        z_train_adv: numpy.ndarray
-            sensitive attributes for training adversary' attack model
-        device: str
-            Device used to train model. Example: "cuda:0".
+        target_model: The target model whose sensitive attributes are inferred.
+        x_train_adv: Input features for training the adversary's attack model.
+        x_test: Input features for testing the adversary's attack model.
+        z_train_adv: Sensitive attributes for training the adversary's attack model.
+        device: Device used to train model. Example: "cuda:0".
     """
 
     def __init__(
@@ -39,4 +33,5 @@ class AttributeInferenceAttack(ABC):
 
     @abstractmethod
     def attack(self) -> dict[int, dict[str, np.ndarray]]:
+        """Run the attribute inference attack and return per-attribute results."""
         pass

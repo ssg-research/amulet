@@ -13,35 +13,27 @@ from .evasion_defense import EvasionDefense
 
 
 class AdversarialTrainingPGD(EvasionDefense):
-    """
-    Implementation of Adversarial Training algorithm from the method from cleverhans:
-    https://github.com/cleverhans-lab/cleverhans/blob/master/tutorials/torch/cifar10_tutorial.py.
+    """Adversarial training following the cleverhans CIFAR-10 tutorial.
+
+    https://github.com/cleverhans-lab/cleverhans/blob/master/tutorials/torch/cifar10_tutorial.py
 
     Reference:
         Towards Deep Learning Models Resistant to Adversarial Attacks
         Aleksander Madry, Aleksandar Makelov, Ludwig Schmidt, Dimitris Tsipras, Adrian Vladu
-        https://arxiv.org/abs/1706.06083.
+        https://arxiv.org/abs/1706.06083
 
     Attributes:
-        model: torch.nn.Module
-            The model on which to apply adversarial training.
-        criterion: torch.nn.Module
-            Loss function for adversarial training.
-        optimizer: torch.optim.Optimizer
-            Optimizer for adversarial training.
-        train_loader: torch.utils.data.DataLoader
-            Training data loader to adversarial training.
-        device: str
-            Device used to train model. Example: "cuda:0".
-        epochs: int
-            Determines number of iterations over training data.
-        epsilon: int
-            Controls the amount of perturbation on each image.
-            Divided by 255. See: https://arxiv.org/abs/1412.6572.
-        iterations: int
-            Number of iterations for PGD generation.
-        step_size: float
-            Step size for each attack iteration.
+        model: The model on which to apply adversarial training.
+        criterion: Loss function for adversarial training.
+        optimizer: Optimizer for adversarial training.
+        train_loader: Training data loader for adversarial training.
+        device: Device used to train model. Example: "cuda:0".
+        epochs: Number of iterations over the training data.
+        epsilon: Perturbation budget applied directly in input space.
+        iterations: Number of iterations for PGD generation.
+        step_size: Step size for each attack iteration.
+        clip_min: Lower bound to clamp perturbed inputs to.
+        clip_max: Upper bound to clamp perturbed inputs to.
     """
 
     def __init__(
@@ -66,11 +58,10 @@ class AdversarialTrainingPGD(EvasionDefense):
         self.clip_max = clip_max
 
     def train_robust(self) -> nn.Module:
-        """
-        Adversarially trains the model.
+        """Adversarially train the model.
 
         Returns:
-            Adversarially trained model of type :class:`torch.nn.Module'.
+            The adversarially trained model.
         """
         self.model.train()
         for epoch in range(self.epochs):

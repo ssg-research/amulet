@@ -80,7 +80,7 @@ def load_cifar100(
 
     Args:
         path: Directory where the dataset is stored or downloaded.
-        transform_train: Transforms applied to training images. Defaults to random crop + flip + color jitter + ToTensor.
+        transform_train: Transforms applied to training images. Defaults to random crop + flip + color jitter + ToTensor + random erasing.
         transform_test: Transforms applied to test images. Defaults to ToTensor.
 
     Returns:

@@ -34,4 +34,8 @@ class UnauthModelOwnershipAttack(ABC):
 
     @abstractmethod
     def attack(self) -> nn.Module:
-        pass
+        """Run the ownership attack and return the surrogate model.
+
+        Returns:
+            The stolen surrogate model imitating the target.
+        """

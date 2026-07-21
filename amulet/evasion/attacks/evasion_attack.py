@@ -7,18 +7,13 @@ from torch.utils.data import DataLoader
 
 
 class EvasionAttack(ABC):
-    """
-    Base class for evasion
+    """Base class for evasion attacks.
 
     Attributes:
-        model: torch.nn.Module
-            The model on which to apply adversarial training.
-        test_loader: torch.utils.data.DataLoader
-            Input data that is perturbed to attack the model.
-        device: str
-            Device used for model inference. Example: "cuda:0".
-        batch_size: int
-            Batch size for output data loader.
+        model: The model to attack.
+        test_loader: Input data that is perturbed to attack the model.
+        device: Device used for model inference. Example: "cuda:0".
+        batch_size: Batch size for the output data loader.
     """
 
     def __init__(
@@ -35,4 +30,5 @@ class EvasionAttack(ABC):
 
     @abstractmethod
     def attack(self) -> DataLoader:
+        """Run the attack and return the adversarial examples as a DataLoader."""
         pass

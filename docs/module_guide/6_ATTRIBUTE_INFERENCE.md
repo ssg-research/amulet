@@ -41,7 +41,7 @@ results = attribute_inference.attack()
 
 # 5. Evaluate Metrics
 metrics = evaluate_attribute_inference(data.z_test, results)
-print(f"Attribute Inference Balanced Accuracy: {metrics[0]['balanced_accuracy']}")
+print(f"Attribute Inference Attack Accuracy: {metrics[0]['attack_accuracy']}")
 ```
 
 ## Metrics

@@ -1,19 +1,19 @@
 """Text-modality dataset loaders (SST-2, AG News, IMDB).
 
 These are the first text datasets in Amulet. They diverge from the GDrive 3-step
-fallback used by the image loaders in ``__image_datasets.py``: text corpora and their
-canonical splits are managed by Hugging Face ``datasets``, so these load from the HF
+fallback used by the image loaders in `__image_datasets.py`: text corpora and their
+canonical splits are managed by Hugging Face `datasets`, so these load from the HF
 hub (with a local cache). That divergence is intentional.
 
-The Hugging Face stack ships in the optional ``amuletml[llm]`` extra, so its imports
-are guarded: ``import amulet`` still works without the extra, and calling a loader
+The Hugging Face stack ships in the optional `amuletml[llm]` extra, so its imports
+are guarded: `import amulet` still works without the extra, and calling a loader
 without it raises a clear "install amuletml[llm]" error.
 
-Each loader tokenizes the raw strings with the victim tokenizer, pads ``input_ids`` to
+Each loader tokenizes the raw strings with the victim tokenizer, pads `input_ids` to
 a fixed per-dataset max sequence length, and retains the raw strings on the returned
-``TextTensorDataset`` so an input-purification defense (ONION) can re-score and
-re-tokenize them. SST-2 uses ``validation`` as its labelled test split (the public
-``test`` split has masked ``-1`` labels).
+`TextTensorDataset` so an input-purification defense (ONION) can re-score and
+re-tokenize them. SST-2 uses `validation` as its labelled test split (the public
+`test` split has masked `-1` labels).
 """
 
 from __future__ import annotations
@@ -50,10 +50,10 @@ def _load_tokenizer(tokenizer_name: str) -> PreTrainedTokenizerBase:
         tokenizer_name: Hub id of the tokenizer to load.
 
     Returns:
-        The loaded tokenizer with ``pad_token`` set.
+        The loaded tokenizer with `pad_token` set.
 
     Raises:
-        ImportError: If the optional ``llm`` extra is not installed.
+        ImportError: If the optional `llm` extra is not installed.
     """
     try:
         from transformers import AutoTokenizer
@@ -71,7 +71,7 @@ def _tokenize(
     tokenizer: PreTrainedTokenizerBase,
     max_length: int,
 ) -> torch.Tensor:
-    """Tokenize strings to a padded ``(N, max_length)`` LongTensor of ``input_ids``."""
+    """Tokenize strings to a padded `(N, max_length)` LongTensor of `input_ids`."""
     encoded = tokenizer(
         texts,
         padding="max_length",
@@ -83,7 +83,7 @@ def _tokenize(
 
 
 def _split_slice(split: str, max_samples: int | None) -> str:
-    """Build a Hugging Face split string, optionally truncated to ``max_samples`` rows."""
+    """Build a Hugging Face split string, optionally truncated to `max_samples` rows."""
     return split if max_samples is None else f"{split}[:{max_samples}]"
 
 
@@ -99,23 +99,26 @@ def _load_hf_classification(
     max_train_samples: int | None,
     max_test_samples: int | None,
 ) -> AmuletDataset:
-    """Load a Hugging Face text-classification corpus as a text ``AmuletDataset``.
+    """Load a Hugging Face text-classification corpus as a text `AmuletDataset`.
 
     Args:
-        hub_id: Namespaced Hugging Face hub repo id (e.g. ``"stanfordnlp/sst2"``).
+        hub_id: Namespaced Hugging Face hub repo id (e.g. "stanfordnlp/sst2").
         text_field: Name of the raw-text column in the corpus.
         train_split: Split name used for training data.
         test_split: Split name used for (labelled) test data.
         num_classes: Number of output classes.
         path: Directory where the dataset is stored or downloaded (the HF cache dir).
-        tokenizer_name: Hub id of the tokenizer that produces ``input_ids``.
-        max_length: Fixed sequence length; ``input_ids`` are padded/truncated to it.
+        tokenizer_name: Hub id of the tokenizer that produces `input_ids`.
+        max_length: Fixed sequence length; `input_ids` are padded/truncated to it.
         max_train_samples: Optional cap on training rows, for tractable runs and tests.
         max_test_samples: Optional cap on test rows.
 
     Returns:
-        An ``AmuletDataset`` with ``modality="text"`` whose ``train_set``/``test_set``
-        are ``TextTensorDataset`` instances.
+        An `AmuletDataset` with `modality="text"` whose `train_set`/`test_set`
+        are `TextTensorDataset` instances.
+
+    Raises:
+        ImportError: If the optional `llm` extra is not installed.
     """
     try:
         from datasets import load_dataset
@@ -153,22 +156,22 @@ def load_sst2(
     max_train_samples: int | None = None,
     max_test_samples: int | None = None,
 ) -> AmuletDataset:
-    """Load SST-2 (binary sentiment) as a text ``AmuletDataset``.
+    """Load SST-2 (binary sentiment) as a text `AmuletDataset`.
 
-    Uses the namespaced ``stanfordnlp/sst2`` repo (``datasets>=4`` dropped the legacy
-    ``glue`` script loader). The ``sentence`` field holds the text and ``label`` is
-    0/1. The labelled ``validation`` split is used as the test set because the public
-    ``test`` split has masked ``-1`` labels.
+    Uses the namespaced `stanfordnlp/sst2` repo (`datasets>=4` dropped the legacy
+    `glue` script loader). The `sentence` field holds the text and `label` is
+    0/1. The labelled `validation` split is used as the test set because the public
+    `test` split has masked `-1` labels.
 
     Args:
         path: Directory where the dataset is stored or downloaded.
-        tokenizer_name: Hub id of the tokenizer that produces ``input_ids``.
-        max_length: Fixed sequence length for ``input_ids``.
+        tokenizer_name: Hub id of the tokenizer that produces `input_ids`.
+        max_length: Fixed sequence length for `input_ids`.
         max_train_samples: Optional cap on training rows.
         max_test_samples: Optional cap on test rows.
 
     Returns:
-        An ``AmuletDataset`` with ``modality="text"``.
+        An `AmuletDataset` with `modality="text"`.
     """
     return _load_hf_classification(
         hub_id="stanfordnlp/sst2",
@@ -191,20 +194,20 @@ def load_agnews(
     max_train_samples: int | None = None,
     max_test_samples: int | None = None,
 ) -> AmuletDataset:
-    """Load AG News (4-class topic classification) as a text ``AmuletDataset``.
+    """Load AG News (4-class topic classification) as a text `AmuletDataset`.
 
-    Uses the namespaced ``fancyzhx/ag_news`` repo. The ``text`` field holds the text
-    and ``label`` is 0-3, over the standard ``train``/``test`` splits.
+    Uses the namespaced `fancyzhx/ag_news` repo. The `text` field holds the text
+    and `label` is 0-3, over the standard `train`/`test` splits.
 
     Args:
         path: Directory where the dataset is stored or downloaded.
-        tokenizer_name: Hub id of the tokenizer that produces ``input_ids``.
-        max_length: Fixed sequence length for ``input_ids``.
+        tokenizer_name: Hub id of the tokenizer that produces `input_ids`.
+        max_length: Fixed sequence length for `input_ids`.
         max_train_samples: Optional cap on training rows.
         max_test_samples: Optional cap on test rows.
 
     Returns:
-        An ``AmuletDataset`` with ``modality="text"``.
+        An `AmuletDataset` with `modality="text"`.
     """
     return _load_hf_classification(
         hub_id="fancyzhx/ag_news",
@@ -227,22 +230,22 @@ def load_imdb(
     max_train_samples: int | None = None,
     max_test_samples: int | None = None,
 ) -> AmuletDataset:
-    """Load IMDB (binary sentiment, long reviews) as a text ``AmuletDataset``.
+    """Load IMDB (binary sentiment, long reviews) as a text `AmuletDataset`.
 
-    Uses the namespaced ``stanfordnlp/imdb`` repo. The ``text`` field holds the review
-    and ``label`` is 0/1, over the standard ``train``/``test`` splits. Its longer
+    Uses the namespaced `stanfordnlp/imdb` repo. The `text` field holds the review
+    and `label` is 0/1, over the standard `train`/`test` splits. Its longer
     documents make a buried trigger a harder perplexity outlier for ONION, so IMDB is
     a genuine attack/defense-difficulty knob rather than a redundant sentiment set.
 
     Args:
         path: Directory where the dataset is stored or downloaded.
-        tokenizer_name: Hub id of the tokenizer that produces ``input_ids``.
-        max_length: Fixed sequence length for ``input_ids``.
+        tokenizer_name: Hub id of the tokenizer that produces `input_ids`.
+        max_length: Fixed sequence length for `input_ids`.
         max_train_samples: Optional cap on training rows.
         max_test_samples: Optional cap on test rows.
 
     Returns:
-        An ``AmuletDataset`` with ``modality="text"``.
+        An `AmuletDataset` with `modality="text"`.
     """
     return _load_hf_classification(
         hub_id="stanfordnlp/imdb",

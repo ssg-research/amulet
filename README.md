@@ -18,8 +18,7 @@ Amulet is:
 - Consistent: Allows using different attacks/defenses/metrics with a consistent, easy-to-use API.
 - Applicable: Allows evaluating unintended interactions among defenses and attacks.
 
-Built to work with PyTorch
-, you can incorporate Amulet into your current ML pipeline to test how your model interacts with these state-of-the-art defenses and risks. Alternatively, you can use the example pipelines to bootstrap your pipeline.
+Built to work with PyTorch, you can incorporate Amulet into your current ML pipeline to test how your model interacts with these state-of-the-art defenses and risks. Alternatively, you can use the example pipelines to bootstrap your pipeline.
 
 ## Getting Started
 
@@ -31,13 +30,13 @@ For a reproducible GPU build (and for development), install from source with `uv
 
 ### Test installation
 
-To test your installation, please run [amulet/examples/get_started.py](https://github.com/ssg-research/amulet/blob/main/examples/get_started.py). This script also serves as a starting point to learn how to use the library.
+To test your installation, please run [examples/get_started.py](https://github.com/ssg-research/amulet/blob/main/examples/get_started.py). This script also serves as a starting point to learn how to use the library.
 
 ### Learn More
 
 For more information on the basics about the library, please see the [Getting Started guide](https://github.com/ssg-research/amulet/blob/main/docs/GETTING_STARTED.md).
 
-To see the attacks, defenses, and risks (modules) that Amulet implements, please refer to the **Module Heirarchy** (link TBD) in the Tutorial (link TBD).
+To see the attacks, defenses, and risks (modules) that Amulet implements, please refer to the [Module Hierarchy](https://github.com/ssg-research/amulet/blob/main/docs/module_guide/1_INTRO.md).
 
 For each module, please see [amulet/examples](https://github.com/ssg-research/amulet/tree/main/examples) for implementations of pipelines that include recommendations on how to run each module.
 

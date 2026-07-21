@@ -25,17 +25,15 @@ class SimpleCNN(AmuletModel):
         num_classes: int = 10,
         input_channels: int = 1,
     ):
-        """
+        """Build the CNN's convolutional stack and fully connected classifier.
+
         Args:
-            conv_channels_kernel: List of tuples (channels, kernel_size)
-                e.g., [(20,5), (50,5)] for BadNets default conv layers.
-            fc_layers: List of int
-                Sizes of fully connected layers before the final output.
-                e.g., [500]
-            num_classes: int
-                Number of classes for output layer.
-            input_channels: int
-                Number of input channels (1 for MNIST).
+            conv_channels_kernel: (channels, kernel_size) per convolution layer,
+                e.g. [(20, 5), (50, 5)] for the BadNets default. Defaults to that.
+            fc_layers: Widths of the fully connected layers before the final output,
+                e.g. [500]. Defaults to [500].
+            num_classes: Number of classes for the output layer.
+            input_channels: Number of input channels (1 for MNIST).
         """
         super().__init__()
 
@@ -80,11 +78,27 @@ class SimpleCNN(AmuletModel):
         self.classifier = nn.Sequential(*fc_modules)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Run the forward pass and return classification logits.
+
+        Args:
+            x: Input image batch.
+
+        Returns:
+            A (batch, num_classes) logits tensor.
+        """
         x = self.features(x)
         x = torch.flatten(x, 1)
         x = self.classifier(x)
         return x
 
     def get_hidden(self, x: torch.Tensor) -> torch.Tensor:
+        """Return the flattened convolutional feature map.
+
+        Args:
+            x: Input image batch.
+
+        Returns:
+            A (batch, features) tensor: the conv stack output flattened per sample.
+        """
         x = self.features(x)
         return torch.flatten(x, 1)

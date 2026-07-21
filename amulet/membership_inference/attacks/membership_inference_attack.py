@@ -184,6 +184,9 @@ class MembershipInferenceAttack(ABC):
             Tuple of (model, in_data) where model is eval-mode with gradients
             disabled, and in_data is the array of training-set indices this
             shadow model was trained on.
+
+        Raises:
+            FileNotFoundError: If the shadow model checkpoint does not exist.
         """
         path = self.models_dir / f"{self.dataset}_shadow_{shadow_id}_{self.exp_id}.pth"
         if not path.is_file():
@@ -203,4 +206,5 @@ class MembershipInferenceAttack(ABC):
 
     @abstractmethod
     def attack(self) -> dict[str, np.ndarray]:
+        """Run the membership inference attack and return result arrays keyed by name."""
         pass

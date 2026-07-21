@@ -8,14 +8,11 @@ from .discr_behavior_defense import DiscriminatoryBehaviorDefense
 
 
 class AdversaryModel(nn.Module):
-    """
-    Model used as a discriminator to identify the sensitive
-    attribute given the output of the model.
-    Attributes:
-        n_sensitive_attrs: int
-            Number of sensitive attributes in the dataset.
-        n_classes: int
-            Number of classes in the dataset.
+    """Discriminator that infers the sensitive attribute from model outputs.
+
+    Args:
+        n_sensitive_attrs: Number of sensitive attributes in the dataset.
+        n_classes: Number of classes in the dataset.
     """
 
     def __init__(self, n_sensitive_attrs: int = 2, n_classes: int = 2):

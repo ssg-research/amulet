@@ -26,7 +26,11 @@ class WatermarkDefense(ABC):
 
     @abstractmethod
     def watermark(self) -> nn.Module:
-        pass
+        """Embed the ownership watermark and return the watermarked model.
+
+        Returns:
+            The watermarked model.
+        """
 
 
 class FingerprintDefense(ABC):
@@ -49,4 +53,9 @@ class FingerprintDefense(ABC):
 
     @abstractmethod
     def fingerprint(self) -> dict[str, dict[str, float]]:
-        pass
+        """Fingerprint the suspect model against the target.
+
+        Returns:
+            A nested dict keyed by "target" and "suspect", each mapping "p-value"
+            and "mean_diff" to their values.
+        """

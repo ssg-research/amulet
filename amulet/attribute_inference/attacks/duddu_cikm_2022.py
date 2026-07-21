@@ -20,6 +20,7 @@ class DudduCIKM2022(AttributeInferenceAttack):
         x_train_adv: Input features for training the adversary attack model.
         x_test: Input features for testing the adversary attack model.
         z_train_adv: Sensitive attribute labels for training the adversary.
+        batch_size: Batch size used to query the target model.
         device: Device used to train model. Example: "cuda:0".
     """
 

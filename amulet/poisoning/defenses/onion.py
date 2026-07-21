@@ -29,7 +29,7 @@ class ONION(PoisoningDefense):
     perplexity, so deleting it drops perplexity sharply. Words whose suspicion score
     (``ppl(full) - ppl(without word)``) exceeds ``threshold`` are removed.
 
-    The reference language model is the victim itself (``model``, an :class:`HFCausalLM`),
+    The reference language model is the victim itself (``model``, an ``HFCausalLM``),
     scored through its perplexity head — the same object ONION retrains in
     ``train_robust``. Like ``OutlierRemoval``, ONION thus cleans the data using the target
     model and retrains it; unlike it, ONION also exposes ``purify`` to clean inputs at test

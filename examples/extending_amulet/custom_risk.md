@@ -15,7 +15,8 @@ amulet/test_time_adaptation/attacks/
 ## Step 2: Implement the Attack
 
 Add a new attack file under the `attacks` subdirectory.
-All attacks should inherit from the `RiskAttack` base class (or a risk-specific base class if one exists).
+Amulet has no single shared attack base class. Each risk defines its own attack ABC (for example `EvasionAttack` in `amulet/evasion/attacks/` and `PoisoningAttack` in `amulet/poisoning/attacks/`).
+A new risk should define its own risk-specific base and have its attacks inherit from it. This example defines `TestTimeAdaptationAttack` for the test-time adaptation risk.
 
 **File:** `amulet/test_time_adaptation/attacks/test_time_data_poisoning.py`
 

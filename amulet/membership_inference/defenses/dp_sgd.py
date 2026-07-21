@@ -12,33 +12,24 @@ from .membership_inference_defense import MembershipInferenceDefense
 
 
 class DPSGD(MembershipInferenceDefense):
-    """
+    """Differentially private SGD defense (DP-SGD) built on Opacus.
+
     Attributes:
-        model: torch.nn.Module
-            The model on which to apply adversarial training.
-        criterion: torch.nn.Module
-            Loss function for adversarial training.
-        optimizer: torch.optim.Optimizer
-            Optimizer for adversarial training.
-        train_loader: torch.utils.data.DataLoader
-            Training data loader to adversarial training.
-        device: str
-            Device used to train model. Example: "cuda:0".
-        delta: float
-            The target delta value for the differential privacy guarantee.
-        max_per_sample_grad_norm: float,
-            The norm to which the per-sample gradients are clipped.
-        sigma:
-            Noise multiplier
-        secure_rng:
-            Whether to use secure RNG for trustworthy privacy guarantees. Comes at a privacy cost.
-        epochs: int
-            Determines number of iterations over training data.
-        max_physical_batch_size: int | None
-            When set, each logical batch is split into physical micro-batches of at most
-            this size (via Opacus' ``BatchMemoryManager``) to bound peak per-sample-gradient
-            memory. The logical batch size — and therefore the privacy accounting and expected
-            utility — is unchanged. ``None`` (default) iterates the loader without splitting.
+        model: The model trained under differential privacy.
+        criterion: Loss function for differentially private training.
+        optimizer: Optimizer for differentially private training.
+        train_loader: Training data loader for differentially private training.
+        device: Device used to train model. Example: "cuda:0".
+        delta: The target delta value for the differential privacy guarantee.
+        max_per_sample_grad_norm: The norm to which the per-sample gradients are clipped.
+        sigma: Noise multiplier.
+        secure_rng: Whether to use secure RNG for trustworthy privacy guarantees. Comes at a performance cost.
+        epochs: Determines number of iterations over training data.
+        max_physical_batch_size: When set, each logical batch is split into physical
+            micro-batches of at most this size (via Opacus' `BatchMemoryManager`) to bound
+            peak per-sample-gradient memory. The logical batch size, and therefore the privacy
+            accounting and expected utility, is unchanged. `None` (default) iterates the loader
+            without splitting.
     """
 
     def __init__(
@@ -71,11 +62,10 @@ class DPSGD(MembershipInferenceDefense):
         )
 
     def train_private(self) -> nn.Module:
-        """
-        Trains the model with differential privacy.
+        """Train the model with differential privacy.
 
         Returns:
-            Trained model of type :class:`torch.nn.Module'.
+            The differentially private trained model.
         """
 
         self.model.train()

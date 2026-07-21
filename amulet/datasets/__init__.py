@@ -1,5 +1,5 @@
 """
-The module mlconf.datasets includes utilities to load datasets,
+The module `amulet.datasets` includes utilities to load datasets,
 including methods to load and fetch popular reference datasets.
 """
 

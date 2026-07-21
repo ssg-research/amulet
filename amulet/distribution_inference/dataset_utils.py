@@ -3,7 +3,7 @@ Dataset preparation helpers for distribution inference attacks.
 
 A distribution inference attack distinguishes two training distributions
 that differ in the proportion of samples satisfying some filter (e.g.
-``sex == 1``). Each side of the attack (victim and adversary) requires
+`sex == 1`). Each side of the attack (victim and adversary) requires
 training data sampled to the target proportion. These helpers perform the
 ratio-preserving subsampling and return the six DataLoaders the attack
 consumes.
@@ -19,7 +19,7 @@ from torch.utils.data import ConcatDataset, DataLoader, TensorDataset
 
 @dataclass
 class DistributionSplits:
-    """DataLoaders produced by :func:`prepare_distribution_splits`."""
+    """DataLoaders produced by prepare_distribution_splits."""
 
     vic_trainloader_1: DataLoader
     vic_trainloader_2: DataLoader
@@ -138,10 +138,10 @@ def prepare_distribution_splits(
 
     The train/test arrays are each split 50/50 into victim and adversary halves
     (stratified on labels and every sensitive column). Each half is then
-    subsampled twice, once for ``ratio1`` and once for ``ratio2``, to produce
+    subsampled twice, once for `ratio1` and once for `ratio2`, to produce
     the four training loaders plus two combined test loaders.
 
-    Works with any input shape: tabular ``(N, d)``, image ``(N, C, H, W)``, etc.
+    Works with any input shape: tabular `(N, d)`, image `(N, C, H, W)`, etc.
     Features and sensitive attributes are never merged, so the model receives
     only the original feature array.
 
@@ -149,24 +149,33 @@ def prepare_distribution_splits(
         x_train, y_train, z_train: Training features, labels (1-D), sensitive
             attributes (2-D, one column per attribute).
         x_test, y_test, z_test: Test features, labels, sensitive attributes.
-        sensitive_columns: Column names for ``z_train``/``z_test``. Length must
-            match ``z_train.shape[1]``.
+        sensitive_columns: Column names for `z_train`/`z_test`. Length must
+            match `z_train.shape[1]`.
         filter_column: Name of the sensitive column whose proportion is being
-            inferred. Must be in ``sensitive_columns``.
-        ratio1: Target proportion of rows satisfying ``filter_column == filter_value``
+            inferred. Must be in `sensitive_columns`.
+        ratio1: Target proportion of rows satisfying `filter_column == filter_value`
             for distribution 1.
         ratio2: Target proportion for distribution 2.
         train_subsample: Minority-class sample count per train draw.
         test_subsample: Minority-class sample count per test draw.
-        filter_value: Value of ``filter_column`` that satisfies the filter.
+        filter_value: Value of `filter_column` that satisfies the filter.
         drop_values: Optional per-column list of values to drop before sampling,
-            e.g. ``{"race": [2]}`` to exclude a multi-class label the binary
+            e.g. `{"race": [2]}` to exclude a multi-class label the binary
             filter cannot express.
         class_imbalance: Target ratio of majority-class to minority-class samples
             per draw.
         n_tries: Number of sampling attempts per draw.
         batch_size: Batch size for the returned DataLoaders.
         seed: Random seed for the 50/50 train/test split.
+
+    Returns:
+        A DistributionSplits holding six DataLoaders: victim train loaders for
+        distributions 1 and 2, adversary train loaders for distributions 1 and 2,
+        and combined test loaders for distributions 1 and 2.
+
+    Raises:
+        ValueError: If `filter_column` is not in `sensitive_columns`, or if
+            `z_train`'s column count does not match `len(sensitive_columns)`.
     """
     if filter_column not in sensitive_columns:
         raise ValueError(
