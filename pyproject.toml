@@ -129,6 +129,14 @@ ignore = ["E501", "B903"]
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
 
+[tool.ruff.lint.isort]
+# `common` is the artifact's shared package (artifact/common). It is imported by
+# top-level name rather than as `artifact.common`, because artifact/ is put on
+# sys.path by each entry script instead of being an installed package (the
+# artifact must run from a checkout with no packaging step). Declare it so its
+# imports are grouped as first-party, not third-party.
+known-first-party = ["amulet", "common"]
+
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
@@ -140,6 +148,10 @@ venv = ".venv"
 typeCheckingMode = "standard"
 deprecateTypingAliases = true
 reportDeprecated = true
+# The reproducibility artifact (artifact/) puts its own root on sys.path at
+# runtime rather than being installed, so `common.*` and `experiments.*` resolve
+# by top-level name. Mirror that here or every artifact import is unresolvable.
+extraPaths = ["artifact"]
 
 [tool.pytest.ini_options]
 markers = [

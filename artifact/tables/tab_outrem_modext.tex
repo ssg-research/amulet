@@ -1,0 +1,46 @@
+\begin{table*}[htbp]
+\footnotesize
+\caption{Interaction between~\ref{outrem} Outlier Removal and~\ref{modelext} Unauthorized Model Ownership. Removing outliers lowers $\modeldef$ accuracy but leaves stolen-model fidelity essentially unchanged.}
+\label{tab:outrem_modext}
+\begin{center}
+\setlength\tabcolsep{2pt}
+\begin{tabular}{ l c c c c c }
+    \bottomrule
+
+    \toprule
+    & \multirow{2}{*}{$\modelstd$} & \multicolumn{4}{c}{$\modeldef$ (\% of outliers removed followed by retraining)} \\
+        & & \textbf{10\%} & \textbf{20\%} & \textbf{30\%} & \textbf{40\%} \\
+    \midrule
+    \multicolumn{6}{c}{\textbf{\census}} \\
+    $Acc_{te}$ & 84.60~$\pm$~0.16 & 81.80~$\pm$~0.30 & 80.73~$\pm$~0.52 & 79.43~$\pm$~0.45 & 77.61~$\pm$~0.39\\
+    $\modelstol$: $Acc_{te}$ & 84.56~$\pm$~0.14 & 81.71~$\pm$~0.37 & 80.63~$\pm$~0.61 & 79.41~$\pm$~0.43 & 77.55~$\pm$~0.47\\
+    $\modelstol$: $Fid$ & 99.12~$\pm$~0.08 & 98.88~$\pm$~0.24 & 99.07~$\pm$~0.14 & 99.17~$\pm$~0.19 & 99.00~$\pm$~0.19\\
+    $\modelstol$: $Fid_{cor}$ & 84.14~$\pm$~0.17 & 81.19~$\pm$~0.36 & 80.22~$\pm$~0.62 & 79.00~$\pm$~0.43 & 77.08~$\pm$~0.37\\
+    \midrule
+
+    \multicolumn{6}{c}{\textbf{\lfw}}\\
+    $Acc_{te}$ & 81.40~$\pm$~0.83  & 80.78~$\pm$~1.19 & 79.41~$\pm$~1.65 & 77.61~$\pm$~2.78 & 78.25~$\pm$~0.29\\
+    $\modelstol$: $Acc_{te}$ & 80.96~$\pm$~0.48 & 80.08~$\pm$~1.16 & 78.77~$\pm$~2.24 & 78.03~$\pm$~2.53 & 76.09~$\pm$~1.04\\
+    $\modelstol$: $Fid$ & 94.55~$\pm$~0.67 & 94.31~$\pm$~1.53 & 93.35~$\pm$~1.56 & 95.47~$\pm$~0.59 & 93.46~$\pm$~2.37 \\
+    $\modelstol$: $Fid_{cor}$ & 78.46~$\pm$~0.38 & 77.58~$\pm$~0.66 & 75.76~$\pm$~1.96 & 75.56~$\pm$~2.56 & 73.90~$\pm$~1.64\\
+    \midrule
+
+
+    \multicolumn{6}{c}{\textbf{\fmnist}}\\
+    $Acc_{te}$ & 83.51~$\pm$~0.55 & 79.19~$\pm$~0.58 & 78.40~$\pm$~1.09 & 75.39~$\pm$~1.22 & 75.22~$\pm$~1.27\\
+    $\modelstol$: $Acc_{te}$ & 82.74~$\pm$~0.66 & 79.61~$\pm$~0.67 & 79.28~$\pm$~0.45 & 74.79~$\pm$~1.46 & 75.65~$\pm$~1.58\\
+    $\modelstol$: $Fid$ & 92.89~$\pm$~0.45  & 90.61~$\pm$~0.34 & 89.68~$\pm$~0.56 & 89.72~$\pm$~0.59 & 88.75~$\pm$~0.85\\
+    $\modelstol$: $Fid_{cor}$ & 80.27~$\pm$~0.58 & 75.65~$\pm$~0.70 & 74.66~$\pm$~0.90 & 71.03~$\pm$~1.48 & 70.91~$\pm$~1.62\\
+    \midrule
+
+    \multicolumn{6}{c}{\textbf{\cifar}}\\
+    $Acc_{te}$ &  83.65~$\pm$~0.38 & 75.35~$\pm$~0.33 & 73.86~$\pm$~1.32 & 71.86~$\pm$~0.67 & 70.50~$\pm$~1.01\\
+    $\modelstol$: $Acc_{te}$ & 82.03~$\pm$~0.56 & 75.81~$\pm$~0.48 & 74.26~$\pm$~1.32 & 72.13~$\pm$~1.11 & 71.62~$\pm$~1.25\\
+    $\modelstol$: $Fid$ & 86.52~$\pm$~0.32 & 84.66~$\pm$~0.76 & 84.14~$\pm$~1.37 & 83.83~$\pm$~0.49 & 83.61~$\pm$~0.89\\
+    $\modelstol$: $Fid_{cor}$ & 77.73~$\pm$~0.54 & 70.17~$\pm$~0.41 & 68.54~$\pm$~1.68 & 66.49~$\pm$~0.92 & 65.43~$\pm$~1.26\\
+    \bottomrule
+
+    \toprule
+\end{tabular}
+\end{center}
+\end{table*}

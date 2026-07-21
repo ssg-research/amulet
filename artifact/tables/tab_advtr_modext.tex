@@ -1,0 +1,51 @@
+\begin{table*}[htb]
+    \setlength\tabcolsep{2.5pt}
+    \centering
+    \footnotesize
+    \caption{Interaction between~\ref{advtr} Adversarial Training and~\ref{modelext} Unauthorized Model Ownership. $Fid$ and $Fid_{cor}$ are fidelity and correct fidelity between $\modeldef$ and the stolen model $\modelstol$. Adversarial training raises fidelity but lowers correct fidelity on harder datasets.}
+
+    \label{tab:advtr_modelext}
+    \begin{tabular}{ c c c c c c c }
+        \bottomrule
+
+        \toprule
+        \multicolumn{7}{c}{\textbf{\census}}\\
+            & $Acc_{te}$ ($\modeldef$) & $Acc_{rob}$ ($\modelstd$) & $Acc_{rob}$ ($\modeldef$) & $\modelstol$: $Acc_{te}$ & $\modelstol$: $Fid$ & $\modelstol$: $Fid_{cor}$ \\
+        \midrule
+        Baseline ($\modelstd$) & 81.95~$\pm$~0.62 & - & - & - & - & - \\
+        $\epsilon_{rob}$ = 0.01 & 82.27~$\pm$~1.59 & 73.25~$\pm$~1.15 & 81.43~$\pm$~1.84 & 82.74~$\pm$~1.69 & 95.30~$\pm$~0.98 & 84.10~$\pm$~1.47 \\
+        $\epsilon_{rob}$ = 0.03 & 82.88~$\pm$~0.74 & 42.40~$\pm$~5.58 & 80.33~$\pm$~1.69 & 83.30~$\pm$~0.62 & 96.44~$\pm$~0.74 & 84.31~$\pm$~0.51 \\
+        $\epsilon_{rob}$ = 0.05 & 83.02~$\pm$~0.89 & 26.02~$\pm$~4.46 & 78.99~$\pm$~2.91 & 83.46~$\pm$~0.88 & 96.95~$\pm$~0.60 & 84.28~$\pm$~0.76 \\
+        $\epsilon_{rob}$ = 0.10 & 84.06~$\pm$~0.15 & 20.32~$\pm$~1.65 & 79.23~$\pm$~2.45 & 84.38~$\pm$~0.15 & 98.34~$\pm$~0.38 & 84.79~$\pm$~0.21 \\
+        \midrule
+        \multicolumn{7}{c}{\textbf{\fmnist}}\\
+            & $Acc_{te}$ ($\modeldef$) & $Acc_{rob}$ ($\modelstd$) & $Acc_{rob}$ ($\modeldef$) & $\modelstol$: $Acc_{te}$ & $\modelstol$: $Fid$ & $\modelstol$: $Fid_{cor}$ \\
+        \midrule
+        Baseline ($\modelstd$) & 85.67~$\pm$~0.31 & - & - & - & - & - \\
+        $\epsilon_{rob}$ = 0.01 & 84.81~$\pm$~0.69 & 77.38~$\pm$~0.73 & 80.63~$\pm$~0.69 & 84.45~$\pm$~0.60 & 92.42~$\pm$~0.45 & 88.27~$\pm$~0.59 \\
+        $\epsilon_{rob}$ = 0.03 & 84.92~$\pm$~0.43 & 42.54~$\pm$~1.31 & 74.59~$\pm$~0.72 & 84.32~$\pm$~0.37 & 94.76~$\pm$~0.34 & 87.07~$\pm$~0.36 \\
+        $\epsilon_{rob}$ = 0.05 & 83.86~$\pm$~0.58 & 19.59~$\pm$~0.91 & 69.08~$\pm$~1.46 & 83.26~$\pm$~0.43 & 95.78~$\pm$~0.23 & 85.39~$\pm$~0.38 \\
+        $\epsilon_{rob}$ = 0.10 & 80.58~$\pm$~0.63 & 7.97~$\pm$~0.33 & 58.55~$\pm$~2.10 & 80.30~$\pm$~0.51 & 96.16~$\pm$~0.37 & 82.15~$\pm$~0.46 \\
+        \midrule
+        \multicolumn{7}{c}{\textbf{\lfw}}\\
+            & $Acc_{te}$ ($\modeldef$) & $Acc_{rob}$ ($\modelstd$) & $Acc_{rob}$ ($\modeldef$) & $\modelstol$: $Acc_{te}$ & $\modelstol$: $Fid$ & $\modelstol$: $Fid_{cor}$ \\
+        \midrule
+        Baseline ($\modelstd$) & 82.89~$\pm$~0.63 & - & - & - & - & - \\
+        $\epsilon_{rob}$ = 0.01 & 81.04~$\pm$~1.22 & 52.51~$\pm$~1.79 & 74.80~$\pm$~2.48 & 78.73~$\pm$~3.48 & 87.91~$\pm$~4.13 & 84.00~$\pm$~1.34 \\
+        $\epsilon_{rob}$ = 0.03 & 77.83~$\pm$~1.62 & 18.03~$\pm$~0.65 & 55.08~$\pm$~9.00 & 77.84~$\pm$~1.91 & 89.11~$\pm$~3.48 & 81.31~$\pm$~2.61 \\
+        $\epsilon_{rob}$ = 0.05 & 76.62~$\pm$~2.22 & 17.15~$\pm$~0.63 & 45.78~$\pm$~12.10 & 76.83~$\pm$~2.73 & 90.73~$\pm$~2.79 & 79.54~$\pm$~3.36 \\
+        $\epsilon_{rob}$ = 0.10 & 65.99~$\pm$~0.61 & 17.12~$\pm$~0.63 & 59.68~$\pm$~13.60 & 65.97~$\pm$~0.67 & 99.74~$\pm$~0.30 & 66.02~$\pm$~0.68 \\
+        \midrule
+        \multicolumn{7}{c}{\textbf{\cifar}}\\
+            & $Acc_{te}$ ($\modeldef$) & $Acc_{rob}$ ($\modelstd$) & $Acc_{rob}$ ($\modeldef$) & $\modelstol$: $Acc_{te}$ & $\modelstol$: $Fid$ & $\modelstol$: $Fid_{cor}$ \\
+        \midrule
+        Baseline ($\modelstd$) & 83.30~$\pm$~1.93 & - & - & - & - & - \\
+        $\epsilon_{rob}$ = 0.01 & 80.85~$\pm$~0.26 & 23.82~$\pm$~1.82 & 66.82~$\pm$~0.57 & 79.30~$\pm$~0.77 & 83.94~$\pm$~0.85 & 88.14~$\pm$~0.42 \\
+        $\epsilon_{rob}$ = 0.03 & 70.69~$\pm$~0.44 & 9.12~$\pm$~0.76 & 38.85~$\pm$~0.84 & 70.31~$\pm$~1.21 & 79.17~$\pm$~0.73 & 79.82~$\pm$~0.78 \\
+        $\epsilon_{rob}$ = 0.05 & 66.31~$\pm$~0.78 & 7.96~$\pm$~1.23 & 26.86~$\pm$~0.58 & 66.18~$\pm$~0.80 & 78.94~$\pm$~1.09 & 74.78~$\pm$~0.76 \\
+        $\epsilon_{rob}$ = 0.10 & 62.65~$\pm$~15.41 & 5.20~$\pm$~1.66 & 19.29~$\pm$~7.96 & 61.43~$\pm$~15.63 & 86.77~$\pm$~1.26 & 66.62~$\pm$~17.33 \\
+        \bottomrule
+
+        \toprule
+    \end{tabular}
+\end{table*}

@@ -1,0 +1,161 @@
+\section{Evaluating Applicability (D4)}\label{sec:evaluation}
+\input{tables/tab_attack_results}
+
+To evaluate the applicability requirement (D4), we begin with baseline experiments on the \celeba dataset.
+These baselines validate the correctness of the implementations and establish reference points for future comparisons.
+We train VGG11/13/16/19 models for 100 epochs as our main architectures using cross-entropy loss with the Adam optimizer unless otherwise specified.
+Each risk is then evaluated with its corresponding attack modules from Table~\ref{tab:modules}, and all experiments are repeated ten times with mean and standard error reported.
+We focus on \celeba since it combines image data with sensitive attributes, allowing us to assess multiple risks using one dataset.
+After presenting these baselines, we study three unintended interactions that prior work has left unexplored or only partially explained.
+
+\subsection{Baseline Results}
+Baseline results are shown in Table~\ref{tab:attack_results}.
+We evaluate each algorithm using \method{'s} metrics and compare to the original papers when possible.
+Overall, our reproductions closely match prior work, with exceptions noted below.
+
+\noindent\textbf{\ref{evasion} (Evasion).}
+Prior work evaluates PGD on \cifar and reports robust accuracy ($Acc_{rob}$) of $0.8$--$3.5\%$ for a ResNet model~\cite{madry2018DeepLearningModels}.
+With a comparable setup using \cifar, we obtained $Acc_{rob}=3.8\%$, consistent with these results.
+On \celeba, however, $Acc_{rob}$ is higher ($8.6$--$10\%$), making the attack less effective.
+We suspect this difference arises because \celeba ($\approx202{,}000$ images) is much larger than \cifar ($60{,}000$ images), and larger datasets typically yield more robust models~\cite{schmidt2018AdversariallyRobustGeneralization}.
+
+\noindent\textbf{\ref{poison} (Poisoning).}
+The original work evaluated BadNets on MNIST and traffic signs~\cite{gu2019BadNetsEvaluatingBackdooring}.
+Since MNIST is now considered too simple for robust evaluation, we reproduced it only for reference.
+Using a two-layer CNN, we obtained a poisoned data accuracy ($Acc_{pois}$) of $99\%$.
+
+On \celeba, the $\modelpois$ achieves $\approx96\%$ $Acc_{pois}$, demonstrating that the backdoor was successfully learned and the attack is effective.
+In contrast, $\modelstd$ reaches only $\approx8\%$, since it never learned the trigger--target association.
+
+\noindent\textbf{\ref{modelext} (Unauthorized Model Ownership).}
+Prior work evaluated model extraction on \celeba with VGG19, combining three attributes into an 8-class classification problem~\cite{liu2022MLDoctorHolisticRisk}.
+They reported a best fidelity of $\approx81\%$ between $\modelstol$ and $\modelstd$.
+
+In contrast, \method achieves $\approx94\%$ fidelity on \celeba for the binary task, likely because the victim models in prior work were more overfit (Table 2 in~\cite{liu2022MLDoctorHolisticRisk}).
+We also report \emph{correct fidelity} ($Fid_{cor}$) for completeness, which measures agreement conditioned on correctness, i.e., when models agree, how often are they also correct.
+
+\noindent\textbf{\ref{meminf} (Membership Inference).}
+To evaluate~\ref{meminf}, \method reports TPR at a fixed FPR of $1\%$, as recommended in prior work~\cite{carlini2022MembershipInferenceAttacks}.
+We also report balanced accuracy (best threshold from the ROC curve) and ROC AUC.
+Prior work evaluated this attack on \cifar with a ResNet model, using 256 shadow models, and achieved a TPR of $2.2\%$ at $0.001\%$ FPR, $8.4\%$ TPR at $0.1\%$ FPR, and a balanced accuracy of $63.8\%$~\cite{carlini2022MembershipInferenceAttacks}.
+
+To reproduce comparable results, we trained an overfit ResNet-18 model, as shown in Table~\ref{tab:attack_results}.
+In contrast, a well-trained \celeba model is not susceptible to this attack.
+This is because membership inference is more successful against overfit models~\cite{carlini2022MembershipInferenceAttacks}.
+
+\noindent\textbf{\ref{attinf} (Attribute Inference).}
+Performance is measured using balanced accuracy ($Acc_{bal}$) and ROC AUC.
+Prior work reported $53$--$62\%$ $Acc_{bal}$ across different datasets~\cite{aalmoes2024AlignmentGroupFairness}.
+On \celeba, we obtain $\approx57\%$ accuracy (Table~\ref{tab:attack_results}).
+In addition, our preliminary tests on \census achieve $\approx65\%$ (Race) and $\approx59\%$ (Sex), closely matching the original results of $\approx56\%$ and $\approx58\%$.
+Overall, this suggests our results are consistent and reasonable.
+
+\noindent\textbf{\ref{datarecon} (Data Reconstruction).}
+Prior work applied the same reconstruction algorithm using a similar architecture on \celeba but with an 8-class setup (vs.\ our binary task) and reported a lower MSE ($\approx0.1$ vs. $\approx0.2$)~\cite{liu2022MLDoctorHolisticRisk}.
+Because the attack recovers an \emph{average} data record per class, having more classes reduces intra-class variability and typically yields lower MSE, explaining the discrepancy.
+
+% \input{tables/tab_sumInteractions}
+
+\input{tables/tab_attinf_advrtr}
+
+\subsection{Unintended Interaction}
+We now use \method to identify the nature of different unexplored unintended interactions. We focus on
+\begin{enumerate*}[label=\roman*),itemjoin={,\xspace}] % chktex 9 % chktex 10
+\item \emph{unexplored interactions} and \item \emph{partially explored interactions} where the nature of the interaction is known, but the underlying factors that influence it are unclear.
+\end{enumerate*}
+% We summarize both unexplored and partially explored interactions in Table~\ref{tab:sumInteractions}.
+
+We give three examples of unintended interactions below.
+
+% Adversarial Training and Attribute Inference
+\noindent\textbf{\ref{advtr} (Adversarial Training) and~\ref{attinf} (Attribute Inference).}
+We use \census and \lfw to study how adversarial training (\ref{advtr}) influences attribute inference (\ref{attinf}), summarized in Table~\ref{tab:attinf_advtr}.
+In this experiment, we reserve 50\% of the training data for the adversary, reducing $Acc_{te}$ slightly.
+Unless otherwise stated, we regard changes smaller than 5 p.p. or within one standard error as not significant, reflecting normal variation across runs.
+
+On \census, $Acc_{bal}$ for \race rises only slightly, from $\approx58\%$ at baseline to $\approx60\%$ at $\epsilon_{rob}=0.01$, after which it remains stable.
+For the \sex attribute, $Acc_{bal}$ grows gradually from $\approx65\%$ to $\approx67\%$ at $\epsilon_{rob}=0.1$, with the $AUC$ following the same pattern.
+However, in both attributes, the overall change is only about 2 p.p., indicating that the effect of adversarial training on \census is negligible.
+
+
+For \lfw, the change in $Acc_{bal}$ is more significant.
+The baseline $Acc_{bal}$ is $\approx66\%$ and increases to $\approx72\%$ for a $\epsilon_{rob} = 0.06$, and $AUC$ follows a similar trend.
+Similar to the results for \census, the metrics for the attribute \sex have the opposite trend to the metrics for the attribute \race.
+However, it should be noted that the adversarial training in \lfw was not as effective as it was for \census.
+At $\epsilon_{rob} = 0.06$, $Acc_{rob}$ for $\modeldef$ is only $\approx33\%$.
+Although $Acc_{rob}$ for $\modeldef$ is higher than $\modelstd$, it would be a stretch to call this a robust model.
+
+Based on these experiments, changes in $Acc_{bal}$ and $AUC$ for a robust model fall well within the 5 p.p. range, indicating that~\ref{advtr} does not have a significant impact on~\ref{attinf}.
+However, because $\modeldef$ is not strongly robust for \lfw and the results are inconsistent across attributes and datasets, we cannot conclusively determine whether~\ref{advtr} affects~\ref{attinf}.
+
+\input{tables/tab_advtr_modext}
+
+% Adversarial Training and Model Extraction
+\noindent\textbf{\ref{advtr} (Adversarial Training) and~\ref{modelext} (Unauthorized Model Ownership).}
+We evaluate how adversarial training (\ref{advtr}) influences unauthorized model ownership (\ref{modelext}), summarized in Table~\ref{tab:advtr_modelext}.
+In this setting, the adversary extracts $\modelstol$ from a robustly trained model $\modeldef$.
+We report results across four datasets and observe that the interaction varies by dataset.
+
+On \census, adversarial training has little effect on unauthorized model ownership.
+Across $\epsilon_{rob}=0.01$--$0.10$, $\modelstol$ fidelity increases slightly from $\approx95\%$ to $\approx98\%$, while correct fidelity remains stable, showing that the stolen model continues to mirror both the predictions and correctness of $\modeldef$.
+
+For \fmnist, the trend is similar but slightly more pronounced.
+Fidelity rises to $\approx96\%$, while correct fidelity declines from $\approx88\%$ to $\approx82\%$ as robustness increases.
+Because $\modeldef$ continues to retain high test accuracy ($Acc_{te}$), $\modelstol$ remains a strong approximation, though its agreement on correct predictions weakens.
+
+On more complex datasets, the pattern shifts.
+For \lfw, $Fid$ rises from 88\% to nearly 100\%, but $Fid_{cor}$ drops from 84\% to 66\% as $\modeldef$ loses accuracy.
+On \cifar, the effect is clearer: at $\epsilon_{rob}=0.10$, $\modeldef$ has $Acc_{te}\approx62\%$ and $Acc_{rob}\approx19\%$, while $\modelstol$ attains similar $Acc_{te}$ ($\approx61\%$) and $Fid$ ($\approx87\%$), roughly $8$ p.p. more than when $\epsilon_{rob}=0.03$.
+Thus, the stolen model faithfully reproduces a boundary that is increasingly inaccurate.
+
+Overall, adversarial training often improves raw fidelity but reduces correct fidelity, especially on harder datasets.
+This suggests it may \emph{increase} susceptibility to unauthorized model ownership by producing more predictable decision boundaries.
+While it strengthens robustness, it can also raise this susceptibility.
+Further study with stronger defenses and modern architectures is needed to determine whether this effect is fundamental or an artifact of weaker training.
+
+% Outlier Removal and Model Extraction
+\input{tables/tab_outrem_modext}
+
+\noindent\textbf{\ref{outrem} (Outlier Removal) and~\ref{modelext} (Unauthorized Model Ownership).}
+Finally, we evaluate the interaction between outlier removal (\ref{outrem}) and unauthorized model ownership (\ref{modelext}).
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=\linewidth]{figures/fig_outrem_fid.pdf}
+    \caption{Comparison of $Acc_{te}$ of $\modeldef$ and $Fid$ between $\modeldef$ and $\modelstol$ for the given percentage of outliers removed from $\modeldef$.
+    $Acc_{te}$ shows a clear downward trend, while fidelity is not affected.
+    The colors differentiate the dataset, while the dotted lines represent $Acc_{te}$ and the solid lines represent $Fid$. }
+    \label{fig:outrem_fid}
+    \Description{Line plot of defended-model test accuracy and stolen-model fidelity against the percentage of outliers removed, for three datasets. Test accuracy trends downward as more outliers are removed, while fidelity stays roughly constant.}
+\end{figure}
+
+Outlier removal trains the model after discarding training records with the lowest influence, estimated using $k$-nearest-neighbor Shapley values~\cite{jia2019EfficientTaskspecificData}.
+These scores quantify how much each training record contributes to model predictions on a held-out set, allowing us to iteratively remove the least influential records before retraining the model on the remaining data.
+
+Our results show that as the percentage of outliers removed increases, the test accuracy of the defended model ($\modeldef$) decreases.
+This is expected since~\ref{outrem} uses Shapley values to identify data records with the highest influence, and removing them can degrade accuracy~\cite{jia2019EfficientTaskspecificData}.
+For example, on \census, $Acc_{te}$ drops from $\approx84.6\%$ (baseline) to $\approx81\%$ with $10\%$ outliers removed, and further to $\approx77\%$ at $40\%$.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=\linewidth]{figures/fig_outrem_cor_fid.pdf}
+    \caption{Comparison of $Acc_{te}$ and $Fid_{cor}$ for the given percentage of outliers removed from $\modeldef$.
+    Both measures follow a similar downward trend.
+    The colors differentiate the dataset, while the dotted lines represent $Acc_{te}$ and the solid lines represent $Fid_{cor}$. Error bars omitted for readability.}
+    \label{fig:outrem_cor_fid}
+    \Description{Line plot of defended-model test accuracy and correct-label fidelity against the percentage of outliers removed, for three datasets. Both measures follow a similar downward trend as more outliers are removed.}
+\end{figure}
+
+Analyzing the effect this has on unauthorized model ownership, Figure~\ref{fig:outrem_fid} shows that while $Acc_{te}$ of $\modeldef$ drops significantly for all datasets, the fidelity of $\modelstol$ stays constant (in the case of \census) or drops slightly (in the case of \cifar and \fmnist).
+This suggests that outlier removal does not affect unauthorized model ownership.
+
+Figure~\ref{fig:outrem_cor_fid} compares $Fid_{cor}$ with $Acc_{te}$, revealing that both trend downward.
+For \cifar, removing $10\%$ of the outliers causes a $\geq7.5$~p.p. drop in both $Acc_{te}$ and $Fid_{cor}$.
+This indicates that while overall fidelity is preserved, correct fidelity is sensitive to the degradation of $\modeldef${'s} accuracy.
+We attribute this to the drop in $Acc_{te}$.
+We conclude that~\ref{outrem} does not meaningfully affect~\ref{modelext}.
+
+\begin{takeaway}
+Each interaction here changes with the dataset and the defense strength, so it cannot be predicted from the algorithms alone.
+It has to be measured.
+\end{takeaway}

@@ -1,0 +1,49 @@
+\begin{table*}[htb]
+    \centering
+    \footnotesize
+    \caption{Baseline evaluation of each risk in \method on \celeba, reproducing prior attacks to validate the implementations. $\modelstd$, $\modelpois$, and $\modelstol$ are the baseline, poisoned, and stolen models. $^{*}$Membership inference uses an intentionally overfit ResNet-18.}
+    \label{tab:attack_results}
+    \begin{tabularx}{\textwidth}{l l X X X X}
+        \toprule
+        \multirow{2}{*}{\textbf{Attack}} & \textbf{Model Architecture} & \textbf{VGG11} & \textbf{VGG13} & \textbf{VGG16} & \textbf{VGG19} \\
+            & $Acc_{te}$ & 91.21~$\pm$~0.05 & 91.46~$\pm$~0.04 & 91.38~$\pm$~0.03 & 91.41~$\pm$~0.03 \\
+        \midrule
+
+        \ref{evasion}~(Evasion) & $Acc_{rob}$ & 10.08~$\pm$~0.13 & 8.60~$\pm$~0.05 & 8.65~$\pm$~0.02 & 8.67~$\pm$~0.04 \\
+        \midrule
+
+        \multirow{3}{*}{\ref{poison}~(Poisoning)}
+            &  $Acc_{pois}$ ($\modelstd$) & 8.13~$\pm$~0.30 & 8.27~$\pm$~0.34 & 8.17~$\pm$~0.19 & 7.57~$\pm$~0.31 \\
+            & $Acc_{te}$ ($\modelpois$) & 91.16~$\pm$~0.03 & 91.48~$\pm$~0.04 & 91.39~$\pm$~0.03 & 91.37~$\pm$~0.08 \\
+            & $Acc_{pois}$ ($\modelpois$) & 95.70~$\pm$~0.21 & 96.70~$\pm$~0.10 & 96.62~$\pm$~0.18 & 96.75~$\pm$~0.18 \\
+        \midrule
+
+        \multirow{3}{*}{\ref{modelext}~(Unauthorized Model Ownership)}
+            &  $Acc_{te}$ ($\modelstol$) & 91.02~$\pm$~0.09 & 91.32~$\pm$~0.07 & 91.42~$\pm$~0.08 & 91.39~$\pm$~0.06 \\
+            & $Fid$ ($\modelstol$) & 94.64~$\pm$~0.16 & 94.75~$\pm$~0.09 & 94.74~$\pm$~0.11 & 94.84~$\pm$~0.08 \\
+            & $Fid_{cor}$ ($\modelstol$) & 93.14~$\pm$~0.06 & 93.49~$\pm$~0.03 & 93.51~$\pm$~0.02 & 93.41~$\pm$~0.04 \\
+        \midrule
+
+        \multirow{8}{*}{\ref{meminf}~(Membership Inference)$^{*}$}
+            & $Acc_{tr}$ & 94.20~$\pm$~1.33 & - & - & - \\
+            & $Acc_{te}$ & 76.81~$\pm$~0.48 & - & - & - \\
+            & Offline $Acc_{bal}$ & 50.41~$\pm$~00.13 & - & - & - \\
+            & Offline $AUC$ & 0.49~$\pm$~0.00 & - & - & - \\
+            & Offline TPR@1\%FPR & 0.83~$\pm$~0.11 & - & - & - \\
+            & Online $Acc_{bal}$ & 60.67~$\pm$~00.70 & - & - & - \\
+            & Online $AUC$ & 0.64~$\pm$~0.01 & - & - & - \\
+            & Online TPR@1\%FPR & 2.70~$\pm$~0.25 & - & - & - \\
+        \midrule
+
+        \multirow{2}{*}{\ref{attinf}~(Attribute Inference)}
+            & $Acc_{att}$ & 57.17~$\pm$~0.15 & 57.12~$\pm$~0.12 & 57.27~$\pm$~0.11 & 56.90~$\pm$~0.13 \\
+            & $AUC$ & 0.59~$\pm$~0.00 & 0.59~$\pm$~0.00 & 0.59~$\pm$~0.00 & 0.58~$\pm$~0.00 \\
+        \midrule
+
+        \multirow{3}{*}{\ref{datarecon}~(Data Reconstruction)}
+            & $MSE_{avg}$ & 0.20~$\pm$~0.00 & 0.20~$\pm$~0.00 & 0.20~$\pm$~0.00 & 0.20~$\pm$~0.000 \\
+            & $MSE_0$ & 0.19~$\pm$~0.00 & 0.19~$\pm$~0.00 & 0.19~$\pm$~0.00 & 0.19~$\pm$~0.00 \\
+            & $MSE_1$ & 0.20~$\pm$~0.00 & 0.20~$\pm$~0.00 & 0.20~$\pm$~0.00 & 0.20~$\pm$~0.00 \\
+        \bottomrule
+    \end{tabularx}
+\end{table*}

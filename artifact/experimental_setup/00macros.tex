@@ -1,0 +1,86 @@
+% Preamble: packages, colors, callout boxes, and macros.
+% acmart already provides amssymb, booktabs, caption, xcolor, hyperref, natbib,
+% graphicx, microtype. Only additions and non-conflicting packages live here.
+
+\usepackage{amsmath}
+\usepackage{multirow}
+\usepackage{tabularx}
+\usepackage{pifont}
+\usepackage{wasysym}
+% The wasy font (used only for the \smark/\xmark/\cmark circle glyphs below)
+% ships a single medium series at fixed design sizes, so those glyphs in a bold
+% caption or at small sizes otherwise trigger font-substitution warnings. We
+% declare the family and shapes up front (before any glyph is used, which also
+% stops the lazy uwasy.fd from overriding these): medium scales from wasy10 at
+% any size, and bold silently falls back to medium. The rendered glyphs are
+% unchanged.
+\DeclareFontFamily{U}{wasy}{}
+\DeclareFontShape{U}{wasy}{m}{n}{<->wasy10}{}
+\DeclareFontShape{U}{wasy}{b}{n}{<->ssub*wasy/m/n}{}
+
+% acmart auto-balances the final page's columns with \balance (from the balance
+% package). On a short last page that warns "\balance in second column". Make
+% the call a no-op for the draft; remove this for camera-ready to restore
+% balancing once the last page fills both columns.
+\AtBeginDocument{\let\balance\relax}
+\usepackage[inline]{enumitem}
+\usepackage{xspace}
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows}
+\usetikzlibrary{backgrounds, positioning, fit}
+\usepackage{minted}
+\usepackage[most]{tcolorbox}
+
+\graphicspath{{figures/}}
+
+% Colors
+\definecolor{inkslate}{HTML}{1E2A40}
+\definecolor{okgreen}{HTML}{005C30}
+\definecolor{errred}{HTML}{A72D26}
+\definecolor{emphviolet}{HTML}{6F00A2}
+\definecolor{washneutral}{HTML}{D5D8DE}
+\definecolor{washinfo}{HTML}{DDEBFF}
+\definecolor{washseed}{HTML}{F8E9D1}
+
+% Callout boxes: takeaway (neutral), infobox (structural), seedbox (inputs)
+\newtcolorbox{callout}[2][]{colback=#2, colframe=inkslate!30, boxrule=0.4pt,
+  arc=1.5pt, left=5pt, right=5pt, top=4pt, bottom=4pt, fontupper=\small, #1}
+\newenvironment{takeaway}{\begin{callout}{washneutral}\noindent\textbf{Takeaway.}\enspace\ignorespaces}{\end{callout}}
+\newenvironment{infobox}{\begin{callout}{washinfo}\ignorespaces}{\end{callout}}
+\newenvironment{seedbox}{\begin{callout}{washseed}\ignorespaces}{\end{callout}}
+
+\newcommand\change[1]{{\color{purple}{#1}\xspace}}
+
+\newcommand\blfootnote[1]{%
+  \begingroup
+  \renewcommand\thefootnote{}\footnote{#1}%
+  \addtocounter{footnote}{-1}%
+  \endgroup
+}
+
+\newcommand{\method}{\textsc{Amulet}\xspace}
+
+\newcommand{\race}{\texttt{Race}\xspace}
+\newcommand{\sex}{\texttt{Sex}\xspace}
+
+\newcommand{\dtrain}{\mathcal{D}_{tr}\xspace}
+
+\newcommand{\model}{\mathcal{M}\xspace}
+\newcommand{\modelstd}{\mathcal{M}_{std}\xspace}
+\newcommand{\modeldef}{\mathcal{M}_{def}\xspace}
+\newcommand{\modelstol}{\mathcal{M}_{stol}\xspace}
+\newcommand{\modelpois}{\mathcal{M}_{pois}\xspace}
+
+\newcommand{\fmnist}{\texttt{FMNIST}\xspace}
+\newcommand{\lfw}{\texttt{LFW}\xspace}
+\newcommand{\cifar}{\texttt{CIFAR10}\xspace}
+\newcommand{\census}{\texttt{CENSUS}\xspace}
+\newcommand{\celeba}{\texttt{CELEBA}\xspace}
+\newcommand{\sstwo}{\texttt{SST-2}\xspace} % chktex 8
+
+% Hyphens here are part of the model name, not dashes.
+\newcommand{\llama}{\texttt{Llama-3.2-3B}\xspace} % chktex 8
+
+\newcommand{\smark}{$\LEFTcircle$\xspace}
+\newcommand{\xmark}{$\Circle$\xspace}
+\newcommand{\cmark}{$\CIRCLE$\xspace}

@@ -1,0 +1,76 @@
+\section{Design of \method}\label{sec:design}
+\noindent\textbf{Overview.}
+\method organizes functionality around \emph{risks} as the primary abstraction.
+For each risk, we implement three pluggable module types:
+\emph{(i)} attacks which realize the risk,
+\emph{(ii)} defenses which protect against the risk, and
+\emph{(iii)} metrics which evaluate susceptibility to the risk.
+This modular structure is illustrated in Figure~\ref{fig:overview} and ensures that new components can be added consistently across domains.
+
+\noindent\textbf{Intended users.}
+\method is designed to serve two groups:
+\begin{enumerate*}[label=\roman*),itemjoin={,\xspace}] % chktex 9 % chktex 10
+    \item \emph{researchers}, who investigate new interactions, analyze how attack, defense, and metric variants affect them, and design defenses to mitigate or leverage these interactions
+    \item \emph{practitioners}, who analyze trade-offs in deploying ML defenses specific to their domain and regulations.
+\end{enumerate*}
+
+\noindent\textbf{Scope.}
+This design directly addresses the desiderata in Section~\ref{sec:problem}.
+Below, we demonstrate how \method satisfies D1--D2 (comprehensive, consistent) by construction.
+We evaluate D3 (extensibility) and D4 (applicability) empirically in Sections~\ref{sec:extensibility} and~\ref{sec:evaluation}.
+
+\input{tables/tab_modules}
+
+\subsection{Comprehensive}
+
+\method spans eight risks across security, privacy, and fairness, with representative attacks, defenses, and metrics summarized in Table~\ref{tab:modules}.
+We deliberately favor breadth by implementing widely used and generalizable modules across all risks, rather than depth in any single risk category.
+This approach ensures coverage of diverse risk types while leaving room for the open-source community to expand each category.
+Our emphasis on extensibility further enables contributions of new attacks and defenses.
+
+\method also includes components for datasets, models, and utilities that enable end-to-end evaluation.
+
+\noindent\textbf{Datasets.}
+\method provides five widely used datasets spanning vision and tabular domains:
+\fmnist~\cite{xiao2017FashionMNISTNovelImage}, \cifar, \census~\cite{kohavi1996CensusIncome}, \lfw~\cite{melis2019ExploitingUnintendedFeature}, and \celeba~\cite{liu2015DeepLearningFace}.
+These datasets cover small grayscale images, natural images, demographic records, and large-scale face attributes,
+supporting evaluation across security, privacy, and fairness.
+Section~\ref{sec:extensibility} extends this set to text with \sstwo~\cite{socher2013RecursiveDeepModels}.
+
+\noindent\textbf{Model configurations.}
+\method includes commonly used architectures for quick testing, such as VGG~\cite{liu2015VeryDeepConvolutional} and ResNet~\cite{he2016DeepResidualLearning}.
+Section~\ref{sec:extensibility} adds an LLM victim, a LoRA-adapted \llama~\cite{llamateammetaai2024Llama3Herd}.
+
+\subsection{Consistent}
+Each risk in \method follows a uniform interface: attacks and defenses take a PyTorch \texttt{nn.Module} and hyperparameters as input (except poisoning attacks, which operate on datasets), and their outputs serve as inputs to the corresponding metrics.
+This consistent design allows \method to integrate seamlessly into any PyTorch pipeline.
+
+Furthermore, \method offers helper functions for setting up an end-to-end pipeline, including data loading, model initialization, training, and evaluation.
+Each helper function, along with every attack and defense, provides default values that yield reasonable results when used with a VGG architecture on \celeba or \cifar.
+
+Attacks, defenses, and metrics follow a consistent layout:
+\begingroup
+\setlength{\topsep}{0pt}
+\setlength{\partopsep}{0pt}
+\begin{quote}
+  \texttt{amulet.<risk>.attacks.<attack>} \\
+  \texttt{amulet.<risk>.defenses.<defense>} \\
+  \texttt{amulet.<risk>.metrics.<metric>}
+\end{quote}
+\endgroup
+
+\input{figures/fig_code}
+
+Figure~\ref{fig:code} illustrates example usage, assuming standard variables common to most ML pipelines.
+Each algorithm is instantiated as an object and then executed via a function call.
+More detailed examples are available on GitHub.\footnote{\url{https://github.com/ssg-research/amulet/tree/main/examples}}
+% More detailed examples are available on GitHub.\footnote{Link shared in supplemental material.}
+
+\method also provides an \texttt{AmuletDataset} class.
+Converting a dataset into this format makes it compatible with any module in \method.
+All modules support image-based (two-dimensional), tabular (one-dimensional), and text datasets.
+Section~\ref{sec:extensibility} describes how we added the text modality and what it cost.
+
+\begin{takeaway}
+One interface exposes every risk's modules, so a defense for one risk and an attack for another compose into a single measurable pipeline.
+\end{takeaway}

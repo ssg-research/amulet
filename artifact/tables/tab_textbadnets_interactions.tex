@@ -1,0 +1,41 @@
+\begin{table*}[htb]
+    \setlength\tabcolsep{4pt}
+    \centering
+    \footnotesize
+    \caption{Poisoning~(\ref{poison}) versus two defenses on \sstwo with a
+    LoRA-adapted \llama victim. Each block adds one defense to the poisoned model
+    $\modelpois$; both share the clean baseline $\modelstd$. ONION drives $ASR$ down
+    at every poison rate, while DP-SGD suppresses the backdoor only at small poison
+    counts. $^{*}$This cell collapsed to the majority class and does not measure the
+    defense.}%
+    \label{tab:textbadnets_interactions}
+    \begin{tabular}{ c c c c c c c }
+        \bottomrule
+
+        \toprule
+        \multirow{2}{*}{\textbf{Poisoned}} & \multirow{2}{*}{\textbf{\# Poisoned}} & \multirow{2}{*}{\textbf{Defense}} & \multicolumn{2}{c}{\textbf{Undefended} ($\modelpois$)} & \multicolumn{2}{c}{\textbf{Defended} ($\modeldef$)} \\
+        & & & $Acc_{te}$ & $ASR$ & $Acc_{te}$ & $ASR$ \\
+        \midrule
+        Baseline ($\modelstd$) & $-$ & $-$ & 95.76~$\pm$~0.17 & $-$ & $-$ & $-$ \\
+        \midrule
+        \multicolumn{7}{c}{\textbf{ONION} (intended interaction)} \\
+        \midrule
+        0.01\% & 6 & \multirow{5}{*}{ONION} & 95.39~$\pm$~0.27 & 19.21~$\pm$~5.68 & 93.51~$\pm$~0.17 & 7.85~$\pm$~0.81 \\
+        0.1\% & 67 &  & 95.48~$\pm$~0.37 & 98.27~$\pm$~1.16 & 94.22~$\pm$~0.17 & 8.04~$\pm$~0.72 \\
+        1\% & 673 &  & 95.60~$\pm$~0.30 & 99.95~$\pm$~0.05 & 93.83~$\pm$~0.31 & 8.08~$\pm$~1.06 \\
+        2\% & 1346 &  & 95.57~$\pm$~0.17 & 99.95~$\pm$~0.05 & 93.94~$\pm$~0.48 & 6.78~$\pm$~0.60 \\
+        5\% & 3367 &  & 95.00~$\pm$~0.53 & 100.00~$\pm$~0.00 & 93.17~$\pm$~0.39 & 8.32~$\pm$~1.50 \\
+        \midrule
+        \multicolumn{7}{c}{\textbf{DP-SGD} (unintended interaction)} \\
+        \midrule
+        \multirow{2}{*}{0.1\%} & \multirow{2}{*}{67} & $\epsilon = 1$ & \multirow{2}{*}{94.04} & \multirow{2}{*}{99.77} & 71.67 & 29.44 \\
+         &  & $\epsilon = 8$ &  &  & 70.41 & 33.64 \\
+        \multirow{2}{*}{1\%} & \multirow{2}{*}{673} & $\epsilon = 1$ & \multirow{2}{*}{95.53} & \multirow{2}{*}{99.77} & 68.81 & 43.46 \\
+         &  & $\epsilon = 8$ &  &  & 72.13 & 49.07 \\
+        \multirow{2}{*}{5\%} & \multirow{2}{*}{3367} & $\epsilon = 1$ & \multirow{2}{*}{93.23} & \multirow{2}{*}{100.00} & 50.92$^{*}$ & 100.00$^{*}$ \\
+         &  & $\epsilon = 8$ &  &  & 68.92 & 97.20 \\
+        \bottomrule
+
+        \toprule
+    \end{tabular}
+\end{table*}
