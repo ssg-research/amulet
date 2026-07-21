@@ -8,22 +8,15 @@ from torch.utils.data import DataLoader
 
 
 class EvasionDefense(ABC):
-    """
-    Base class for Evasion Defense
+    """Base class for evasion defenses.
 
     Attributes:
-        model: torch.nn.Module
-            The model on which to apply the defense.
-        criterion: torch.nn.Module
-            Loss function for the defense.
-        optimizer: torch.optim.Optimizer
-            Optimizer for the defense.
-        train_loader: torch.utils.data.DataLoader
-            Training data loader to the defense.
-        device: str
-            Device used to train model. Example: "cuda:0".
-        epochs: int
-            Determines number of iterations over training data.
+        model: The model on which to apply the defense.
+        criterion: Loss function for the defense.
+        optimizer: Optimizer for the defense.
+        train_loader: Training data loader for the defense.
+        device: Device used to train model. Example: "cuda:0".
+        epochs: Number of iterations over the training data.
     """
 
     def __init__(
@@ -44,4 +37,5 @@ class EvasionDefense(ABC):
 
     @abstractmethod
     def train_robust(self) -> nn.Module:
+        """Train the model robustly and return the defended model."""
         pass

@@ -15,4 +15,9 @@ class AmuletModel(nn.Module):
     """
 
     def get_hidden(self, x: torch.Tensor) -> torch.Tensor:
+        """Return intermediate-layer activations; subclasses must override this.
+
+        Raises:
+            NotImplementedError: Always, unless a subclass overrides it.
+        """
         raise NotImplementedError(f"{type(self).__name__} must implement `get_hidden`.")

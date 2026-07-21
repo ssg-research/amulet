@@ -9,19 +9,15 @@ from torch.utils.data import DataLoader
 
 
 class DiscriminatoryBehavior:
-    """
-    Implementation of algorithm to evaluate models for discriminatory
-    behavior between different subgroups of data. Assumes that the input
-    data contains features, labels, and sensitive attributes.
+    """Evaluate models for discriminatory behavior between data subgroups.
+
+    Assumes that the input data contains features, labels, and sensitive
+    attributes.
 
     Attributes:
-        target_model: torch.nn.Module
-            This model will be extracted.
-        test_loader: torch.utils.data.DataLoader
-            Input data used to test the model.
-            Should contain sensitive attributes too.
-        device: str
-            Device used to train model. Example: "cuda:0".
+        model: The model to evaluate for discriminatory behavior.
+        test_loader: Input data used to test the model. Should contain sensitive attributes too.
+        device: Device used for inference. Example: "cuda:0".
     """
 
     def __init__(
@@ -38,6 +34,17 @@ class DiscriminatoryBehavior:
     def accuracy(
         predictions: np.ndarray, targets: np.ndarray, attributes: np.ndarray
     ) -> tuple[float, float]:
+        """Compute per-subgroup accuracy split by a binary sensitive attribute.
+
+        Args:
+            predictions: Predicted labels.
+            targets: Ground-truth labels.
+            attributes: Binary sensitive attribute values (0 or 1).
+
+        Returns:
+            A tuple (acc_true, acc_false) of accuracy percentages for the
+            subgroups where the attribute is 1 and 0, respectively.
+        """
         output_attr_true = predictions[np.argwhere(attributes == 1)]
         output_attr_false = predictions[np.argwhere(attributes == 0)]
 
@@ -51,8 +58,16 @@ class DiscriminatoryBehavior:
 
     @staticmethod
     def demographic_parity(predictions: np.ndarray, attributes: np.ndarray) -> float:
-        """
-        |P(pred=1|a=0) - P(pred=1|a=1)|
+        """Compute demographic parity between the two attribute subgroups.
+
+        Measures |P(pred=1|a=0) - P(pred=1|a=1)|.
+
+        Args:
+            predictions: Predicted labels.
+            attributes: Binary sensitive attribute values (0 or 1).
+
+        Returns:
+            The absolute difference in positive-prediction rates between subgroups.
         """
         p_joint_att_positive = np.mean((predictions == 1) * (attributes == 1))
         p_joint_att_negative = np.mean((predictions == 1) * (attributes == 0))
@@ -70,8 +85,17 @@ class DiscriminatoryBehavior:
     def true_positive_parity(
         predictions: np.ndarray, targets: np.ndarray, attributes: np.ndarray
     ) -> float:
-        """
-        P(y_hat=1|y=1,a=0) - P(y_hat=1|y=1,a=1)
+        """Compute true-positive-rate parity between the two attribute subgroups.
+
+        Measures |P(y_hat=1|y=1,a=0) - P(y_hat=1|y=1,a=1)|.
+
+        Args:
+            predictions: Predicted labels.
+            targets: Ground-truth labels.
+            attributes: Binary sensitive attribute values (0 or 1).
+
+        Returns:
+            The absolute difference in true-positive rates between subgroups.
         """
         p_joint_att_positive = np.mean(
             (predictions == targets) * (targets == 1) * (attributes == 1)
@@ -94,8 +118,17 @@ class DiscriminatoryBehavior:
     def false_positive_parity(
         predictions: np.ndarray, targets: np.ndarray, attributes: np.ndarray
     ) -> float:
-        """
-        |P(y_hat=1|y=0,a=0) - P(y_hat=1|y=0,a=1)|
+        """Compute false-positive-rate parity between the two attribute subgroups.
+
+        Measures |P(y_hat=1|y=0,a=0) - P(y_hat=1|y=0,a=1)|.
+
+        Args:
+            predictions: Predicted labels.
+            targets: Ground-truth labels.
+            attributes: Binary sensitive attribute values (0 or 1).
+
+        Returns:
+            The absolute difference in false-positive rates between subgroups.
         """
         p_joint_att_positive = np.mean(
             (predictions != targets) * (targets == 0) * (attributes == 1)
@@ -115,6 +148,16 @@ class DiscriminatoryBehavior:
 
     @staticmethod
     def p_rule(predictions: np.ndarray, attributes: np.ndarray) -> float:
+        """Compute the p% rule between the two attribute subgroups.
+
+        Args:
+            predictions: Predicted labels.
+            attributes: Binary sensitive attribute values (0 or 1).
+
+        Returns:
+            The smaller of the two positive-rate odds ratios, scaled by 100.
+            Returns 0.0 when the reference subgroup has no positive predictions.
+        """
         y_z_1 = predictions[attributes == 1].mean()
         y_z_0 = predictions[attributes == 0].mean()
         if y_z_0 == 0:

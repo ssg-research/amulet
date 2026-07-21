@@ -1,4 +1,4 @@
-"""Base class for Data Reconstruction Attacks"""
+"""Base class for Data Reconstruction Attacks."""
 
 from abc import ABC, abstractmethod
 
@@ -7,18 +7,13 @@ import torch.nn as nn
 
 
 class DataReconstructionAttack(ABC):
-    """
-    Base class for Data Reconstruction Attacks
-    Attributes::
-        ------------------------
-        target_model: torch.nn.Module
-            Target model whose training dataset we reconstruct
-        input_size: int
-            Size of the model's input
-        output_size: int
-            Size of the model's output
-        device: str
-            Device on which to load the PyTorch tensors. Example: "cuda:0".
+    """Base class for data reconstruction attacks.
+
+    Attributes:
+        target_model: Target model whose training dataset is reconstructed.
+        input_size: Shape of the model's input.
+        output_size: Size of the model's output.
+        device: Device on which to load the PyTorch tensors. Example: "cuda:0".
     """
 
     def __init__(
@@ -35,4 +30,9 @@ class DataReconstructionAttack(ABC):
 
     @abstractmethod
     def attack(self) -> list[torch.Tensor]:
+        """Reconstruct training data for each output class.
+
+        Returns:
+            List of reconstructed tensors, one per class.
+        """
         pass

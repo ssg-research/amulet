@@ -51,7 +51,7 @@ Amulet uses [uv](https://docs.astral.sh/uv/) for dependency management.
 2. **Implementation**: Place your file in the appropriate directory: `amulet/<risk>/<attacks|defenses|metrics>/new_module.py`.
 3. **API Contract**:
    - **Attacks**: Implement an `attack()` method (except for poisoning, which uses `poison_train` and `poison_test`).
-   - **Defenses**: Every defense **must** implement the training-shaped entry point for its risk — poisoning/evasion → `train_robust()`, membership inference → `train_private()`, fairness → `train_fair()`, ownership → `watermark()` / `fingerprint()`. This is enforced by `tests/test_api_conformance.py`: a defense that ships only a bespoke method (e.g. a `purify`-only input cleaner) fails the suite. A defense may expose extra public helpers **in addition to** its entry point, never instead of it, and should subclass its risk's existing defense base rather than introducing a new one.
+   - **Defenses**: Every defense **must** implement the training-shaped entry point for its risk: poisoning/evasion → `train_robust()`, membership inference → `train_private()`, fairness → `train_fair()`, ownership → `watermark()` / `fingerprint()`. This is enforced by `tests/test_api_conformance.py`: a defense that ships only a bespoke method (e.g. a `purify`-only input cleaner) fails the suite. A defense may expose extra public helpers **in addition to** its entry point, never instead of it, and should subclass its risk's existing defense base rather than introducing a new one.
    - **Return Values**: Attacks/defenses should return artifacts (e.g., a `DataLoader` or a `nn.Module`), not metrics directly.
 4. **Export**: Import your class in the risk's `__init__.py`.
 5. **Example**: Add a runnable script in `examples/attack_pipelines/` or `examples/defense_pipelines/`.
@@ -67,6 +67,8 @@ class AmuletDataset:
     test_set: Dataset
     num_features: int
     num_classes: int
+    modality: Literal["image", "tabular", "text"]
+    sensitive_columns: list[str] | None = None
     x_train: np.ndarray | None = None
     ...
 ```

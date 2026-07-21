@@ -64,6 +64,9 @@ class PermInvModel(nn.Module):
 
         Returns:
             Logits for the meta-classification decision.
+
+        Raises:
+            ValueError: If a layer's neuron count does not match its expected shape.
         """
         reps = []
         for_prev = None

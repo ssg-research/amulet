@@ -6,8 +6,7 @@ from .poisoning_attack import PoisoningAttack
 
 
 class BadNets(PoisoningAttack):
-    """
-    BadNets backdoor poisoning attack.
+    """BadNets backdoor poisoning attack.
 
     Reference:
         BadNets: Identifying Vulnerabilities in the Machine Learning Model Supply Chain
@@ -17,7 +16,7 @@ class BadNets(PoisoningAttack):
     Attributes:
         trigger_label: Target label assigned to poisoned samples.
         portion: Fraction of training samples to poison.
-        dataset_type: "image" for 2D data, "tabular" for 1D data.
+        dataset_type: "image" for CxHxW image tensors (3D), "tabular" for 1D feature vectors.
         random_seed: Seed for selecting which samples to poison.
     """
 
@@ -34,6 +33,7 @@ class BadNets(PoisoningAttack):
         self.dataset_type = dataset_type
 
     def __poison_datapoint(self, data_original: torch.Tensor) -> torch.Tensor:
+        """Embed the trigger into a single datapoint, raising ValueError for an unknown dataset_type."""
         data_point = data_original.clone().detach()
         if self.dataset_type == "image":
             channels, width, height = data_point.shape
@@ -51,14 +51,13 @@ class BadNets(PoisoningAttack):
         return data_point
 
     def poison_train(self, dataset) -> TensorDataset:
-        """
-        Poison a portion of the training dataset by embedding a trigger.
+        """Poison a portion of the training dataset by embedding a trigger.
 
         Args:
             dataset: The training dataset to poison.
 
         Returns:
-            TensorDataset with trigger-embedded samples and relabeled targets.
+            A TensorDataset with trigger-embedded samples and relabeled targets.
         """
         data_points = []
         targets = []
@@ -83,14 +82,13 @@ class BadNets(PoisoningAttack):
         return TensorDataset(torch.stack(data_points), torch.stack(targets))
 
     def poison_test(self, dataset) -> TensorDataset:
-        """
-        Poison all test samples that do not already carry the trigger label.
+        """Poison all test samples that do not already carry the trigger label.
 
         Args:
             dataset: The test dataset to poison.
 
         Returns:
-            TensorDataset containing only poisoned samples with trigger-embedded inputs.
+            A TensorDataset containing only poisoned samples with trigger-embedded inputs.
         """
         data_points = []
         targets = []

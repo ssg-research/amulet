@@ -82,6 +82,9 @@ class DatasetInference(FingerprintDefense):
         Returns:
             Nested dict with keys "target" and "suspect", each containing
             "p-value" and "mean_diff".
+
+        Raises:
+            ValueError: If a computed p-value is negative.
         """
         train_target, test_target = self.__feature_extracter(self.target_model)
         train_suspect, test_suspect = self.__feature_extracter(self.suspect_model)

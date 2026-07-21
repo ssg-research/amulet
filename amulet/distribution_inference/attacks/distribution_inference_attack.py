@@ -235,4 +235,11 @@ class DistributionInferenceAttack(ABC):
 
     @abstractmethod
     def attack(self) -> dict[str, np.ndarray]:
+        """Run the distinguishing test on the trained model populations.
+
+        Returns:
+            Dictionary with two 1-D arrays: "predictions" (attack scores) and
+            "ground_truth" (0 for distribution-1 victims, 1 for distribution-2
+            victims).
+        """
         pass

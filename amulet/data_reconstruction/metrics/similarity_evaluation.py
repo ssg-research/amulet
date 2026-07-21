@@ -1,3 +1,5 @@
+"""Similarity metrics for evaluating data reconstruction quality."""
+
 from typing import TypedDict
 
 import numpy as np
@@ -8,6 +10,8 @@ from torch.utils.data import DataLoader
 
 
 class SimilarityResults(TypedDict):
+    """Per-class and averaged MSE/SSIM scores returned by evaluate_similarity."""
+
     mean_mse: float
     class_mse: dict[int, float]
     mean_ssim: float

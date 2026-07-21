@@ -17,7 +17,7 @@ _INSERT_POSITIONS = ("start", "random", "end")
 class TextBadNets(PoisoningAttack):
     """Textual backdoor poisoning by trigger insertion (BadNets / AddSent family).
 
-    The NLP analog of the image :class:`BadNets`: a rare word or short fixed phrase is
+    The NLP analog of the image ``BadNets``: a rare word or short fixed phrase is
     stamped into a fraction of training examples whose labels are flipped to a target
     class. Trigger insertion happens in **string space** (a real word/phrase, not raw
     token ids), which is what makes the trigger a genuine perplexity outlier for the
@@ -55,6 +55,11 @@ class TextBadNets(PoisoningAttack):
         max_length: int | None = None,
         insert_position: str = "start",
     ):
+        """Configure the textual BadNets attack.
+
+        Raises:
+            ValueError: If insert_position is not one of "start", "random", or "end".
+        """
         super().__init__(random_seed)
         if insert_position not in _INSERT_POSITIONS:
             raise ValueError(

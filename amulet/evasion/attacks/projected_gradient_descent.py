@@ -12,8 +12,7 @@ from .evasion_attack import EvasionAttack
 
 
 class EvasionPGD(EvasionAttack):
-    """
-    PGD-based evasion attack using the cleverhans library.
+    """PGD-based evasion attack using the cleverhans library.
 
     Reference:
         Towards Deep Learning Models Resistant to Adversarial Attacks
@@ -24,10 +23,12 @@ class EvasionPGD(EvasionAttack):
         model: The model to attack.
         test_loader: Input data that is perturbed to attack the model.
         device: Device used for model inference. Example: "cuda:0".
+        batch_size: Batch size for the output DataLoader.
         epsilon: Perturbation budget.
         iterations: Number of PGD iterations.
         step_size: Step size for each attack iteration.
-        batch_size: Batch size for the output DataLoader.
+        clip_min: Lower bound to clamp perturbed inputs to.
+        clip_max: Upper bound to clamp perturbed inputs to.
     """
 
     def __init__(
@@ -50,11 +51,10 @@ class EvasionPGD(EvasionAttack):
         self.clip_max = clip_max
 
     def attack(self) -> DataLoader:
-        """
-        Run the PGD evasion attack and return perturbed inputs as a DataLoader.
+        """Run the PGD evasion attack and return perturbed inputs as a DataLoader.
 
         Returns:
-            DataLoader containing adversarial examples.
+            A DataLoader containing the adversarial examples.
         """
         self.model.eval()
 

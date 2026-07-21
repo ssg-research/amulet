@@ -14,7 +14,7 @@ The core design philosophy is to allow these components to be easily composed in
 Most Amulet components follow a consistent API:
 
 - **Attacks** generally take a `target_model` and a `DataLoader` as input and provide an `attack()` method.
-- **Defenses** provide methods like `train_robust()`, `train_private()`, or `train_fair()` depending on the risk they address; inference-time defenses (e.g. ONION) instead expose `purify(dataset)`.
+- **Defenses** provide methods like `train_robust()`, `train_private()`, or `train_fair()` depending on the risk they address; inference-time defenses (e.g. ONION) also expose `purify(dataset)` alongside `train_robust()`.
 - **Metrics** take model predictions or outputs and return standard performance scores.
 
 ### Example Pipeline

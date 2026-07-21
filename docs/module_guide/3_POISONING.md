@@ -2,7 +2,7 @@
 
 Data poisoning attacks involve an adversary injecting malicious samples into a model's training set. Amulet implements the BadNets backdoor attack for image/tabular data and a textual variant (`TextBadNets`) for language models. It provides an outlier-removal defense based on KNN Shapley values, and (for the textual attack) the ONION perplexity-based defense.
 
-Both poisoning defenses follow the same shape and share the `PoisoningDefense` base class: they expose `train_robust()`, which cleans the (poisoned) training set — `OutlierRemoval` drops low-Shapley outlier samples, `ONION` removes perplexity-outlier trigger words — then retrains the victim on the cleaned data and returns it. This mirrors the library-wide convention that every defense implements its risk's training entry point (`train_robust` / `train_private` / `train_fair`). `ONION` additionally exposes `purify(dataset)` to clean inputs at test time, in addition to — not instead of — `train_robust()`.
+Both poisoning defenses follow the same shape and share the `PoisoningDefense` base class. They expose `train_robust()`, which cleans the (poisoned) training set, then retrains the victim on the cleaned data and returns it. `OutlierRemoval` drops low-Shapley outlier samples, and `ONION` removes perplexity-outlier trigger words. This mirrors the library-wide convention that every defense implements its risk's training entry point (`train_robust` / `train_private` / `train_fair`). `ONION` additionally exposes `purify(dataset)` to clean inputs at test time, alongside `train_robust()`.
 
 ## Attack
 
@@ -125,6 +125,8 @@ print(f"Attack Success Rate (ASR): {asr}%")
 #    ONION scores perplexity with the victim's own base LM (its clean, pre-fine-tuning
 #    base by default), so it re-tokenizes with the victim's tokenizer.
 tokenizer = AutoTokenizer.from_pretrained(model_name)
+if tokenizer.pad_token is None:
+    tokenizer.pad_token = tokenizer.eos_token
 onion = ONION(model=victim, tokenizer=tokenizer, device=device)
 purified_test = onion.purify(poisoned_test)
 defended_asr = get_accuracy(victim, DataLoader(purified_test, batch_size=16), device)

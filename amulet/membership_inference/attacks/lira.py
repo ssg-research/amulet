@@ -144,6 +144,9 @@ class LiRA(MembershipInferenceAttack):
             target_in_out_labels: numpy boolean array indicating
                 membership of samples in target model
                 shape (1, num_samples)
+            fix_variance: When True, use a single standard deviation shared across
+                all samples for the in and out Gaussians; otherwise estimate a
+                separate per-sample standard deviation. Defaults to False.
 
         Returns:
             Tuple of (lira_online_preds, true_labels)
@@ -205,6 +208,9 @@ class LiRA(MembershipInferenceAttack):
             target_in_out_labels: numpy boolean array indicating
                 membership of samples in target model
                 shape (1, num_samples)
+            fix_variance: When True, use a single standard deviation shared across
+                all samples for the out Gaussian; otherwise estimate a separate
+                per-sample standard deviation. Defaults to False.
 
         Returns:
             Tuple of (lira_offline_preds, true_labels)

@@ -7,17 +7,14 @@ from .base import AmuletModel
 
 
 class LinearNet(AmuletModel):
-    """
-    Builds a dense neural network for a multiclass image classification task.
+    """Build a dense (fully connected) network for multiclass classification.
 
     Args:
-        num_features: int
-            Number of features of input data.
-        hidden_layer_size: List of int
-            The ith number represents the number of neurons
-            in the ith hidden layer.
-        num_classes: int
-            Number of output classes.
+        num_features: Number of input features.
+        num_classes: Number of output classes.
+        hidden_layer_sizes: Width of each hidden layer; the ith value is the number
+            of neurons in the ith hidden layer. Defaults to [128, 256, 128].
+        batch_norm: Whether to add batch normalization after each hidden layer.
     """
 
     def __init__(
@@ -53,28 +50,24 @@ class LinearNet(AmuletModel):
         self.classifier = nn.Linear(hidden_layer_sizes[-1], num_classes)
 
     def forward(self, x: torch.Tensor):
-        """
-        Runs the forward pass on the neural network.
+        """Run the forward pass and return classification logits.
 
         Args:
-            x: torch.Tensor
-                Input data
+            x: Input batch.
 
         Returns:
-            Output from the model of type torch.Tensor
+            A (batch, num_classes) logits tensor.
         """
         hidden_out = self.features(x)
         return self.classifier(hidden_out)
 
     def get_hidden(self, x: torch.Tensor):
-        """
-        Gets the intermediate layer output from the model.
+        """Return the final hidden-layer activations.
 
         Args:
-            x: torch.Tensor
-                Input data to the model.
+            x: Input batch.
 
         Returns:
-            Output from the model of type torch.Tensor.
+            A (batch, hidden_layer_sizes[-1]) tensor of hidden-layer features.
         """
         return self.features(x)

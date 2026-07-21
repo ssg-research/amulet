@@ -1,3 +1,5 @@
+"""Watermarking-based ownership defense that embeds a backdoor trigger set."""
+
 from pathlib import Path
 
 import numpy as np
@@ -11,34 +13,27 @@ from .unauth_model_ownership_defense import WatermarkDefense
 
 
 class WatermarkNN(WatermarkDefense):
-    """
+    """Embed an ownership watermark into a model by backdooring a trigger set.
+
     Reference:
         Turning Your Weakness Into a Strength: Watermarking Deep Neural Networks by Backdooring
         Yossi Adi, Carsten Baum, Moustapha Cisse, Benny Pinkas, Joseph Keshet
         https://arxiv.org/abs/1802.04633
 
     Attributes:
-        model: torch.nn.Module
-            The model to watermark.
-        criterion: torch.nn.Module
-            Loss function for watermark training.
-        optimizer: torch.optim.Optimizer
-            Optimizer for watermark training.
-        train_loader: torch.utils.data.DataLoader
-            Training data loader for watermark training.
-        device: str
-            Device used to train model. Example: "cuda:0".
-        wm_path: str or Path object.
-            Location of the trigger set.
-        gray: bool
-            Used to define the kind of transformation applied to the trigger set.
-            If the original model used grayscale images, it's better to use a grayscale triggerset.
-        tabular: bool
-            If the original dataset is a tabular dataset, set this to true.
-        epochs: int
-            Determines number of iterations over training data.
-        batch_size int
-            Determines the batch size while embedding the watermark.
+        target_model: The model to watermark.
+        criterion: Loss function for watermark training.
+        optimizer: Optimizer for watermark training.
+        train_loader: Training data loader for watermark training.
+        device: Device used to train the model. Example: "cuda:0".
+        wm_path: Location of the trigger set.
+        gray: Whether to apply a grayscale transform to the trigger set. Prefer this
+            when the original model was trained on grayscale images.
+        tabular: Whether the original dataset is tabular.
+        num_classes: Number of output classes, used to sample labels for a tabular
+            trigger set.
+        epochs: Number of iterations over the training data.
+        batch_size: Batch size used while embedding the watermark.
     """
 
     def __init__(
@@ -73,6 +68,20 @@ class WatermarkNN(WatermarkDefense):
     def get_wm_loader(
         self, shape: int, wm_path: Path, gray: bool, tabular: bool
     ) -> DataLoader:
+        """Build the trigger-set data loader used to embed and verify the watermark.
+
+        Args:
+            shape: Spatial size to center-crop trigger images to, matched to the
+                model's input size.
+            wm_path: Directory holding the trigger set (a `labels.csv` file and an
+                `images` folder).
+            gray: Whether to convert trigger images to grayscale.
+            tabular: Whether to generate a random tabular trigger set instead of
+                loading images.
+
+        Returns:
+            A DataLoader over the trigger set.
+        """
         if tabular:
             wm_data = np.random.random((100, shape))
             wm_label = np.random.randint(0, self.num_classes, 100)
@@ -106,11 +115,10 @@ class WatermarkNN(WatermarkDefense):
         return wm_loader
 
     def watermark(self) -> nn.Module:
-        """
-        Embeds watermark into the model
+        """Embed the watermark into the model.
 
-        Return:
-            Model with watermark embedded
+        Returns:
+            The model with the watermark embedded.
         """
         wm_inputs, wm_labels = [], []
         for _wm_idx, (wm_input, wm_label) in enumerate(self.wm_loader):
@@ -153,18 +161,15 @@ class WatermarkNN(WatermarkDefense):
         return self.target_model
 
     def verify(self, model: nn.Module, threshold: float = 0.9) -> bool:
-        """
-        Verifies whether the given model contains the watermark or not.
+        """Verify whether the given model contains the watermark.
 
         Args:
-            model: :class:~`torch.nn.Module`
-                The model being verified for the watermark.
-            threshold: int
-                The minimum watermarking accuracy for a model to be considered
-                a surrogate model.
+            model: The model being verified for the watermark.
+            threshold: Minimum watermark accuracy for the model to be considered a
+                surrogate.
 
         Returns:
-            True if model contains the watermark. False otherwise.
+            True if the model contains the watermark, False otherwise.
         """
         model.eval()
         correct = 0

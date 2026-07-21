@@ -49,7 +49,7 @@ results = mem_inf.attack()
 
 # 4. Evaluate Metrics
 metrics = compute_mi_metrics(results['lira_online_preds'], results['true_labels'])
-print(f"Attack AUC: {metrics['auc_score']}")
+print(f"Attack AUC: {metrics['auc']}")
 ```
 
 ## DP-SGD Defense
@@ -73,12 +73,15 @@ dp_training = DPSGD(
     delta=1e-5,
     max_per_sample_grad_norm=1.0,
     sigma=1.0, # Noise multiplier
-    epochs=10
+    epochs=10,
+    max_physical_batch_size=32 # Optional: bound peak memory without changing accounting
 )
 
 defended_model = dp_training.train_private()
 ```
 
+The optional `max_physical_batch_size` argument opts into Opacus' `BatchMemoryManager`, which splits each logical batch into physical micro-batches of at most this size. This bounds peak per-sample-gradient memory. The logical batch size stays the same, so the privacy accounting and expected utility are unchanged. Leave it unset (the default `None`) to iterate the loader without splitting.
+
 ## Metrics
 
-Membership inference effectiveness is evaluated using the **AUC score** and **Precision at low False Positive Rates (FPR)**, which are standard for measuring how well an adversary can distinguish members from non-members. Use `amulet.membership_inference.metrics.compute_mi_metrics` to compute these values from attack results.
+Membership inference effectiveness is evaluated using the **AUC score** and the **True Positive Rate at a low target False Positive Rate (FPR)**, which are standard for measuring how well an adversary can distinguish members from non-members. Use `amulet.membership_inference.metrics.compute_mi_metrics` to compute these values from attack results. It returns the keys `auc`, `balanced_acc`, `tpr_at_fpr`, and `threshold_score`.

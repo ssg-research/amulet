@@ -1,3 +1,5 @@
+"""Accuracy and fidelity metrics for evaluating extracted (stolen) models."""
+
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader

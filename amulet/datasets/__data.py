@@ -24,8 +24,8 @@ class AmuletDataset:
         num_classes: Number of output classes.
         modality: Describes the tensor shape seen by models. "image" for multi-dimensional
             (C, H, W) samples; "tabular" for 1-D feature vectors; "text" for token-id
-            vectors, where each sample is a padded ``input_ids`` tensor and the raw
-            strings are retained on the ``TextTensorDataset`` (see that class). LFW is
+            vectors, where each sample is a padded `input_ids` tensor and the raw
+            strings are retained on the `TextTensorDataset` (see that class). LFW is
             "tabular" because its images are flattened in the loader.
         sensitive_columns: Column names of z_train/z_test, in order. None if the
             dataset has no sensitive attributes.
@@ -52,25 +52,25 @@ class AmuletDataset:
 
 
 class TextTensorDataset(TensorDataset):
-    """TensorDataset of ``(input_ids, label)`` that also carries the raw strings.
+    """TensorDataset of `(input_ids, label)` that also carries the raw strings.
 
     This is the single artifact that flows attack -> victim -> defense for the text
-    modality. Because it subclasses :class:`torch.utils.data.TensorDataset` over
-    ``(input_ids, labels)``, it *is* a ``TensorDataset``: the
-    ``PoisoningAttack.poison_* -> TensorDataset`` return type, every
-    ``for (data, target) in loader`` consumer, and the single-tensor ``DPSGD``
+    modality. Because it subclasses `torch.utils.data.TensorDataset` over
+    `(input_ids, labels)`, it is a `TensorDataset`: the
+    `PoisoningAttack.poison_* -> TensorDataset` return type, every
+    `for (data, target) in loader` consumer, and the single-tensor `DPSGD`
     training loop all work unchanged and never see the extra state. Only the two
     extra attributes below carry the string view an input-purification defense
     (ONION) needs.
 
-    A ``DataLoader`` collates only the tensors; a consumer that needs the strings
-    reads ``loader.dataset.texts`` (dataset order), which is why a defense must
+    A `DataLoader` collates only the tensors; a consumer that needs the strings
+    reads `loader.dataset.texts` (dataset order), which is why a defense must
     purify the dataset before the (optionally shuffled) victim loader is built.
 
     Attributes:
         texts: The raw (possibly poisoned) strings in dataset order, one per row.
-        tokenizer_name: Name of the tokenizer that produced ``input_ids``, so a
-            defense can re-tokenize after purifying ``texts``.
+        tokenizer_name: Name of the tokenizer that produced `input_ids`, so a
+            defense can re-tokenize after purifying `texts`.
     """
 
     def __init__(
@@ -80,6 +80,11 @@ class TextTensorDataset(TensorDataset):
         texts: list[str],
         tokenizer_name: str,
     ):
+        """Build the dataset, checking that all inputs share the same row count.
+
+        Raises:
+            ValueError: If texts and input_ids have different numbers of rows.
+        """
         if len(texts) != input_ids.shape[0]:
             raise ValueError(
                 f"texts ({len(texts)}) and input_ids ({input_ids.shape[0]}) must have "

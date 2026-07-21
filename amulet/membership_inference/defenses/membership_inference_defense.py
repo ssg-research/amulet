@@ -8,22 +8,15 @@ from torch.utils.data import DataLoader
 
 
 class MembershipInferenceDefense(ABC):
-    """
-    Base class for membership inference defenses.
+    """Base class for membership inference defenses.
 
     Attributes:
-        model: torch.nn.Module
-            The model on which to apply adversarial training.
-        criterion: torch.nn.Module
-            Loss function for adversarial training.
-        optimizer: torch.optim.Optimizer
-            Optimizer for adversarial training.
-        train_loader: torch.utils.data.DataLoader
-            Training data loader to adversarial training.
-        device: str
-            Device used to train model. Example: "cuda:0".
-        epochs: int
-            Determines number of iterations over training data.
+        model: The model to train with the membership inference defense.
+        criterion: Loss function for defense training.
+        optimizer: Optimizer for defense training.
+        train_loader: Training data loader for defense training.
+        device: Device used to train model. Example: "cuda:0".
+        epochs: Determines number of iterations over training data.
     """
 
     def __init__(
@@ -44,4 +37,5 @@ class MembershipInferenceDefense(ABC):
 
     @abstractmethod
     def train_private(self) -> nn.Module:
+        """Train the model with the membership inference defense and return it."""
         pass

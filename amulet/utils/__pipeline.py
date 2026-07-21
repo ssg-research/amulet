@@ -45,6 +45,9 @@ def load_data(
 
     Returns:
         Loaded dataset as an AmuletDataset.
+
+    Raises:
+        ValueError: If dataset is not a recognized dataset name.
     """
 
     if isinstance(root, str):
@@ -163,11 +166,15 @@ def create_dir(path: Path | str, log: logging.Logger | None = None) -> Path:
 
 
 class CNNConfig(TypedDict):
+    """Convolutional and fully-connected layer sizes for a SimpleCNN capacity."""
+
     conv_layers: list[tuple[int, int]]
     fc_layers: list[int]
 
 
 class ModelConfig(TypedDict, total=False):
+    """Per-architecture layer configurations for one capacity tier."""
+
     vgg: list[int | str]
     resnet: str
     linearnet: list[int]
@@ -287,30 +294,25 @@ def initialize_model(
     model_conf: CapacityMap = DEFAULT_CAPACITY_MAP,
     resnet_replace_first: bool = True,
 ) -> AmuletModel:
-    """
-    Creates a model using the provided configuration.
+    """Create a model using the provided configuration.
 
     Args:
-        model_arch: str
-            Which model architecture to initialize. Options: "vgg", "resnet", "linearnet", "cnn".
-        model_capacity: str
-            Key in the configuration dict to select model capacity/size.
-        num_features: int
-            Number of input features (used by linear/dense models).
-        num_classes: int
-            Number of output classes.
-        log: logging.Logger | None, optional
-            Logger instance for logging info. Defaults to None.
-        batch_norm: bool, optional
-            Whether to use batch normalization. Defaults to True.
-        model_conf: CapacityMap, optional
-            Configuration dictionary mapping capacities to model params.
-        resnet_replace_first: bool, optional
-            Whether to replace the first conv layer of ResNet with a smaller filter. Defaults to True.
+        model_arch: Which model architecture to initialize. Options: "vgg", "resnet", "linearnet", "cnn".
+        model_capacity: Key in the configuration dict to select model capacity/size.
+        num_features: Number of input features (used by linear/dense models).
+        num_classes: Number of output classes.
+        log: Logger instance for logging info. Defaults to None.
+        batch_norm: Whether to use batch normalization. Defaults to True.
+        model_conf: Configuration dictionary mapping capacities to model params.
+        resnet_replace_first: Whether to replace the first conv layer of ResNet with a smaller filter. Defaults to True.
 
     Returns:
-        AmuletModel
-            Initialized PyTorch model instance with a `get_hidden` method.
+        Initialized PyTorch model instance with a `get_hidden` method.
+
+    Raises:
+        KeyError: If model_capacity is absent from model_conf, or the requested
+            architecture's config is missing for that capacity.
+        ValueError: If model_arch is not a recognized architecture.
     """
     if model_capacity not in model_conf:
         raise KeyError(f"Capacity '{model_capacity}' not found in model_conf")

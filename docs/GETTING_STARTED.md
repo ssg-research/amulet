@@ -57,6 +57,8 @@ class AmuletDataset:
     test_set: torch.utils.data.Dataset
     num_features: int
     num_classes: int
+    modality: Literal["image", "tabular", "text"]
+    sensitive_columns: list[str] | None = None
     x_train: np.ndarray | None = None
     x_test: np.ndarray | None = None
     y_train: np.ndarray | None = None
@@ -66,6 +68,8 @@ class AmuletDataset:
 ```
 
 - `train_set`/`test_set`: PyTorch Datasets ready for use with a `DataLoader`.
+- `modality`: Required. One of `"image"`, `"tabular"`, or `"text"`; it tells models the shape of each sample.
+- `sensitive_columns`: Column names of `z_train`/`z_test` in order, or `None` if the dataset has no sensitive attributes.
 - `x_*`/`y_*`: Raw features and labels as NumPy arrays (available for processed datasets like LFW, Census, CelebA).
 - `z_*`: Sensitive attributes used by fairness and attribute inference modules.
 
