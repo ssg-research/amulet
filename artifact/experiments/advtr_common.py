@@ -596,12 +596,19 @@ class RunContext:
         device: Device to train and evaluate on. Example: `"cuda:0"`.
         cache_dir: Directory for the content-addressed checkpoint cache. None
             uses the shared default.
+        tiny_data_factory: Optional builder for the `test`-level stand-in,
+            taking the seed and returning an `AmuletDataset`. None uses the
+            shared `tiny_tabular_dataset` (E2/E3). E4 overrides it with a
+            variant carrying genuine outliers, because kNN-Shapley outlier
+            removal has nothing to score on the perfectly separable default.
+            Ignored at non-tiny levels.
     """
 
     level: LevelConfig
     seed: int
     device: str
     cache_dir: Path | None = None
+    tiny_data_factory: Callable[[int], AmuletDataset] | None = None
     _datasets: dict[tuple[str, float], AmuletDataset] = field(default_factory=dict)
 
     def data(self, dataset: str) -> AmuletDataset:
@@ -619,17 +626,17 @@ class RunContext:
         """
         key = (dataset, self.level.train_fraction)
         if key not in self._datasets:
-            self._datasets[key] = (
-                tiny_tabular_dataset(self.seed)
-                if self.level.tiny_model
-                else load_data(
+            if self.level.tiny_model:
+                factory = self.tiny_data_factory or tiny_tabular_dataset
+                self._datasets[key] = factory(self.seed)
+            else:
+                self._datasets[key] = load_data(
                     repo_root(),
                     dataset,
                     self.level.train_fraction,
                     LOGGER,
                     exp_id=self.seed,
                 )
-            )
         return self._datasets[key]
 
     def model_factory(
