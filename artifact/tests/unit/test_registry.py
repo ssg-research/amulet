@@ -6,8 +6,12 @@ drift (plan §9). Resolution is lazy on purpose: importing the registry must not
 import five experiment modules (and their torch/transformers stacks).
 """
 
+import subprocess
+import sys
+
 import pytest
 
+from common.paths import artifact_root
 from common.registry import EXPERIMENT_IDS, EXPERIMENTS, module_path
 
 EXPECTED_IDS = (
@@ -40,6 +44,22 @@ def test_module_path_rejects_an_unknown_id() -> None:
 
 
 def test_importing_the_registry_does_not_import_the_experiments() -> None:
-    import sys
+    """Importing the registry pulls in no runner module, and so no torch.
 
-    assert not [name for name in sys.modules if name.startswith("experiments.")]
+    Asked in a fresh interpreter rather than of this one's `sys.modules`: other
+    tests in the suite legitimately import experiment modules (E5's CSV schemas,
+    for instance), and the claim under test is about what *importing the
+    registry* costs, not about what the whole session happens to have loaded.
+    """
+    probe = (
+        "import sys; sys.path.insert(0, sys.argv[1]); import common.registry; "
+        "print([n for n in sys.modules if n.startswith('experiments.')])"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", probe, str(artifact_root())],
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=60,
+    )
+    assert result.stdout.strip() == "[]"
