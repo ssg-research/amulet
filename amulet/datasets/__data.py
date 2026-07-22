@@ -54,7 +54,7 @@ class AmuletDataset:
 class TextTensorDataset(TensorDataset):
     """TensorDataset of `(input_ids, label)` that also carries the raw strings.
 
-    This is the single artifact that flows attack -> victim -> defense for the text
+    This is the single artifact that flows attack -> target -> defense for the text
     modality. Because it subclasses `torch.utils.data.TensorDataset` over
     `(input_ids, labels)`, it is a `TensorDataset`: the
     `PoisoningAttack.poison_* -> TensorDataset` return type, every
@@ -65,7 +65,7 @@ class TextTensorDataset(TensorDataset):
 
     A `DataLoader` collates only the tensors; a consumer that needs the strings
     reads `loader.dataset.texts` (dataset order), which is why a defense must
-    purify the dataset before the (optionally shuffled) victim loader is built.
+    purify the dataset before the (optionally shuffled) target loader is built.
 
     Attributes:
         texts: The raw (possibly poisoned) strings in dataset order, one per row.

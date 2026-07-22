@@ -3,7 +3,7 @@ Dataset preparation helpers for distribution inference attacks.
 
 A distribution inference attack distinguishes two training distributions
 that differ in the proportion of samples satisfying some filter (e.g.
-`sex == 1`). Each side of the attack (victim and adversary) requires
+`sex == 1`). Each side of the attack (target and adversary) requires
 training data sampled to the target proportion. These helpers perform the
 ratio-preserving subsampling and return the six DataLoaders the attack
 consumes.
@@ -21,8 +21,8 @@ from torch.utils.data import ConcatDataset, DataLoader, TensorDataset
 class DistributionSplits:
     """DataLoaders produced by prepare_distribution_splits."""
 
-    vic_trainloader_1: DataLoader
-    vic_trainloader_2: DataLoader
+    target_trainloader_1: DataLoader
+    target_trainloader_2: DataLoader
     adv_trainloader_1: DataLoader
     adv_trainloader_2: DataLoader
     test_loader_1: DataLoader
@@ -136,7 +136,7 @@ def prepare_distribution_splits(
     """
     Build the six DataLoaders a distribution inference attack consumes.
 
-    The train/test arrays are each split 50/50 into victim and adversary halves
+    The train/test arrays are each split 50/50 into target and adversary halves
     (stratified on labels and every sensitive column). Each half is then
     subsampled twice, once for `ratio1` and once for `ratio2`, to produce
     the four training loaders plus two combined test loaders.
@@ -169,7 +169,7 @@ def prepare_distribution_splits(
         seed: Random seed for the 50/50 train/test split.
 
     Returns:
-        A DistributionSplits holding six DataLoaders: victim train loaders for
+        A DistributionSplits holding six DataLoaders: target train loaders for
         distributions 1 and 2, adversary train loaders for distributions 1 and 2,
         and combined test loaders for distributions 1 and 2.
 
@@ -226,10 +226,12 @@ def prepare_distribution_splits(
             z[right_idx],
         )
 
-    (x_vic, y_vic, z_vic), (x_adv, y_adv, z_adv) = split_50_50(
+    (x_target, y_target, z_target), (x_adv, y_adv, z_adv) = split_50_50(
         x_train, y_train, z_train
     )
-    (x_tv, y_tv, z_tv), (x_ta, y_ta, z_ta) = split_50_50(x_test, y_test, z_test)
+    (x_target_test, y_target_test, z_target_test), (x_ta, y_ta, z_ta) = split_50_50(
+        x_test, y_test, z_test
+    )
 
     def draw(
         x: np.ndarray, y: np.ndarray, z: np.ndarray, ratio: float, subsample: int
@@ -244,18 +246,22 @@ def prepare_distribution_splits(
         )
         return _build_tensor_dataset(x[idx], y[idx])
 
-    vic_train_1 = draw(x_vic, y_vic, z_vic, ratio1, train_subsample)
-    vic_train_2 = draw(x_vic, y_vic, z_vic, ratio2, train_subsample)
+    target_train_1 = draw(x_target, y_target, z_target, ratio1, train_subsample)
+    target_train_2 = draw(x_target, y_target, z_target, ratio2, train_subsample)
     adv_train_1 = draw(x_adv, y_adv, z_adv, ratio1, train_subsample)
     adv_train_2 = draw(x_adv, y_adv, z_adv, ratio2, train_subsample)
 
-    vic_test_1 = draw(x_tv, y_tv, z_tv, ratio1, test_subsample)
-    vic_test_2 = draw(x_tv, y_tv, z_tv, ratio2, test_subsample)
+    target_test_1 = draw(
+        x_target_test, y_target_test, z_target_test, ratio1, test_subsample
+    )
+    target_test_2 = draw(
+        x_target_test, y_target_test, z_target_test, ratio2, test_subsample
+    )
     adv_test_1 = draw(x_ta, y_ta, z_ta, ratio1, test_subsample)
     adv_test_2 = draw(x_ta, y_ta, z_ta, ratio2, test_subsample)
 
-    test_1: ConcatDataset = ConcatDataset([adv_test_1, vic_test_1])
-    test_2: ConcatDataset = ConcatDataset([adv_test_2, vic_test_2])
+    test_1: ConcatDataset = ConcatDataset([adv_test_1, target_test_1])
+    test_2: ConcatDataset = ConcatDataset([adv_test_2, target_test_2])
 
     def make_train_loader(ds: TensorDataset) -> DataLoader:  # type: ignore[type-arg]
         if len(ds) == 0:
@@ -268,8 +274,8 @@ def prepare_distribution_splits(
         return DataLoader(dataset=ds, batch_size=batch_size, shuffle=False)
 
     return DistributionSplits(
-        vic_trainloader_1=make_train_loader(vic_train_1),
-        vic_trainloader_2=make_train_loader(vic_train_2),
+        target_trainloader_1=make_train_loader(target_train_1),
+        target_trainloader_2=make_train_loader(target_train_2),
         adv_trainloader_1=make_train_loader(adv_train_1),
         adv_trainloader_2=make_train_loader(adv_train_2),
         test_loader_1=make_test_loader(test_1),

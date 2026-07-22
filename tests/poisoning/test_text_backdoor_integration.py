@@ -1,8 +1,8 @@
 """End-to-end integration for the text-backdoor pipeline.
 
-These build tiny random-init LoRA victims and train them a few steps on CPU, so they are
+These build tiny random-init LoRA targets and train them a few steps on CPU, so they are
 marked ``integration`` and time-bounded. The north star is that the pipeline runs and
-reproduces (same seed -> same result); the overfit test guards that the victim can learn
+reproduces (same seed -> same result); the overfit test guards that the target can learn
 at all (gradients reach the LoRA adapters and the classification head).
 """
 
@@ -22,8 +22,8 @@ def _state_dicts_equal(a: dict, b: dict) -> bool:
 
 @pytest.mark.integration
 @pytest.mark.timeout(120)
-def test_lora_victim_overfits_single_batch(tiny_text_classifier, tiny_text_dataset):
-    """The victim can memorize one tiny batch: proof gradients reach LoRA + the head.
+def test_lora_target_overfits_single_batch(tiny_text_classifier, tiny_text_dataset):
+    """The target can memorize one tiny batch: proof gradients reach LoRA + the head.
 
     A plateauing loss would mean broken gradient flow (frozen adapters, an untrained
     head, a wrong loss reduction). This is the load-bearing "does it learn" check.
@@ -82,10 +82,10 @@ def test_text_backdoor_pipeline_runs_and_reproduces(
 
 @pytest.mark.integration
 @pytest.mark.timeout(180)
-def test_dpsgd_runs_one_epoch_on_lora_victim(
+def test_dpsgd_runs_one_epoch_on_lora_target(
     tiny_text_classifier, tiny_text_dataset, cpu_device
 ):
-    """The reused DPSGD defense drives the single-tensor LoRA victim end-to-end."""
+    """The reused DPSGD defense drives the single-tensor LoRA target end-to-end."""
     from amulet.membership_inference.defenses import DPSGD
 
     attack = TextBadNets(trigger="cf", trigger_label=1, portion=0.5, random_seed=0)
@@ -117,7 +117,7 @@ def test_dpsgd_runs_one_epoch_on_lora_victim(
 
 @pytest.mark.integration
 @pytest.mark.timeout(120)
-def test_victim_forward_returns_bare_logits(tiny_text_classifier, tiny_text_dataset):
+def test_target_forward_returns_bare_logits(tiny_text_classifier, tiny_text_dataset):
     """The DPSGD/get_accuracy contract: one input tensor in, a bare logits tensor out.
 
     Returning the raw ``(batch, num_labels)`` tensor (not ``SequenceClassifierOutput``)
@@ -131,7 +131,7 @@ def test_victim_forward_returns_bare_logits(tiny_text_classifier, tiny_text_data
 
 @pytest.mark.integration
 @pytest.mark.timeout(120)
-def test_victim_get_hidden_pools_per_row(tiny_text_classifier, tiny_text_dataset):
+def test_target_get_hidden_pools_per_row(tiny_text_classifier, tiny_text_dataset):
     """get_hidden returns one pooled hidden vector per input row."""
     input_ids = tiny_text_dataset.tensors[0][:2]
     hidden = tiny_text_classifier.get_hidden(input_ids)

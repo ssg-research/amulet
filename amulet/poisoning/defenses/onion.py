@@ -29,11 +29,11 @@ class ONION(PoisoningDefense):
     perplexity, so deleting it drops perplexity sharply. Words whose suspicion score
     (``ppl(full) - ppl(without word)``) exceeds ``threshold`` are removed.
 
-    The reference language model is the victim itself (``model``, an ``HFCausalLM``),
+    The reference language model is the target itself (``model``, an ``HFCausalLM``),
     scored through its perplexity head — the same object ONION retrains in
     ``train_robust``. Like ``OutlierRemoval``, ONION thus cleans the data using the target
     model and retrains it; unlike it, ONION also exposes ``purify`` to clean inputs at test
-    time without retraining. By default scoring uses the victim's clean pretrained base
+    time without retraining. By default scoring uses the target's clean pretrained base
     (LoRA adapters off), an unpoisoned reference LM as in canonical ONION;
     ``score_with_adapters=True`` scores through the fine-tuned model instead.
 
@@ -44,10 +44,10 @@ class ONION(PoisoningDefense):
     Attributes:
         threshold: Suspicion cutoff; words scoring above it are removed. Higher keeps more
             words (weaker filtering); lower removes more.
-        score_with_adapters: Whether perplexity scoring runs through the victim's LoRA
+        score_with_adapters: Whether perplexity scoring runs through the target's LoRA
             adapters (the fine-tuned model) rather than its clean pretrained base.
         tokenizer: Tokenizer used to score candidate strings and to re-tokenize purified
-            text; matches the victim's tokenizer.
+            text; matches the target's tokenizer.
     """
 
     def __init__(
@@ -69,12 +69,12 @@ class ONION(PoisoningDefense):
         """Configure the ONION defense.
 
         Args:
-            model: The victim causal LM used both to score perplexity and to retrain in
+            model: The target causal LM used both to score perplexity and to retrain in
                 ``train_robust``.
             tokenizer: Tokenizer matching ``model``; used to score candidate strings and to
-                re-tokenize purified text for the victim.
+                re-tokenize purified text for the target.
             threshold: Suspicion cutoff for removing a word.
-            score_with_adapters: Score perplexity through the victim's LoRA adapters (the
+            score_with_adapters: Score perplexity through the target's LoRA adapters (the
                 fine-tuned model) instead of its clean pretrained base.
             score_batch_size: Candidate strings scored per padded forward when purifying a
                 row. Higher is faster but uses more memory; tune down if it is tight.
@@ -83,10 +83,10 @@ class ONION(PoisoningDefense):
             train_loader: Loader over the (poisoned) training data, carrying a
                 ``TextTensorDataset``; purified and retrained on by ``train_robust``.
             test_loader: Unused by ONION; accepted for base-class symmetry.
-            device: Device the victim runs on.
+            device: Device the target runs on.
             epochs: Number of retraining epochs in ``train_robust``.
             batch_size: Batch size used to rebuild the purified training loader.
-            train_function: Function used to retrain the victim. Defaults to
+            train_function: Function used to retrain the target. Defaults to
                 ``train_classifier`` from ``amulet.utils``.
         """
         super().__init__(
@@ -106,7 +106,7 @@ class ONION(PoisoningDefense):
         self._train_fn = train_function
 
     def _perplexities(self, texts: list[str]) -> list[float]:
-        """Compute the victim's perplexity of each string in one batched pass.
+        """Compute the target's perplexity of each string in one batched pass.
 
         Scores all candidates for a row (the full string plus every leave-one-out
         variant) in as few padded forwards as ``score_batch_size`` allows, instead of one
@@ -130,7 +130,7 @@ class ONION(PoisoningDefense):
 
         Returns:
             The purified string. If purification would empty the string, the original is
-            returned so the victim always receives a non-empty input.
+            returned so the target always receives a non-empty input.
         """
         words = text.strip().split()
         if len(words) <= 1:
@@ -154,7 +154,7 @@ class ONION(PoisoningDefense):
         return purified if purified else text.strip()
 
     def purify(self, dataset: TextTensorDataset) -> TextTensorDataset:
-        """Purify every row's text and re-tokenize under the victim's tokenizer.
+        """Purify every row's text and re-tokenize under the target's tokenizer.
 
         Args:
             dataset: A ``TextTensorDataset`` carrying the raw strings to purify.
@@ -181,13 +181,13 @@ class ONION(PoisoningDefense):
         )
 
     def train_robust(self) -> nn.Module:
-        """Purify the poisoned training data, retrain the victim on it, and return it.
+        """Purify the poisoned training data, retrain the target on it, and return it.
 
         Mirrors ``OutlierRemoval``: clean the training set (here by removing trigger words),
-        rebuild a loader, retrain the victim, and return the robust model.
+        rebuild a loader, retrain the target, and return the robust model.
 
         Returns:
-            The victim retrained on the purified training data.
+            The target retrained on the purified training data.
 
         Raises:
             ValueError: If the retraining collaborators were not supplied at construction.

@@ -84,7 +84,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--k", help="For L1 attack", type=int, default=1)
     parser.add_argument(
         "--regressor_embed",
-        help="Victim Embeddings for training regressor",
+        help="Target Embeddings for training regressor",
         type=int,
         default=0,
         choices=[0, 1],

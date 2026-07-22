@@ -51,7 +51,7 @@ cpu = ["torch==2.11.0", "torchvision==0.26.0"]
 cu128 = ["torch==2.11.0", "torchvision==0.26.0"]
 cu130 = ["torch==2.11.0", "torchvision==0.26.0"]
 # LLM stack for the text-backdoor pipeline (TextBadNets attack, HFTextClassifier
-# victim, ONION defense). Kept optional so the base install stays lean and the
+# target, ONION defense). Kept optional so the base install stays lean and the
 # macOS dev machine / fast CI tier never pull the heavy Hugging Face stack. Every
 # module that imports these guards the import and raises a clear
 # "install amuletml[llm]" message when an LLM component is actually constructed.

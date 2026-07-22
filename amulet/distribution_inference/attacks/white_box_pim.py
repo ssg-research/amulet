@@ -73,10 +73,10 @@ class WhiteBoxPIM(DistributionInferenceAttack):
     Extracts the raw weights of adversary-population models, trains a
     Permutation Invariant Model (PIM) meta-classifier to distinguish
     distribution 1 from distribution 2, then evaluates it on held-out
-    victim models.
+    target models.
 
     Adversary populations supply the meta-classifier's training data.
-    Victim populations are the evaluation set that determines the attack's
+    Target populations are the evaluation set that determines the attack's
     distinguishing accuracy — they must not overlap with the adversary sets.
 
     Reference:
@@ -184,7 +184,7 @@ class WhiteBoxPIM(DistributionInferenceAttack):
 
     def attack(self) -> dict[str, np.ndarray]:
         """
-        Train the PIM meta-classifier on adversary models and evaluate on victims.
+        Train the PIM meta-classifier on adversary models and evaluate on targets.
 
         Must call prepare_model_populations() first.
 
@@ -192,8 +192,8 @@ class WhiteBoxPIM(DistributionInferenceAttack):
             Dictionary with two 1-D arrays of equal length:
                 - "predictions": sigmoid scores in [0, 1]. Values close to 1
                   indicate the model is more likely from distribution 2.
-                - "ground_truth": 0 for distribution-1 victims, 1 for
-                  distribution-2 victims.
+                - "ground_truth": 0 for distribution-1 targets, 1 for
+                  distribution-2 targets.
 
         Raises:
             RuntimeError: If prepare_model_populations() has not been called.
@@ -205,7 +205,7 @@ class WhiteBoxPIM(DistributionInferenceAttack):
             torch.manual_seed(self.random_seed)
 
         train_data = self._build_dataset(self.models_adv_1, self.models_adv_2)
-        eval_data = self._build_dataset(self.models_vic_1, self.models_vic_2)
+        eval_data = self._build_dataset(self.models_target_1, self.models_target_2)
 
         train_loader = self._make_loader(train_data, shuffle=True)
         eval_loader = self._make_loader(eval_data, shuffle=False)
@@ -242,8 +242,8 @@ class WhiteBoxPIM(DistributionInferenceAttack):
                 predictions.extend(scores.cpu().tolist())
 
         ground_truth = np.concatenate([
-            np.zeros(len(self.models_vic_1)),
-            np.ones(len(self.models_vic_2)),
+            np.zeros(len(self.models_target_1)),
+            np.ones(len(self.models_target_2)),
         ])
         return {
             "predictions": np.array(predictions),

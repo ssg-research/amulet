@@ -1,4 +1,4 @@
-"""LoRA-adapted HuggingFace causal-LM victim, usable as classifier, scorer, or generator."""
+"""LoRA-adapted HuggingFace causal-LM target, usable as classifier, scorer, or generator."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from .base import AmuletModel
 if TYPE_CHECKING:
     from transformers import PretrainedConfig, PreTrainedModel
 
-# The plan's license-free fallback victim (Llama architecture, not gated).
+# The plan's license-free fallback target (Llama architecture, not gated).
 _DEFAULT_MODEL = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
 # Llama attention projections that LoRA adapts.
 _DEFAULT_TARGET_MODULES = ["q_proj", "v_proj"]
@@ -30,7 +30,7 @@ class HFCausalLM(AmuletModel):
     """A HuggingFace causal (decoder-only) LM adapted with LoRA for three roles.
 
     One shared, LoRA-adapted decoder backs all three capabilities, so the same object is
-    the classification victim, the perplexity scorer a defense like ONION consumes, and a
+    the classification target, the perplexity scorer a defense like ONION consumes, and a
     text generator:
 
     - Classify — `forward` pools the last real-token hidden state and passes it

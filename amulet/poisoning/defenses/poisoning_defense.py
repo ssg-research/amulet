@@ -12,7 +12,7 @@ class PoisoningDefense(ABC):
 
     A poisoning defense produces a robust model via ``train_robust``: it cleans the
     (poisoned) training set — by removing outlier samples (``OutlierRemoval``) or purifying
-    trigger content (``ONION``) — then retrains the victim on the cleaned data and returns
+    trigger content (``ONION``) — then retrains the target on the cleaned data and returns
     it. Both defenses share that shape; only the cleaning mechanism differs.
 
     The retraining collaborators below are the standard, shared ingredients, and all are
@@ -21,7 +21,7 @@ class PoisoningDefense(ABC):
     it retrains with.
 
     Attributes:
-        model: The victim model to retrain on the cleaned data.
+        model: The target model to retrain on the cleaned data.
         criterion: Loss function for retraining.
         optimizer: Optimizer for retraining.
         train_loader: Loader over the (poisoned) training data to clean and retrain on.
@@ -54,4 +54,4 @@ class PoisoningDefense(ABC):
 
     @abstractmethod
     def train_robust(self) -> nn.Module:
-        """Clean the training set, retrain the victim on it, and return the robust model."""
+        """Clean the training set, retrain the target on it, and return the robust model."""
