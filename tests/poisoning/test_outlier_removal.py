@@ -6,12 +6,36 @@ import numpy as np
 import pytest
 import torch
 import torch.nn as nn
+from torch.utils.data import DataLoader, TensorDataset
 
 from amulet.poisoning.defenses.outlier_removal import OutlierRemoval
 
 N_TRAIN = 8
 N_TEST = 5
 DIM = 3
+
+
+class _BatchNormClassifier(nn.Module):
+    """Minimal classifier whose BatchNorm makes a one-sample batch fatal in training.
+
+    The shared TinyMLP has no normalization layer, so a batch of one passes
+    through it without complaint and cannot exercise the singleton-batch path.
+    BatchNorm computes per-channel statistics and rejects a single sample in
+    train mode, so this model is what reproduces the retrain crash. It exposes
+    get_hidden so OutlierRemoval can score it.
+    """
+
+    def __init__(self, num_features: int = 4, num_classes: int = 2):
+        super().__init__()
+        self.fc1 = nn.Linear(num_features, 8)
+        self.bn = nn.BatchNorm1d(8)
+        self.fc2 = nn.Linear(8, num_classes)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.fc2(torch.relu(self.bn(self.fc1(x))))
+
+    def get_hidden(self, x: torch.Tensor) -> torch.Tensor:
+        return torch.relu(self.bn(self.fc1(x)))
 
 
 def _assert_state_dicts_equal(
@@ -116,6 +140,42 @@ def test_outlier_removal_reproducible(
         return defense.train_robust()
 
     _assert_state_dicts_equal(run(), run())
+
+
+@pytest.mark.integration
+@pytest.mark.timeout(60)
+def test_train_robust_survives_a_single_sample_final_batch(cpu_device):
+    """Retraining must not crash when the retained set leaves a lone final batch.
+
+    The retrain DataLoader must not hand BatchNorm a one-sample batch: a retained
+    count of `k * batch_size + 1` otherwise leaves a single sample in the final
+    batch, which BatchNorm rejects in train mode ("Expected more than 1 value per
+    channel"). Five retained points at batch_size 4 reproduce it exactly, and
+    `percent=0` keeps every point, so the count is fixed rather than dependent on
+    the Shapley scores. Feature extraction runs under eval mode and is unaffected;
+    only the retraining step trains, so this is the sole place the batch matters.
+    """
+    torch.manual_seed(0)
+    dataset = TensorDataset(torch.rand(5, 4), torch.tensor([0, 1, 0, 1, 0]))
+    loader = DataLoader(dataset, batch_size=4, shuffle=False)
+
+    model = _BatchNormClassifier().to(cpu_device)
+    defense = OutlierRemoval(
+        model=model,
+        criterion=nn.CrossEntropyLoss(),
+        optimizer=torch.optim.Adam(model.parameters(), lr=1e-3),
+        train_loader=loader,
+        test_loader=loader,
+        device=cpu_device,
+        percent=0,
+        epochs=1,
+        batch_size=4,
+    )
+
+    # Before the drop_last fix this raised ValueError from the final batch of one.
+    trained = defense.train_robust()
+
+    assert isinstance(trained, nn.Module)
 
 
 def test_knn_shapley_returns_finite_score_per_train_point(

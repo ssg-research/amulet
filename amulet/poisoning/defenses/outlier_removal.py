@@ -136,8 +136,17 @@ class OutlierRemoval(PoisoningDefense):
             torch.from_numpy(np.array(train_inputs_new)).type(torch.float),
             torch.from_numpy(np.array(train_targets_new)).type(torch.long),
         )
+        # Drop the final batch only when it would hold a single sample: BatchNorm
+        # computes per-channel statistics and raises in train mode on a batch of
+        # one ("Expected more than 1 value per channel"), which happens whenever
+        # the retained count is one above a multiple of the batch size. Shuffling
+        # means the dropped record differs each epoch, so none is permanently lost.
+        drop_last = len(train_data_new) % self.batch_size == 1
         train_loader_new = DataLoader(
-            dataset=train_data_new, batch_size=self.batch_size, shuffle=True
+            dataset=train_data_new,
+            batch_size=self.batch_size,
+            shuffle=True,
+            drop_last=drop_last,
         )
 
         # Retrain model with outliers removed
