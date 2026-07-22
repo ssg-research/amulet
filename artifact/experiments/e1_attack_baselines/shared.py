@@ -106,7 +106,7 @@ MEMBERSHIP_BATCH_SIZE = 128
 # requires changing the string it is named by.
 EVASION_RECIPE = "sgd_lr1e-1_mom0.9_wd5e-4_steplr60_gamma0.2"
 POISONING_RECIPE = "sgd_lr1e-2_mom0.9_wd5e-4_nesterov_steplr20_gamma0.1"
-# The original script builds a scheduler for the backdoored victim and then does
+# The original script builds a scheduler for the backdoored target and then does
 # not pass it to `train_classifier`, so that model trains at a flat learning
 # rate. Preserved deliberately: it is the procedure behind the published
 # numbers, and the recipe string says so rather than hiding it.
@@ -498,7 +498,7 @@ def poisoning_clean_spec(
 def poisoning_backdoored_spec(
     level: LevelConfig, seed: int, capacity: str, num_features: int, num_classes: int
 ) -> ModelSpec:
-    """Describe the backdoored victim $\\modelpois$, trained on poisoned data."""
+    """Describe the backdoored target $\\modelpois$, trained on poisoned data."""
     return _spec(
         level,
         seed,
@@ -700,7 +700,7 @@ def train_with_sgd(
         gamma: Multiplicative decay applied at each step.
         nesterov: Whether to use Nesterov momentum.
         schedule: Whether to apply the decay at all. False reproduces the
-            backdoored victim's flat learning rate (see `POISONING_BACKDOOR_RECIPE`).
+            backdoored target's flat learning rate (see `POISONING_BACKDOOR_RECIPE`).
 
     Returns:
         The trained model.

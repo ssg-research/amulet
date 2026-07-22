@@ -1,8 +1,8 @@
 """E5, intended interaction: ONION vs. the TextBadNets LLM backdoor.
 
 Same-risk composition: ONION (a poisoning defense) meets a poisoning attack. Three
-conditions per poison rate: a clean baseline, an undefended poisoned victim, and an
-ONION-defended victim that trains on ONION-purified poisoned data and is evaluated on
+conditions per poison rate: a clean baseline, an undefended poisoned target, and an
+ONION-defended target that trains on ONION-purified poisoned data and is evaluated on
 ONION-purified inputs. Realizes H1 (attack) and H2 (intended interaction). See
 experiments/text_backdoor_experiments.md in the repository root.
 
@@ -14,7 +14,7 @@ everywhere.
     python artifact/experiments/e5_textbadnets/onion.py --level full --seeds 0-4
 
 Levels come from `common.config` (plan §8). `test` is the old `--smoke` path: a tiny
-random-init victim on CPU. `smoke` keeps the real Llama but reads a tenth of the corpus
+random-init target on CPU. `smoke` keeps the real Llama but reads a tenth of the corpus
 for one epoch. `full` is the paper run. Requires the LLM extra: `uv sync --extra cu130
 --extra llm` (or `--extra cpu` for `--level test`).
 """
@@ -39,14 +39,14 @@ from amulet.poisoning.defenses import ONION
 from common.config import LEVEL_NAMES, get_level
 from common.io import append_row, row_exists, run_output_dir
 from experiments.e5_textbadnets.llm_backdoor_common import (
-    VictimFactory,
+    TargetFactory,
     accuracy,
     cached_purify,
     load_sst2_seeded,
     make_smoke_setup,
-    make_victim_factory,
+    make_target_factory,
     onion_stats,
-    train_victim,
+    train_target,
 )
 from experiments.e5_textbadnets.schemas import ONION_SCHEMA
 
@@ -80,7 +80,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=str,
         default=None,
         help="Reference LM recorded for ONION's perplexity scoring. Defaults to model_name: "
-        "ONION scores through the victim's own clean base LM, not an external model.",
+        "ONION scores through the target's own clean base LM, not an external model.",
     )
     parser.add_argument("--max_length", type=int, default=128)
     parser.add_argument("--batch_size", type=int, default=16)
@@ -138,7 +138,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def run_experiment(
     args: argparse.Namespace,
     data: AmuletDataset,
-    factory: VictimFactory,
+    factory: TargetFactory,
     cache_dir: Path,
     output: Path,
 ) -> list[dict[str, object]]:
@@ -150,7 +150,7 @@ def run_experiment(
     test_set = cast(TextTensorDataset, data.test_set)
 
     # Clean baseline (condition 1) — poison-rate-independent, trained once per seed.
-    clean_model, clean_runtime = train_victim(
+    clean_model, clean_runtime = train_target(
         factory,
         train_set,
         lr=args.lr,
@@ -164,8 +164,8 @@ def run_experiment(
     if device.startswith("cuda"):
         torch.cuda.empty_cache()
 
-    # ONION scores perplexity with the victim's own clean base LM (adapters off), so its
-    # reference is a fresh unpoisoned victim rather than an external GPT-2. Loaded once;
+    # ONION scores perplexity with the target's own clean base LM (adapters off), so its
+    # reference is a fresh unpoisoned target rather than an external GPT-2. Loaded once;
     # threshold applied to both train and test purification.
     from amulet.datasets.__text_datasets import _load_tokenizer
 
@@ -200,8 +200,8 @@ def run_experiment(
         labels = [int(y) for y in train_set.tensors[1].tolist()]
         n_poisoned = len(attack.select_poison_indices(labels, len(labels)))
 
-        # Condition 2 — undefended poisoned victim.
-        undef_model, undef_runtime = train_victim(
+        # Condition 2 — undefended poisoned target.
+        undef_model, undef_runtime = train_target(
             factory,
             poisoned_train,
             lr=args.lr,
@@ -226,7 +226,7 @@ def run_experiment(
         )
         onion_purify_runtime = time.perf_counter() - purify_start
 
-        def_model, def_runtime = train_victim(
+        def_model, def_runtime = train_target(
             factory,
             purified_train,
             lr=args.lr,
@@ -297,9 +297,9 @@ def run_experiment(
 def apply_level(args: argparse.Namespace, config: LevelConfig, seed: int) -> None:
     """Point one seed's run at the budget its verification level allows.
 
-    `test` is the old `--smoke` path: a tiny random-init victim on eight synthetic
+    `test` is the old `--smoke` path: a tiny random-init target on eight synthetic
     sentences, so the poison rate rises to one half (eight sentences cannot carry a
-    0.01% rate) and the device is forced to CPU. `smoke` and `full` keep the real victim
+    0.01% rate) and the device is forced to CPU. `smoke` and `full` keep the real target
     and the paper's poison-rate grid, differing in epochs and how much of SST-2 they read.
 
     Args:
@@ -320,15 +320,15 @@ def apply_level(args: argparse.Namespace, config: LevelConfig, seed: int) -> Non
 
 def build_inputs(
     args: argparse.Namespace, config: LevelConfig
-) -> tuple[AmuletDataset, VictimFactory]:
-    """Build the dataset and the victim factory this level calls for.
+) -> tuple[AmuletDataset, TargetFactory]:
+    """Build the dataset and the target factory this level calls for.
 
     Args:
         args: The parsed knobs, already levelled.
         config: The level preset.
 
     Returns:
-        The dataset and a factory producing a fresh untrained victim.
+        The dataset and a factory producing a fresh untrained target.
     """
     if config.tiny_model:
         return make_smoke_setup()
@@ -339,7 +339,7 @@ def build_inputs(
         None if args.max_train_samples < 0 else args.max_train_samples,
         None if args.max_test_samples < 0 else args.max_test_samples,
     )
-    factory = make_victim_factory(
+    factory = make_target_factory(
         args.model_name,
         data.num_classes,
         args.lora_r,
@@ -355,7 +355,7 @@ def _cache_dir(args: argparse.Namespace, config: LevelConfig) -> Path:
     if args.cache_dir is not None:
         return Path(args.cache_dir)
     if config.tiny_model:
-        # A tiny random-init victim's perplexities have nothing to do with the paper
+        # A tiny random-init target's perplexities have nothing to do with the paper
         # run's, and `--level test` should leave no trace in the shared cache.
         return Path(tempfile.mkdtemp(prefix="e5_onion_test_cache_"))
     from experiments.e5_textbadnets.llm_backdoor_common import _DEFAULT_ONION_CACHE

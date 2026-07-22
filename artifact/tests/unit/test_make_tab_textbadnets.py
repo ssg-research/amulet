@@ -294,7 +294,7 @@ def test_an_all_collapsed_cell_is_rendered_and_marked() -> None:
 def test_an_unbalanced_dp_sweep_does_not_shift_the_baseline(tmp_path: Path) -> None:
     """The clean baseline comes from the ONION sweep alone.
 
-    DP reuses the same cached clean victim rather than training its own, and its
+    DP reuses the same cached clean target rather than training its own, and its
     sweep reaches fewer seeds than ONION (currently seed 0 only). Pooling both
     CSVs would re-weight seed 0 with a duplicate of a measurement the ONION rows
     already carry, biasing the mean rather than adding evidence, so a DP
@@ -347,7 +347,7 @@ def test_shipped_results_reproduce_the_reference_numbers() -> None:
     table in `artifact/tables/`.
 
     It is deliberately not a claim that any run reproduces the paper. Retraining
-    a three-billion-parameter victim on different hardware yields different
+    a three-billion-parameter target on different hardware yields different
     numbers, and this test going red after a fresh sweep records a divergence in
     the experiment, not a fault in the renderer.
     """

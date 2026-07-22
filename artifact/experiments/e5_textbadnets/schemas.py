@@ -1,7 +1,7 @@
 """Result-CSV schemas for E5's two sub-experiments.
 
 Kept in their own module, free of torch and Hugging Face imports, so the table
-renderer in `make/` can validate a CSV header without loading a 3B victim.
+renderer in `make/` can validate a CSV header without loading a 3B target.
 
 The headers are those the paper run wrote, column for column, so the committed
 CSVs under `artifact/results/e5_textbadnets/` are readable as-is. The key

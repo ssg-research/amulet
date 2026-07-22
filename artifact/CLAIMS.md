@@ -143,8 +143,8 @@ No existing risk, attack, defense, or metric changed to make text work.
 
 The second study added no module at all.
 Amulet already implements DP-SGD as a defense against membership inference, and
-it applies to the LoRA-adapted victim untouched.
-A privacy defense written and tested against vision and tabular victims now
+it applies to the LoRA-adapted target untouched.
+A privacy defense written and tested against vision and tabular targets now
 measures a poisoning attack on a three-billion-parameter LLM
 (`meta-llama/Llama-3.2-3B`), and neither the defense nor the poisoning metrics
 were touched.
@@ -154,7 +154,7 @@ From `examples/attack_pipelines/run_text_backdoor.py`:
 from amulet.membership_inference.defenses import DPSGD
 
 dp_training = DPSGD(
-    model=dp_victim,               # a HFCausalLM, the same class the backdoor attacked
+    model=dp_target,               # a HFCausalLM, the same class the backdoor attacked
     criterion=criterion,
     optimizer=dp_optimizer,
     train_loader=train_loader,     # the poisoned loader
@@ -173,7 +173,7 @@ ONION purifies inputs, and the interface it would naturally expose (a
 `purify` method) differs from the retraining interface the other poisoning
 defenses share.
 `tests/test_api_conformance.py` requires the shared entry point, so ONION
-retrains the victim on purified data through `train_robust`, and a user
+retrains the target on purified data through `train_robust`, and a user
 substitutes one poisoning defense for another without changing the surrounding
 pipeline.
 ONION keeps `purify` as an extra public helper for test-time cleaning; it

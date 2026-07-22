@@ -52,9 +52,9 @@ if TYPE_CHECKING:
 
 EXPERIMENT_ID = "e3_advtr_attrinf"
 
-# Victim training budget for the E3 datasets; `full` defers to this. The old
+# Target training budget for the E3 datasets; `full` defers to this. The old
 # `advtr_attrinf.py` default (200) was tuned for a CelebA ResNet, not the tabular
-# census/lfw victims here, so we use the 100 the paper states for its main runs.
+# census/lfw targets here, so we use the 100 the paper states for its main runs.
 PAPER_EPOCHS = 100
 
 # Batch size from the old `advtr_attrinf.py` default.
@@ -159,10 +159,10 @@ def infer_attributes(
     """Run attribute inference against one model, scoring both attributes.
 
     Args:
-        model: The victim to attack.
+        model: The target to attack.
         split: The adversary's half (its features and sensitive labels).
         data: The dataset, for the test features and sensitive labels.
-        batch_size: Batch size for querying the victim.
+        batch_size: Batch size for querying the target.
         device: Device to run on.
 
     Returns:

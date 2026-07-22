@@ -34,7 +34,7 @@ from amulet.poisoning.defenses import ONION
 from amulet.utils import get_accuracy, train_classifier
 from common.paths import repo_root
 
-VictimFactory = Callable[[], HFCausalLM]
+TargetFactory = Callable[[], HFCausalLM]
 
 # Shared across both experiments so an attack-independent purified clean test computed by
 # Experiment 1 is reused by Experiment 2, etc. Content-addressed by input text + ONION params.
@@ -103,15 +103,15 @@ def load_sst2_seeded(
     )
 
 
-def make_victim_factory(
+def make_target_factory(
     model_name: str,
     num_classes: int,
     lora_r: int,
     lora_alpha: int,
     lora_dropout: float,
     device: str,
-) -> VictimFactory:
-    """Factory for a fresh fp32 LoRA victim on ``device`` (caller seeds before calling)."""
+) -> TargetFactory:
+    """Factory for a fresh fp32 LoRA target on ``device`` (caller seeds before calling)."""
 
     def factory() -> HFCausalLM:
         return HFCausalLM(
@@ -126,8 +126,8 @@ def make_victim_factory(
     return factory
 
 
-def make_smoke_setup(max_len: int = 16) -> tuple[AmuletDataset, VictimFactory]:
-    """A tiny random-init Llama victim + synthetic SST-2-shaped data, all on CPU."""
+def make_smoke_setup(max_len: int = 16) -> tuple[AmuletDataset, TargetFactory]:
+    """A tiny random-init Llama target + synthetic SST-2-shaped data, all on CPU."""
     from transformers import LlamaConfig
 
     tokenizer = _load_tokenizer(_SMOKE_TOKENIZER)
@@ -172,8 +172,8 @@ def make_smoke_setup(max_len: int = 16) -> tuple[AmuletDataset, VictimFactory]:
     return data, factory
 
 
-def train_victim(
-    factory: VictimFactory,
+def train_target(
+    factory: TargetFactory,
     train_set: TextTensorDataset,
     *,
     lr: float,
@@ -182,7 +182,7 @@ def train_victim(
     device: str,
     seed: int,
 ) -> tuple[HFCausalLM, float]:
-    """Train a fresh victim (seeded init + data order) and return it plus its runtime."""
+    """Train a fresh target (seeded init + data order) and return it plus its runtime."""
     seed_all(seed)
     generator = torch.Generator().manual_seed(seed)
     loader = DataLoader(
@@ -209,7 +209,7 @@ def accuracy(
 # Shared-model checkpoint cache.
 #
 # A seed's clean baseline is identical across every (poison rate x epsilon) cell, and a
-# (seed, rate)'s undefended victim is identical across both epsilons. Training either more
+# (seed, rate)'s undefended target is identical across both epsilons. Training either more
 # than once is pure waste. These helpers train each such model exactly once, then publish
 # it to a content-addressed cache on the shared filesystem so any later run picks it up.
 #

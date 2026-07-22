@@ -45,7 +45,7 @@ if TYPE_CHECKING:
 
 EXPERIMENT_ID = "e2_advtr_modext"
 
-# The paper trains the E2 victims for 100 epochs (`advtr_modelext.py` default);
+# The paper trains the E2 targets for 100 epochs (`advtr_modelext.py` default);
 # `full` defers to this via `with_defaults`.
 PAPER_EPOCHS = 100
 

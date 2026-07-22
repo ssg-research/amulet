@@ -109,7 +109,7 @@ ADVERSARY_FRACTION = 0.5
 # budget, as `advtr_modelext.py`/`advtr_attrinf.py` set it (`step_size = eps/4`).
 PGD_ITERATIONS = 40
 
-# The victim optimizer both studies train with: Adam at 1e-3, the old default.
+# The target optimizer both studies train with: Adam at 1e-3, the old default.
 ADAM_RECIPE = "adam_lr1e-3"
 
 # The two halves of the training split, named for the spec's `subset_selector`.

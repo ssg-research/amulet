@@ -5,7 +5,7 @@ stays where it is: this is a copy wearing the artifact harness (`common.io`
 result CSVs, `common.config` levels, the registry entry point) over the same
 LLM internals.
 
-Two sub-experiments share one victim recipe, one dataset loader and one set of
+Two sub-experiments share one target recipe, one dataset loader and one set of
 caches:
 
 * `onion` — ONION (a poisoning defense) against the poisoning attack, the

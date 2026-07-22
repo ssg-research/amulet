@@ -1,6 +1,6 @@
 """E1-poisoning: the BadNets backdoor on CelebA (row \\ref{poison}).
 
-Ports the old `experiments/attacks/run_poisoning.py`. Two victims are trained: a
+Ports the old `experiments/attacks/run_poisoning.py`. Two targets are trained: a
 clean baseline $\\modelstd$ and a backdoored $\\modelpois$ on data `BadNets` has
 poisoned. Each is scored on both the clean and the triggered test set, giving
 the four accuracies the table's poisoning block reports. The old script's
@@ -30,7 +30,7 @@ SCHEMA = POISONING_SCHEMA
 def run_cell(
     ctx: shared.RunContext, capacity: str, output_dir: Path
 ) -> list[dict[str, object]]:
-    """Train both victims if needed, score them, and append one result row.
+    """Train both targets if needed, score them, and append one result row.
 
     Args:
         ctx: The run context (level, seed, device, cache directory).
@@ -84,7 +84,7 @@ def run_cell(
 
     def train_backdoored(model: nn.Module) -> nn.Module:
         loader = shared.loader_for(poisoned_train, batch_size)
-        # The original trains the backdoored victim without a schedule (it builds
+        # The original trains the backdoored target without a schedule (it builds
         # one but never passes it), so this recipe leaves the learning rate flat.
         return shared.train_with_sgd(
             model,

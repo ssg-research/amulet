@@ -7,7 +7,7 @@ verification levels). Each sweeps the four VGG capacities `m1`-`m4`, which the
 paper's table labels VGG11/13/16/19:
 
 * `evasion` — `EvasionPGD` against a PGD-undefended target.
-* `poisoning` — `BadNets`, comparing a clean and a backdoored victim.
+* `poisoning` — `BadNets`, comparing a clean and a backdoored target.
 * `model_extraction` — `ModelExtraction` distilling a stolen surrogate.
 * `membership_inference` — `LiRA` against an intentionally overfit ResNet, the
   one sub-experiment restricted to a single column.

@@ -44,7 +44,7 @@ if TYPE_CHECKING:
 EXPERIMENT_ID = "e5_textbadnets"
 TABLE_STEM = "tab_textbadnets_interactions"
 
-# A DP victim that predicts the target class for every input scores 100% ASR
+# A DP target model that predicts the target class for every input scores 100% ASR
 # alongside the class prior (444 of SST-2's 872 validation records are positive,
 # i.e. 50.9%). Such a cell measures the degenerate predictor rather than the
 # defense, so the paper marks it and excludes it (§5, "Unintended Interaction").
@@ -135,7 +135,7 @@ def is_collapsed(row: Mapping[str, str]) -> bool:
         row: A row of the DP result CSV.
 
     Returns:
-        True when the victim assigns the target class to every input: total
+        True when the target model assigns the target class to every input: total
         attack success alongside chance accuracy.
     """
     return (
@@ -226,7 +226,7 @@ def _baseline_row(onion_rows: Sequence[Mapping[str, str]]) -> str:
     """Render the clean-baseline row shared by both blocks.
 
     Sourced from the ONION CSV alone, which sweeps every seed. The DP study
-    reuses the *same* cached clean victim rather than training its own, so its
+    reuses the *same* cached clean target rather than training its own, so its
     `clean_baseline_test_acc` repeats a measurement the ONION rows already
     carry. Pooling both CSVs would therefore re-weight whichever seeds the DP
     sweep happens to have reached (currently seed 0 only) with a duplicate of

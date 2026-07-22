@@ -2,13 +2,13 @@
 
 Cross-risk composition: DP-SGD (a membership-inference/privacy defense, reused) applied
 while measuring a poisoning attack. Three conditions per cell: a clean baseline, an
-undefended poisoned victim, and a DP-defended victim trained on the same poisoned data
+undefended poisoned target, and a DP-defended target trained on the same poisoned data
 with per-example clipping and noise. The defense acts at training time only — test inputs
 are unprocessed. Realizes H1 (attack) and H3 (unintended interaction). See
 experiments/text_backdoor_experiments.md in the repository root.
 
 Per seed the clean baseline is trained once and the poison-rate x target-epsilon grid is
-swept internally (the undefended victim is trained once per poison rate and reused across
+swept internally (the undefended target is trained once per poison rate and reused across
 that rate's epsilon rows); one row per cell lands in `results/e5_textbadnets/dp.csv`.
 `exp_id` is the seed everywhere.
 
@@ -16,7 +16,7 @@ that rate's epsilon rows); one row per cell lands in `results/e5_textbadnets/dp.
     python artifact/experiments/e5_textbadnets/dp.py --level full --seeds 0-4
 
 Levels come from `common.config` (plan §8). `test` is the old `--smoke` path: a tiny
-random-init victim on CPU. `smoke` keeps the real Llama but reads a tenth of the corpus
+random-init target on CPU. `smoke` keeps the real Llama but reads a tenth of the corpus
 for one epoch. `full` is the paper run. Requires the LLM extra: `uv sync --extra cu130
 --extra llm` (or `--extra cpu` for `--level test`).
 """
@@ -44,15 +44,15 @@ from common.config import LEVEL_NAMES, get_level
 from common.io import append_row, row_exists, run_output_dir
 from experiments.e5_textbadnets.llm_backdoor_common import (
     DEFAULT_MODEL_CACHE,
-    VictimFactory,
+    TargetFactory,
     accuracy,
     ckpt_key,
     get_or_train,
     load_sst2_seeded,
     make_smoke_setup,
-    make_victim_factory,
+    make_target_factory,
     seed_all,
-    train_victim,
+    train_target,
 )
 from experiments.e5_textbadnets.schemas import DP_SCHEMA
 
@@ -130,7 +130,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=str,
         default=None,
         help="Shared-model checkpoint cache. The clean baseline (once/seed) and undefended "
-        "victim (once/rate) are trained once, cached here, and reused by every run that "
+        "target (once/rate) are trained once, cached here, and reused by every run that "
         "needs them, so no shared model is ever trained twice.",
     )
     parser.add_argument(
@@ -155,13 +155,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def train_dp(
     args: argparse.Namespace,
-    factory: VictimFactory,
+    factory: TargetFactory,
     poisoned_train: TextTensorDataset,
     target_epsilon: float,
     dp_lr: float,
     dp_epochs: int,
 ) -> tuple[torch.nn.Module, float, float, float]:
-    """DP-SGD victim calibrated to `target_epsilon`. Returns model, eps, sigma, runtime."""
+    """DP-SGD target calibrated to `target_epsilon`. Returns model, eps, sigma, runtime."""
     sample_rate = args.batch_size / len(poisoned_train)
     sigma = get_noise_multiplier(
         target_epsilon=target_epsilon,
@@ -197,7 +197,7 @@ def train_dp(
 def run_experiment(
     args: argparse.Namespace,
     data: AmuletDataset,
-    factory: VictimFactory,
+    factory: TargetFactory,
     cache_dir: Path,
     output: Path,
 ) -> list[dict[str, object]]:
@@ -212,7 +212,7 @@ def run_experiment(
 
     # Hyperparams that identify a trained model, so a cached checkpoint is only reused by a
     # run whose model would be bit-for-bit the same. The clean baseline depends on all of
-    # these; the undefended victim additionally on the attack (poison rate + trigger).
+    # these; the undefended target additionally on the attack (poison rate + trigger).
     base_spec: dict[str, object] = {
         "seed": args.exp_id,
         "dataset": args.dataset,
@@ -230,7 +230,7 @@ def run_experiment(
     clean_key = ckpt_key("clean", {**base_spec, "role": "clean"})
 
     def _train_clean() -> tuple[torch.nn.Module, dict[str, float]]:
-        model, runtime = train_victim(
+        model, runtime = train_target(
             factory,
             train_set,
             lr=args.lr,
@@ -314,7 +314,7 @@ def run_experiment(
 
         # Undefended (condition 2) — trained once per rate, referenced in every epsilon row
         # and cached, so a config interrupted mid-epsilon and restarted reloads it (with the
-        # clean baseline) instead of retraining ~5h of shared models before the DP victim.
+        # clean baseline) instead of retraining ~5h of shared models before the DP target.
         undef_key = ckpt_key(
             "undef",
             {
@@ -331,7 +331,7 @@ def run_experiment(
             poisoned_train: TextTensorDataset = poisoned_train,
             poisoned_test: TextTensorDataset = poisoned_test,
         ) -> tuple[torch.nn.Module, dict[str, float]]:
-            model, runtime = train_victim(
+            model, runtime = train_target(
                 factory,
                 poisoned_train,
                 lr=args.lr,
@@ -416,9 +416,9 @@ def run_experiment(
 def apply_level(args: argparse.Namespace, config: LevelConfig, seed: int) -> None:
     """Point one seed's run at the budget its verification level allows.
 
-    `test` is the old `--smoke` path: a tiny random-init victim on eight synthetic
+    `test` is the old `--smoke` path: a tiny random-init target on eight synthetic
     sentences, so the poison rate rises to one half and one epsilon is enough. `smoke`
-    and `full` keep the real victim and the paper's grid, differing in epochs and how
+    and `full` keep the real target and the paper's grid, differing in epochs and how
     much of SST-2 they read.
 
     Args:
@@ -438,15 +438,15 @@ def apply_level(args: argparse.Namespace, config: LevelConfig, seed: int) -> Non
 
 def build_inputs(
     args: argparse.Namespace, config: LevelConfig
-) -> tuple[AmuletDataset, VictimFactory]:
-    """Build the dataset and the victim factory this level calls for.
+) -> tuple[AmuletDataset, TargetFactory]:
+    """Build the dataset and the target factory this level calls for.
 
     Args:
         args: The parsed knobs, already levelled.
         config: The level preset.
 
     Returns:
-        The dataset and a factory producing a fresh untrained victim.
+        The dataset and a factory producing a fresh untrained target.
     """
     if config.tiny_model:
         return make_smoke_setup()
@@ -457,7 +457,7 @@ def build_inputs(
         None if args.max_train_samples < 0 else args.max_train_samples,
         None if args.max_test_samples < 0 else args.max_test_samples,
     )
-    factory = make_victim_factory(
+    factory = make_target_factory(
         args.model_name,
         data.num_classes,
         args.lora_r,

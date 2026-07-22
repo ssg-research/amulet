@@ -1,13 +1,13 @@
 """Tiny end-to-end run of E5, the text-backdoor experiment (plan §8, Level 1).
 
 The `test` level substitutes a two-layer randomly initialised Llama for the
-3B LoRA victim and eight synthetic SST-2-shaped sentences for the real corpus,
+3B LoRA target and eight synthetic SST-2-shaped sentences for the real corpus,
 so the whole pipeline — poison, purify or privatise, train, score — runs on CPU
 in seconds with no network access. What is asserted is "the experiment produces
 a well-formed row with finite, in-range numbers, reproducibly", never paper
 accuracy.
 
-The tiny victim is still a real `transformers` `LlamaModel`, so this module
+The tiny target is still a real `transformers` `LlamaModel`, so this module
 needs the optional `llm` extra. The fast CI tier does not install it, hence the
 module-level `importorskip`: without the extra these skip rather than fail.
 """

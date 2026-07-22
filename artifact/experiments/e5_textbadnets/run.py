@@ -1,6 +1,6 @@
 """Uniform entry point for E5, the text-backdoor experiment (registry `e5_textbadnets`).
 
-Dispatches to the two sub-experiments that share E5's victim, dataset and caches:
+Dispatches to the two sub-experiments that share E5's target, dataset and caches:
 
     python artifact/experiments/e5_textbadnets/run.py --level test
     python artifact/experiments/e5_textbadnets/run.py --level full --seeds 0-4 --which onion
@@ -11,7 +11,7 @@ driven directly (`onion.py --help`, `dp.py --help`); this runner exposes only wh
 experiment in the artifact exposes, so the sweepers can treat all five alike (plan §9).
 
 Requires the LLM extra: `uv sync --extra cu130 --extra llm` (or `--extra cpu` for
-`--level test`, which runs a tiny random-init victim on CPU in seconds).
+`--level test`, which runs a tiny random-init target on CPU in seconds).
 """
 
 from __future__ import annotations
@@ -74,7 +74,7 @@ def run(
         which: `"onion"`, `"dp"` or `"both"`.
         output_dir: Directory the result CSVs go in. None keeps the per-level default:
             the committed results directory for `smoke` and `full`, a temporary one for
-            `test`, whose tiny random-init victim must not touch the paper's data.
+            `test`, whose tiny random-init target must not touch the paper's data.
 
     Returns:
         Every row appended by this call, across the seeds and studies requested. Cells

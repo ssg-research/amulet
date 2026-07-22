@@ -57,7 +57,7 @@ if TYPE_CHECKING:
 
 EXPERIMENT_ID = "e4_outrem_modext"
 
-# The paper trains the E4 victims for 100 epochs and retrains for 100 more after
+# The paper trains the E4 targets for 100 epochs and retrains for 100 more after
 # removal (the old `run_model_extraction.py` / `run_outlier_removal.py` default);
 # `full` defers to this via `with_defaults`.
 PAPER_EPOCHS = 100
