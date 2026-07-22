@@ -26,6 +26,7 @@ point everything is compared against (plan §7.1).
 
 from __future__ import annotations
 
+import argparse
 import statistics
 import sys
 from collections import defaultdict
@@ -34,7 +35,7 @@ from typing import TYPE_CHECKING
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from common.io import read_rows, results_path
+from common.io import read_rows, results_root
 from common.paths import artifact_root
 from experiments.e1_attack_baselines.schemas import (
     CAPACITIES,
@@ -317,16 +318,60 @@ def coverage(results_dir: Path) -> list[str]:
     return lines
 
 
-def main() -> None:
-    """Render the table from the committed CSVs and report cell coverage."""
-    results_dir = results_path(EXPERIMENT_ID, "evasion").parent
-    output = artifact_root() / "tables" / "generated" / f"{TABLE_STEM}.tex"
-    output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(render_table(results_dir))
+def _experiment_dir(results_dir: Path | None) -> Path:
+    """Resolve E1's per-experiment subdirectory under a results base dir.
 
-    print(f"wrote {output}")
-    print("cell coverage of the committed results:")
-    for line in coverage(results_dir):
+    E1 emits one CSV per sub-attack into a `<experiment_id>/` subdirectory, in
+    both `results/` and `runs/<level>/`, so the base dir is joined with the
+    experiment id to reach them.
+    """
+    base = results_root() if results_dir is None else results_dir
+    return base / EXPERIMENT_ID
+
+
+def generate(
+    results_dir: Path | None = None, out_dir: Path | None = None
+) -> list[Path]:
+    """Render the E1 table from a results base dir into a generated-output dir.
+
+    Args:
+        results_dir: Base directory holding `<experiment_id>/<attack>.csv`. None
+            reads the committed `results/`; a `runs/<level>/` directory renders a
+            reviewer's re-run instead.
+        out_dir: Directory the `.tex` is written to. None uses
+            `tables/generated/`.
+
+    Returns:
+        The paths written (one `.tex`).
+    """
+    experiment_dir = _experiment_dir(results_dir)
+    out_dir = artifact_root() / "tables" / "generated" if out_dir is None else out_dir
+    out_dir.mkdir(parents=True, exist_ok=True)
+    output = out_dir / f"{TABLE_STEM}.tex"
+    output.write_text(render_table(experiment_dir))
+    return [output]
+
+
+def coverage_report(results_dir: Path | None = None) -> list[str]:
+    """Return per-cell coverage lines for the E1 table from a results base dir."""
+    return coverage(_experiment_dir(results_dir))
+
+
+def main() -> None:
+    """Render the table from a results directory and report cell coverage."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--results-dir",
+        type=Path,
+        default=None,
+        help="Base results directory to render from. Default: the committed results/.",
+    )
+    args = parser.parse_args()
+
+    for path in generate(results_dir=args.results_dir):
+        print(f"wrote {path}")
+    print("cell coverage:")
+    for line in coverage_report(results_dir=args.results_dir):
         print(line)
 
 

@@ -22,6 +22,7 @@ Numbers must match; formatting is free.
 
 from __future__ import annotations
 
+import argparse
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -202,16 +203,49 @@ def coverage(results_file: Path) -> list[str]:
     return lines
 
 
-def main() -> None:
-    """Render the table from the committed CSV and report cell coverage."""
-    results_file = results_path(EXPERIMENT_ID)
-    output = artifact_root() / "tables" / "generated" / f"{TABLE_STEM}.tex"
-    output.parent.mkdir(parents=True, exist_ok=True)
-    _ = output.write_text(render_table(results_file))
+def generate(
+    results_dir: Path | None = None, out_dir: Path | None = None
+) -> list[Path]:
+    """Render the E3 table from a results base dir into a generated-output dir.
 
-    print(f"wrote {output}")
-    print("cell coverage of the committed results:")
-    for line in coverage(results_file):
+    Args:
+        results_dir: Base directory holding the result CSV, in the shared
+            layout. None reads the committed `results/`; a `runs/<level>/`
+            directory renders a reviewer's re-run instead.
+        out_dir: Directory the `.tex` is written to. None uses
+            `tables/generated/`.
+
+    Returns:
+        The paths written (one `.tex`).
+    """
+    results_file = results_path(EXPERIMENT_ID, base=results_dir)
+    out_dir = artifact_root() / "tables" / "generated" if out_dir is None else out_dir
+    out_dir.mkdir(parents=True, exist_ok=True)
+    output = out_dir / f"{TABLE_STEM}.tex"
+    _ = output.write_text(render_table(results_file))
+    return [output]
+
+
+def coverage_report(results_dir: Path | None = None) -> list[str]:
+    """Return per-cell coverage lines for the E3 table from a results base dir."""
+    return coverage(results_path(EXPERIMENT_ID, base=results_dir))
+
+
+def main() -> None:
+    """Render the table from a results directory and report cell coverage."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--results-dir",
+        type=Path,
+        default=None,
+        help="Base results directory to render from. Default: the committed results/.",
+    )
+    args = parser.parse_args()
+
+    for path in generate(results_dir=args.results_dir):
+        print(f"wrote {path}")
+    print("cell coverage:")
+    for line in coverage_report(results_dir=args.results_dir):
         print(line)
 
 

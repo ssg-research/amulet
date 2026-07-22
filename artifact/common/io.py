@@ -72,7 +72,12 @@ class CsvSchema:
 
 
 def results_root() -> Path:
-    """Return the directory holding every experiment's result CSVs.
+    """Return the directory holding the committed, ground-truth result CSVs.
+
+    This tree is git-tracked and read-only to the harness: no experiment's
+    `run()` writes here by default (all runs go to `runs/<level>/`, see
+    `run_output_dir`). Authors promote a completed L3 run by copying
+    `runs/full/<id>.csv` into here and committing.
 
     Returns:
         `artifact/results`, which is git-tracked.
@@ -80,23 +85,59 @@ def results_root() -> Path:
     return artifact_root() / "results"
 
 
-def results_path(experiment_id: str, stem: str | None = None) -> Path:
-    """Return where an experiment's result CSV lives.
+def runs_root() -> Path:
+    """Return the directory holding harness run outputs, one subtree per level.
 
-    An experiment producing a single CSV gets `results/<experiment_id>.csv`. One
-    producing several (E5 writes an ONION table and DP tables) passes a `stem`
-    and gets `results/<experiment_id>/<stem>.csv`, keeping them together.
+    Every `run()` (test, smoke or full) writes under `runs/<level>/` by default,
+    never into the committed `results/` tree. This directory is gitignored: it
+    holds reviewer re-runs and author sweeps, not shipped ground truth.
+
+    Returns:
+        `artifact/runs`, which is gitignored.
+    """
+    return artifact_root() / "runs"
+
+
+def run_output_dir(level_name: str) -> Path:
+    """Return the results directory a run at `level_name` writes under.
+
+    The `runs/<level>/` tree mirrors the `results/` layout exactly (E1 and E5
+    write into a `<experiment_id>/` subdirectory of it; E2/E3/E4 write
+    `<experiment_id>.csv` directly into it), so a `make_*` renderer can read a
+    reviewer's `runs/full/` with the same path logic it uses for `results/`.
+
+    Args:
+        level_name: The level, one of `common.config.LEVEL_NAMES`.
+
+    Returns:
+        `artifact/runs/<level_name>`, created by the caller on first write.
+    """
+    return runs_root() / level_name
+
+
+def results_path(
+    experiment_id: str, stem: str | None = None, base: Path | None = None
+) -> Path:
+    """Return where an experiment's result CSV lives, under `base`.
+
+    An experiment producing a single CSV gets `<base>/<experiment_id>.csv`. One
+    producing several (E5 writes an ONION CSV and a DP CSV) passes a `stem` and
+    gets `<base>/<experiment_id>/<stem>.csv`, keeping them together.
 
     Args:
         experiment_id: Registry ID, e.g. `"e2_advtr_modext"`.
         stem: Filename stem for experiments writing more than one CSV.
+        base: Directory the layout is rooted at. Defaults to `results_root()`
+            (the shipped ground truth); pass a `runs/<level>/` directory to
+            resolve a reviewer's re-run in the same layout.
 
     Returns:
         Path to the CSV. The file may not exist yet.
     """
+    root = results_root() if base is None else base
     if stem is None:
-        return results_root() / f"{experiment_id}.csv"
-    return results_root() / experiment_id / f"{stem}.csv"
+        return root / f"{experiment_id}.csv"
+    return root / experiment_id / f"{stem}.csv"
 
 
 def read_rows(path: Path) -> list[dict[str, str]]:

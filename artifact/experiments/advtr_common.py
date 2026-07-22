@@ -50,7 +50,7 @@ from amulet.evasion.attacks import EvasionPGD
 from amulet.evasion.defenses import AdversarialTrainingPGD
 from amulet.models import LinearNet
 from amulet.utils import get_accuracy, initialize_model, load_data
-from common.io import results_root
+from common.io import run_output_dir
 from common.models import ModelSpec
 from common.paths import repo_root
 
@@ -699,10 +699,13 @@ def default_cache_dir(level: LevelConfig) -> Path | None:
 def default_output_dir(level: LevelConfig, experiment_id: str) -> Path:
     """Return the directory this level's result CSV belongs in.
 
-    Only `full` writes the committed results directory. A `smoke` run trains for
-    one epoch on a fraction of the data and a `test` run measures a tiny dense
-    net; either averaged into the paper's table would corrupt it, so each level
-    keeps its own file.
+    Every level writes under `runs/<level>/`, never into the committed
+    `results/` tree: a `full` re-run must not clobber the shipped ground truth,
+    and a `smoke`/`test` run must not have its reduced-budget numbers averaged
+    into the paper's. E2/E3/E4 each write a single `<experiment_id>.csv` directly
+    into this directory, mirroring their `results/<experiment_id>.csv` layout, so
+    a `make_*` renderer reads a reviewer's `runs/full/` the same way. Authors
+    promote a completed `full` run by copying its CSV into `results/`.
 
     Args:
         level: The level preset.
@@ -712,7 +715,4 @@ def default_output_dir(level: LevelConfig, experiment_id: str) -> Path:
     Returns:
         An existing or creatable directory. The CSV name is the caller's.
     """
-    if level.tiny_model:
-        return Path(tempfile.mkdtemp(prefix=f"{experiment_id}_test_results_"))
-    root = results_root()
-    return root if level.name == "full" else root / level.name
+    return run_output_dir(level.name)

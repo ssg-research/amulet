@@ -23,6 +23,7 @@ script re-prints on every run).
 
 from __future__ import annotations
 
+import argparse
 import statistics
 import sys
 from collections import defaultdict
@@ -373,17 +374,58 @@ def coverage(onion_csv: Path, dp_csv: Path) -> list[str]:
     return lines
 
 
-def main() -> None:
-    """Render the table from the committed CSVs and report cell coverage."""
-    onion_csv = results_path(EXPERIMENT_ID, "onion")
-    dp_csv = results_path(EXPERIMENT_ID, "dp")
-    output = artifact_root() / "tables" / "generated" / f"{TABLE_STEM}.tex"
-    output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(render_table(onion_csv, dp_csv))
+def _csvs(results_dir: Path | None) -> tuple[Path, Path]:
+    """Resolve the ONION and DP CSV paths under a results base dir."""
+    return (
+        results_path(EXPERIMENT_ID, "onion", base=results_dir),
+        results_path(EXPERIMENT_ID, "dp", base=results_dir),
+    )
 
-    print(f"wrote {output}")
-    print("cell coverage of the committed results:")
-    for line in coverage(onion_csv, dp_csv):
+
+def generate(
+    results_dir: Path | None = None, out_dir: Path | None = None
+) -> list[Path]:
+    """Render the E5 table from a results base dir into a generated-output dir.
+
+    Args:
+        results_dir: Base directory holding `<experiment_id>/{onion,dp}.csv`.
+            None reads the committed `results/`; a `runs/<level>/` directory
+            renders a reviewer's re-run instead.
+        out_dir: Directory the `.tex` is written to. None uses
+            `tables/generated/`.
+
+    Returns:
+        The paths written (one `.tex`).
+    """
+    onion_csv, dp_csv = _csvs(results_dir)
+    out_dir = artifact_root() / "tables" / "generated" if out_dir is None else out_dir
+    out_dir.mkdir(parents=True, exist_ok=True)
+    output = out_dir / f"{TABLE_STEM}.tex"
+    output.write_text(render_table(onion_csv, dp_csv))
+    return [output]
+
+
+def coverage_report(results_dir: Path | None = None) -> list[str]:
+    """Return per-cell coverage lines for the E5 table from a results base dir."""
+    onion_csv, dp_csv = _csvs(results_dir)
+    return coverage(onion_csv, dp_csv)
+
+
+def main() -> None:
+    """Render the table from a results directory and report cell coverage."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--results-dir",
+        type=Path,
+        default=None,
+        help="Base results directory to render from. Default: the committed results/.",
+    )
+    args = parser.parse_args()
+
+    for path in generate(results_dir=args.results_dir):
+        print(f"wrote {path}")
+    print("cell coverage:")
+    for line in coverage_report(results_dir=args.results_dir):
         print(line)
 
 

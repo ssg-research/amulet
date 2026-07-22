@@ -23,6 +23,7 @@ CSV holds; a dataset with no rows is simply absent from the plot.
 
 from __future__ import annotations
 
+import argparse
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -281,16 +282,46 @@ def coverage(results_file: Path) -> list[str]:
     return lines
 
 
-def main() -> None:
-    """Render both figures from the committed CSV and report dataset coverage."""
-    results_file = results_path(EXPERIMENT_ID)
-    output_dir = artifact_root() / "plots" / "generated"
-    written = render_figures(results_file, output_dir)
+def generate(
+    results_dir: Path | None = None, out_dir: Path | None = None
+) -> list[Path]:
+    """Render both E4 figures from a results base dir into a generated-output dir.
 
-    for path in written:
+    Args:
+        results_dir: Base directory holding the result CSV, in the shared
+            layout. None reads the committed `results/`; a `runs/<level>/`
+            directory renders a reviewer's re-run instead.
+        out_dir: Directory the figures are written to. None uses
+            `plots/generated/`.
+
+    Returns:
+        The paths written (PNG and PDF for each of the two figures).
+    """
+    results_file = results_path(EXPERIMENT_ID, base=results_dir)
+    out_dir = artifact_root() / "plots" / "generated" if out_dir is None else out_dir
+    return render_figures(results_file, out_dir)
+
+
+def coverage_report(results_dir: Path | None = None) -> list[str]:
+    """Return per-dataset coverage lines for the figures from a results base dir."""
+    return coverage(results_path(EXPERIMENT_ID, base=results_dir))
+
+
+def main() -> None:
+    """Render both figures from a results directory and report dataset coverage."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--results-dir",
+        type=Path,
+        default=None,
+        help="Base results directory to render from. Default: the committed results/.",
+    )
+    args = parser.parse_args()
+
+    for path in generate(results_dir=args.results_dir):
         print(f"wrote {path}")
-    print("dataset coverage of the committed results:")
-    for line in coverage(results_file):
+    print("dataset coverage:")
+    for line in coverage_report(results_dir=args.results_dir):
         print(line)
 
 

@@ -45,7 +45,7 @@ from amulet.datasets import AmuletDataset
 from amulet.models import VGG
 from amulet.utils import initialize_model, load_data, train_classifier
 from common.config import LevelConfig
-from common.io import results_path
+from common.io import run_output_dir
 from common.models import ModelSpec
 from common.paths import repo_root
 
@@ -904,10 +904,13 @@ def default_cache_dir(level: LevelConfig) -> Path | None:
 def default_output_dir(level: LevelConfig) -> Path:
     """Return the directory this level's result CSVs belong in.
 
-    Only `full` writes the committed results directory. A `smoke` run trains for
-    one epoch on a tenth of CelebA and a `test` run measures a three-layer
-    network; either averaged in with the paper's would silently corrupt the
-    table, so each level keeps its own file.
+    Every level writes under `runs/<level>/<experiment_id>/`, never into the
+    committed `results/` tree: a `full` re-run must not clobber the shipped
+    ground truth, and a `smoke`/`test` run must not have its one-epoch or
+    tiny-model numbers averaged into the paper's. The `runs/<level>/` tree
+    mirrors `results/` (E1's CSVs live in a `<experiment_id>/` subdirectory of
+    both), so a `make_*` renderer reads either with the same path logic. Authors
+    promote a completed `full` run by copying its CSVs into `results/`.
 
     Args:
         level: The level preset.
@@ -915,7 +918,4 @@ def default_output_dir(level: LevelConfig) -> Path:
     Returns:
         An existing or creatable directory.
     """
-    if level.tiny_model:
-        return Path(tempfile.mkdtemp(prefix="e1_test_results_"))
-    directory = results_path(EXPERIMENT_ID, "evasion").parent
-    return directory if level.name == "full" else directory / level.name
+    return run_output_dir(level.name) / EXPERIMENT_ID

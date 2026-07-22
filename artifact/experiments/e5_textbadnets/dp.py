@@ -41,7 +41,7 @@ from amulet.datasets import AmuletDataset, TextTensorDataset
 from amulet.membership_inference.defenses import DPSGD
 from amulet.poisoning.attacks import TextBadNets
 from common.config import LEVEL_NAMES, get_level
-from common.io import append_row, results_path, row_exists
+from common.io import append_row, row_exists, run_output_dir
 from experiments.e5_textbadnets.llm_backdoor_common import (
     DEFAULT_MODEL_CACHE,
     VictimFactory,
@@ -482,10 +482,13 @@ def _cache_dir(args: argparse.Namespace, config: LevelConfig) -> Path:
 def default_output_dir(config: LevelConfig) -> Path:
     """Return the directory this level's result CSV belongs in.
 
-    Only `full` writes the committed results directory. A `smoke` run measures a
-    one-epoch victim on a tenth of the corpus and a `test` run measures a two-layer
-    random-init model; either row averaged in with the paper's would silently corrupt
-    the table, so each level keeps its own file.
+    Every level writes under `runs/<level>/<experiment_id>/`, never into the
+    committed `results/` tree: a `full` re-run must not clobber the shipped
+    ground truth, and a `smoke`/`test` run must not have its reduced-budget or
+    random-init numbers averaged into the paper's. The `runs/<level>/` tree
+    mirrors `results/` (E5's `onion.csv`/`dp.csv` live in a `<experiment_id>/`
+    subdirectory of both), so a `make_*` renderer reads either the same way.
+    Authors promote a completed `full` run by copying its CSVs into `results/`.
 
     Args:
         config: The level preset.
@@ -493,10 +496,7 @@ def default_output_dir(config: LevelConfig) -> Path:
     Returns:
         An existing or creatable directory.
     """
-    if config.tiny_model:
-        return Path(tempfile.mkdtemp(prefix="e5_dp_test_results_"))
-    directory = results_path(EXPERIMENT_ID, CSV_STEM).parent
-    return directory if config.name == "full" else directory / config.name
+    return run_output_dir(config.name) / EXPERIMENT_ID
 
 
 def run_level(
