@@ -1,5 +1,7 @@
 # Amulet
 
+> **Artifact reviewers:** start at [`artifact/ARTIFACT.md`](artifact/ARTIFACT.md). It is the reproduction harness and reviewer entry point for the benchmark submission.
+
 [![CI Status](https://github.com/ssg-research/amulet/actions/workflows/precommit-main.yaml/badge.svg)](https://github.com/ssg-research/amulet/actions/workflows/precommit-main.yaml)
 [![CodeQL](https://github.com/ssg-research/amulet/actions/workflows/codeql.yaml/badge.svg)](https://github.com/ssg-research/amulet/actions/workflows/codeql.yaml)
 [![PyPI version](https://img.shields.io/pypi/v/amuletml.svg)](https://pypi.org/project/amuletml/)
