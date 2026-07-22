@@ -177,30 +177,3 @@ def test_the_tiny_test_level_baseline_cannot_reuse_a_paper_checkpoint() -> None:
 
     assert tiny.arch != paper.arch
     assert tiny.key() != paper.key()
-
-
-def test_tiny_retrain_uses_one_full_batch_so_no_removal_can_singleton() -> None:
-    """At tiny level the retrain batch is the whole target half, never a fraction.
-
-    Regression guard for the BatchNorm "Expected more than 1 value per channel"
-    crash: `OutlierRemoval` retrains with no `drop_last`, so any cleaned set whose
-    size is one above a multiple of the batch presents a single-sample final
-    batch. Which removal percentages trip that shifts with the kNN-Shapley kept
-    count run to run, so an integration sweep only catches it intermittently.
-    Pinning the batch at the full target half makes the retrain a single batch of
-    more than one sample for every kept count, deterministically.
-    """
-    assert e4.singleton_safe_retrain_batch(TINY, n_target=29, paper_batch=16) == 29
-    assert e4.singleton_safe_retrain_batch(TINY, n_target=32, paper_batch=16) == 32
-
-
-def test_paper_level_retrain_keeps_the_paper_batch() -> None:
-    """Only tiny level is adjusted; a full run retrains at the paper batch size.
-
-    The full-scale `kept % batch == 1` case is a latent `OutlierRemoval` issue (no
-    `drop_last`) tracked for a library fix, not worked around here: a full-batch
-    retrain is not viable at paper scale.
-    """
-    assert (
-        e4.singleton_safe_retrain_batch(LEVEL, n_target=30_000, paper_batch=256) == 256
-    )

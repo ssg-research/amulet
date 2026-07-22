@@ -39,7 +39,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import argparse
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 import numpy as np
 import torch
@@ -53,9 +53,6 @@ from experiments.e1_attack_baselines.run import parse_seeds
 from experiments.e4_outrem_modext.schemas import CAPACITY, DATASETS, PERCENTS, SCHEMA
 
 if TYPE_CHECKING:
-    from collections.abc import Sized
-
-    from common.config import LevelConfig
     from common.models import ModelSpec
 
 EXPERIMENT_ID = "e4_outrem_modext"
@@ -245,37 +242,6 @@ def clean_baseline_spec(
     )
 
 
-def singleton_safe_retrain_batch(
-    level: LevelConfig, n_target: int, paper_batch: int
-) -> int:
-    """Return a retrain batch size that cannot present BatchNorm a batch of one.
-
-    `OutlierRemoval` builds its retraining `DataLoader` internally with no
-    `drop_last`, so a cleaned set whose size leaves a remainder of one yields a
-    trailing batch of a single sample, which BatchNorm rejects in train mode
-    ("Expected more than 1 value per channel"). The tiny `test`-level set hits
-    this readily, and *which* removal percentages trigger it shifts run to run
-    with the kNN-Shapley kept count, so it presents as an intermittent crash.
-
-    At tiny level, retrain in a single full batch: the batch is the whole target
-    half, and the cleaned set is a subset of it, so the loader yields exactly one
-    batch of more than one sample whatever the kept count. This touches only the
-    loader, never the spec, so the cache key is unaffected. At paper scale the
-    same `kept % batch == 1` footgun is a latent `OutlierRemoval` issue (no
-    `drop_last`); it is tracked in the plan for a library-side fix rather than
-    worked around here, since a full-batch retrain is not viable at scale.
-
-    Args:
-        level: The run level; only tiny (`test`) is adjusted.
-        n_target: Size of the target half, an upper bound on the cleaned set.
-        paper_batch: The batch size non-tiny levels use unchanged.
-
-    Returns:
-        `n_target` at tiny level (one full batch), else `paper_batch`.
-    """
-    return n_target if level.tiny_model else paper_batch
-
-
 def retrain_after_outlier_removal(
     clean: nn.Module,
     target_loader: torch.utils.data.DataLoader,
@@ -366,9 +332,6 @@ def build_models(
         # the table's $\\modelstd$ column / the figures' leftmost point.
         defended, defended_spec = clean, clean_spec
     else:
-        retrain_batch = singleton_safe_retrain_batch(
-            ctx.level, len(cast("Sized", target_set)), batch_size
-        )
         defended_spec = clean_spec.replace(optimizer_recipe=outrem_recipe(percent))
         defended = ctx.get_or_train(
             defended_spec,
@@ -380,7 +343,7 @@ def build_models(
                 test_loader,
                 ctx.device,
                 epochs,
-                retrain_batch,
+                batch_size,
                 percent,
             ),
         )
