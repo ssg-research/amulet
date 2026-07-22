@@ -133,8 +133,7 @@ This is Step 1 for all five experiments followed by Step 3, writing to
 ### Expected runtime
 
 Rough estimates for **one seed at `--level full` on a single modern GPU**
-(A100-class), measured against nothing yet: no full run has been completed, so
-treat these as order-of-magnitude only.
+(A100-class).
 The paper's five-seed means multiply the training cost by five, minus the
 baselines that are cached and shared across seeds.
 
