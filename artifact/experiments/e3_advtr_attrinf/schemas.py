@@ -30,7 +30,7 @@ EXPERIMENT_ID = "e3_advtr_attrinf"
 # Datasets in the reference table's block order.
 DATASETS: tuple[str, ...] = ("census", "lfw")
 
-# The perturbation budgets swept, from `06evaluation.tex` / `tab_attinf_advrtr`.
+# The perturbation budgets swept, from the paper evaluation section / `tab_attinf_advrtr`.
 EPSILONS: tuple[float, ...] = (0.01, 0.03, 0.06, 0.10)
 
 # The sentinel budget of the clean-baseline row, distinct from every real budget.

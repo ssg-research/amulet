@@ -33,7 +33,7 @@ EXPERIMENT_ID = "e4_outrem_modext"
 DATASETS: tuple[str, ...] = ("census", "lfw", "fmnist", "cifar")
 
 # Fractions of training outliers removed before retraining, from
-# `06evaluation.tex` / `tab_outrem_modext`. `0` is the clean baseline: no outlier
+# the paper evaluation section / `tab_outrem_modext`. `0` is the clean baseline: no outlier
 # removal, so $\\modeldef$ is just $\\modelstd$ and the table's first column.
 PERCENTS: tuple[int, ...] = (0, 10, 20, 30, 40)
 

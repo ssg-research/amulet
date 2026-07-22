@@ -29,7 +29,7 @@ EXPERIMENT_ID = "e2_advtr_modext"
 # Datasets in the reference table's block order (census, fmnist, lfw, cifar).
 DATASETS: tuple[str, ...] = ("census", "fmnist", "lfw", "cifar")
 
-# The perturbation budgets swept, from `06evaluation.tex` / `tab_advtr_modext`.
+# The perturbation budgets swept, from the paper evaluation section / `tab_advtr_modext`.
 EPSILONS: tuple[float, ...] = (0.01, 0.03, 0.05, 0.10)
 
 # The single capacity the reference table reports (VGG11-equivalent `m1`).

@@ -58,8 +58,8 @@ EXPERIMENT_ID = "e1_attack_baselines"
 DATASET = "celeba"
 
 # The paper trains for 100 epochs with the Adam optimizer "unless otherwise
-# specified" (`artifact/experimental_setup/06evaluation.tex`). The `full` level
-# leaves epochs unset by design, so this is what fills it.
+# specified" (paper evaluation section). The `full` level leaves epochs unset by
+# design, so this is what fills it.
 PAPER_EPOCHS = 100
 
 # CelebA's default classification target, and the one the two privacy attacks
