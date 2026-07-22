@@ -1,19 +1,18 @@
 # Amulet Benchmark Artifact
 
-This is the reproduction harness for the Amulet benchmark submission.
-Amulet (`amuletml` on PyPI, imported as `amulet`) is a PyTorch library for
+This `artifact/` directory reproduces the tables and plots in the Amulet
+benchmark submission.
+Amulet (`amuletml` on PyPI, imported as `amulet`) is a Python library for
 evaluating unintended interactions among machine-learning defenses and risks
 across security, privacy, and fairness.
-A reviewer opens this file first.
 
 ## What this is
 
-The artifact **is the whole repository** at a pinned commit, not a packaged
-black box.
-The library under review lives in `amulet/`, and this `artifact/` tree is the
-reproduction harness laid over it.
-A reviewer reads the library source directly and re-runs the paper's
-experiments against it with the wrappers here.
+The artifact **is the whole repository** at a pinned commit.
+The library under review is in `amulet/`; the `artifact/` tree here holds the
+scripts that reproduce the paper's results.
+Read the library source directly, re-run the paper's experiments with the
+`run.py` scripts here, and regenerate each table and plot with the wrappers.
 
 Two kinds of claim back the paper, and both are reproducible from this tree:
 
@@ -21,9 +20,9 @@ Two kinds of claim back the paper, and both are reproducible from this tree:
   cost of adding a modality. These are code and tests, demonstrated in
   [`CLAIMS.md`](CLAIMS.md) and enforced by `tests/test_api_conformance.py`.
 - **Empirical claims** (applicable): five experiments backing five tables and
-  two plots. Each has one wrapper that regenerates its paper artifact.
+  two plots. Each paper table or plot has one wrapper that regenerates it.
 
-Reproduction is honest about what runs without a GPU:
+What reproduces without a GPU:
 
 - **E5 (text backdoor) reproduces the paper table numerically from committed
   data, with no GPU.** `artifact/results/e5_textbadnets/onion.csv` and
@@ -52,7 +51,7 @@ are declared conflicting and requesting several errors.
 The `cpu` extra is sufficient for the whole zero-GPU path on this page: the
 tests, the integration tier, and regenerating every table and plot from
 committed data.
-Real training at smoke or full scale wants a GPU.
+Real training at smoke or full scale requires a GPU.
 
 ## Three verification levels
 
@@ -71,8 +70,8 @@ Run them from the repository root.
 - **L2** drives the same `run.py` scripts as the paper on real architectures
   (real VGG, real LoRA Llama) for a one-epoch budget, then regenerates every
   table and plot from the smoke output under `artifact/runs/smoke/`. It trains
-  real models, so it wants a GPU, downloads the vision datasets on first use,
-  and needs the `llm` extra for E5. **Do not expect this to be quick.**
+  real models, so it requires a GPU, downloads the vision datasets on first use,
+  and needs the `llm` extra for E5.
 - **L3** runs paper settings, one seed by default (`--seeds 0-4` for the paper's
   multi-seed means). It writes to `artifact/runs/full/`, leaving the committed
   `artifact/results/` intact; an author promotes a completed run by copying
@@ -81,7 +80,7 @@ Run them from the repository root.
 
 ## Reproducing each table and plot
 
-Each paper artifact has one wrapper under `artifact/make/`.
+Each paper table or plot has one wrapper under `artifact/make/`.
 A wrapper ensures results exist (or reads the committed CSV) and renders the
 `.tex` or `.png`.
 Rendering is a pure function of the CSV: no GPU, no model, no training.
@@ -94,7 +93,7 @@ uv run python artifact/make/make_all.py
 Generated files land in `artifact/tables/generated/` and
 `artifact/plots/generated/`; the hand-authored references stay in
 `artifact/tables/` and `artifact/plots/`.
-To render from a reviewer's own re-run instead, pass
+To render from your own re-run instead, pass
 `--results-dir artifact/runs/full`.
 
 | Experiment | Paper artifact                         | Reference                                                                    | Wrapper                                                  | Reproduces                                   |
@@ -106,20 +105,31 @@ To render from a reviewer's own re-run instead, pass
 | E4         | `fig_outrem_fid`, `fig_outrem_cor_fid` | `artifact/plots/fig_outrem_fid.png`, `artifact/plots/fig_outrem_cor_fid.png` | `uv run python artifact/make/make_fig_outrem.py`         | structure now; numbers after L3              |
 | E5         | `tab_textbadnets_interactions`         | `artifact/tables/tab_textbadnets_interactions.tex`                           | `uv run python artifact/make/make_tab_textbadnets.py`    | **numerically, from committed data, no GPU** |
 
-The tables compare numeric cells only; a reworded caption never fails a check
-and a changed number always does.
+The tables compare numeric cells only, so reformatting the caption passes and
+any changed number fails.
 E5's regenerated table matches the reference byte-for-byte.
-For E1 through E4 the wrappers print a per-cell coverage line so a reviewer sees
-exactly which numbers a run still owes.
+For E1 through E4 the wrappers print a per-cell coverage line showing which
+cells a full run still needs to fill.
 
 Run one experiment end-to-end at a chosen level with the registry-driven driver
-or an experiment's own runner:
+(`run_experiments.py`) or the experiment's own `run.py`:
 
 ```bash
 uv run python artifact/run_experiments.py --level test            # all five, tiny
 uv run python artifact/run_experiments.py --level smoke --only e5_textbadnets   # one, real (GPU)
 uv run python artifact/experiments/e5_textbadnets/run.py --level test           # E5 directly
 ```
+
+`--level` selects the tier: `test` (L1), `smoke` (L2), or `full` (L3).
+`--only` takes one experiment name:
+
+| Experiment | `--only` name         | Runs                                       |
+| ---------- | --------------------- | ------------------------------------------ |
+| E1         | `e1_attack_baselines` | baseline attack per risk                   |
+| E2         | `e2_advtr_modext`     | adversarial training x model ownership     |
+| E3         | `e3_advtr_attrinf`    | adversarial training x attribute inference |
+| E4         | `e4_outrem_modext`    | outlier removal x model ownership          |
+| E5         | `e5_textbadnets`      | text backdoor x ONION and x DP-SGD         |
 
 ## Claim to evidence
 
@@ -136,9 +146,9 @@ Each paper desideratum maps to a concrete command, test, or file in this tree.
 
 ```text
 artifact/
-  ARTIFACT.md              # this file: the reviewer's entry point
+  ARTIFACT.md              # this file: start here
   CLAIMS.md                # design-claim demonstration (consistency, extensibility)
-  common/                  # shared harness: paths, config, models, io, registries
+  common/                  # shared helpers: paths, config, models, io, registries
   experiments/             # one package per experiment
     e1_attack_baselines/   #   baseline attack per risk
     e2_advtr_modext/       #   adversarial training x model ownership
