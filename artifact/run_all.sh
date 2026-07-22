@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Level 3 (full): run every experiment at paper settings, then regenerate every
-# table and plot from the full results. Output lands under artifact/runs/full/
-# (never the committed results/). Authors promote a completed run by copying
-# runs/full/<id>.csv into results/ and committing.
+# Level 3 (full): run every experiment at paper settings, then render every
+# table and plot from the full results. Output lands under artifact/runs/full/.
+# No result data ships with the repository: these are the numbers to compare
+# against the paper's tables and figures.
 #
 # WARNING: full is Level 3. It trains real models at paper scale and is
 # GPU-HOURS to GPU-DAYS on a single consumer GPU (see RUNTIME.md), needs the
@@ -16,7 +16,7 @@ cat <<'BANNER'
 ============================================================================
  run_all.sh: FULL (Level 3) run.
  This is paper-scale training: GPU-hours to GPU-days on one consumer GPU.
- Output goes to artifact/runs/full/ ; the committed results/ are left intact.
+ Output goes to artifact/runs/full/ ; other levels' results are untouched.
  Interrupt now (Ctrl-C) if you meant to run run_smoke.sh instead.
 ============================================================================
 BANNER

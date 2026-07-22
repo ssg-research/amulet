@@ -1,6 +1,6 @@
 """Contract for the E5 table renderer (plan §8, Level 1 unit tier).
 
-Rendering is a pure function of the two committed result CSVs, so every case
+Rendering is a pure function of the two E5 result CSVs, so every case
 here is a hand-checked tiny CSV in, an exact `.tex` string out — no GPU, no
 model, no `llm` extra. The numbers below are chosen so each mean and standard
 error is checkable by eye: a two-seed cell of {90, 94} has mean 92.00 and
@@ -336,39 +336,3 @@ def _body_numbers(latex: str) -> list[float]:
     """
     body = latex.split("\\begin{tabular}")[1].split("\\end{tabular}")[0]
     return [float(token) for token in _NUMBER.findall(body)]
-
-
-def test_the_table_reports_the_numbers_the_shipped_csvs_hold() -> None:
-    """The rendered table's cells are the aggregates of the committed CSVs.
-
-    This pins a property of the data the artifact *ships*: all five seeds of the
-    ONION sweep are committed, so the clean-baseline cell must equal the mean of
-    those seeds' measurements, recomputed here straight from the CSV rather than
-    through the renderer's own helpers.
-
-    The paper's table is not mirrored in this repository, so this checks the
-    renderer against its inputs. Retraining a three-billion-parameter target on
-    different hardware yields different numbers, so a fresh sweep changing these
-    values records a divergence in the experiment, not a fault in the renderer.
-    """
-    import statistics
-    from collections import defaultdict
-
-    from common.io import read_rows, results_path
-
-    onion_csv = results_path("e5_textbadnets", "onion")
-    generated = render_table(onion_csv, results_path("e5_textbadnets", "dp"))
-
-    # Recompute the clean baseline independently: mean within a seed, then across.
-    by_seed: dict[str, list[float]] = defaultdict(list)
-    for row in read_rows(onion_csv):
-        by_seed[row["exp_id"]].append(float(row["clean_baseline_test_acc"]))
-    per_seed = [statistics.fmean(values) for _, values in sorted(by_seed.items())]
-
-    assert len(per_seed) > 1, "the shipped ONION CSV should carry several seeds"
-    expected_mean = statistics.fmean(per_seed)
-    assert f"{expected_mean:.2f}" in generated, (
-        "The rendered clean-baseline cell no longer matches the shipped ONION "
-        "CSV. If you re-ran the sweep, restore the committed CSVs."
-    )
-    assert _body_numbers(generated), "the table body should carry numbers"

@@ -7,7 +7,7 @@
 Iterates `common.registry.EXPERIMENT_IDS` (or a `--only` subset), loads each
 experiment's runner via `load_experiment(id)`, and calls its uniform
 `run(level=..., seeds=...)`. Every experiment writes under `runs/<level>/` by
-default (never the committed `results/`; see `common.io.run_output_dir`), so this
+default (see `common.io.run_output_dir`), so this
 driver passes only the two arguments every runner shares and lets each one place
 its own CSVs. A per-experiment pass/fail line and the output location are printed
 at the end.

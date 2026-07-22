@@ -1,7 +1,7 @@
 """Seed-count-agnostic cell aggregation shared by the interaction-table renderers.
 
 E2 and E3 both render multi-dataset blocks whose cells are means over whatever
-seeds the committed CSVs happen to contain: several seeds as
+seeds a run's CSVs happen to contain: several seeds as
 `mean ~$\\pm$~ standard error`, one seed as the bare value, no data as a dash
 (plan S7.1, the table contract). That pooling logic is identical for both, so it
 lives here rather than in each `make_` script.

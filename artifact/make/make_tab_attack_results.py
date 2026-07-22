@@ -1,8 +1,8 @@
-"""Render `tab_attack_results` (E1) from the committed result CSVs.
+"""Render `tab_attack_results` (E1) from the E1 result CSVs.
 
     python artifact/make/make_tab_attack_results.py
 
-Reads `artifact/results/e1_attack_baselines/<attack>.csv` and writes
+Reads `artifact/runs/full/e1_attack_baselines/<attack>.csv` and writes
 `artifact/tables/generated/tab_attack_results.tex`. Rendering is a pure function
 of those files: no GPU, no model, no CelebA download, seconds (plan §13,
 decision 2).
@@ -35,7 +35,7 @@ from typing import TYPE_CHECKING
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from common.io import read_rows, results_root
+from common.io import default_results_dir, read_rows
 from common.paths import artifact_root
 from experiments.e1_attack_baselines.schemas import (
     CAPACITIES,
@@ -322,10 +322,10 @@ def _experiment_dir(results_dir: Path | None) -> Path:
     """Resolve E1's per-experiment subdirectory under a results base dir.
 
     E1 emits one CSV per sub-attack into a `<experiment_id>/` subdirectory, in
-    both `results/` and `runs/<level>/`, so the base dir is joined with the
+    every `runs/<level>/` tree, so the base dir is joined with the
     experiment id to reach them.
     """
-    base = results_root() if results_dir is None else results_dir
+    base = default_results_dir() if results_dir is None else results_dir
     return base / EXPERIMENT_ID
 
 
@@ -336,7 +336,7 @@ def generate(
 
     Args:
         results_dir: Base directory holding `<experiment_id>/<attack>.csv`. None
-            reads the committed `results/`; a `runs/<level>/` directory renders a
+            reads `runs/full`; another `runs/<level>/` directory renders a
             reviewer's re-run instead.
         out_dir: Directory the `.tex` is written to. None uses
             `tables/generated/`.
@@ -364,7 +364,7 @@ def main() -> None:
         "--results-dir",
         type=Path,
         default=None,
-        help="Base results directory to render from. Default: the committed results/.",
+        help="Base results directory to render from. Default: artifact/runs/full.",
     )
     args = parser.parse_args()
 

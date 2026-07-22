@@ -1,6 +1,6 @@
 """Contract for the E4 plot renderer (plan S8 Level 1, S7.1, S13.3).
 
-Both figures are a pure function of the committed CSV, so every case is a
+Both figures are a pure function of the result CSV, so every case is a
 hand-checked tiny CSV in, a figure (or a PNG file) out: no GPU, no model, no
 download. The numeric contract is `series_for`, checked by eye; the drawing
 contract is the axis labels, the two legends, and a non-empty PNG on disk.

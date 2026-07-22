@@ -1,6 +1,6 @@
 """Regenerate every paper table and plot from a chosen results directory.
 
-    python artifact/make/make_all.py                      # from committed results/
+    python artifact/make/make_all.py                      # from a full run
     python artifact/make/make_all.py --results-dir runs/full   # from a reviewer's re-run
 
 Iterates the make registry (`make.registry.MAKE_ARTIFACTS`) and calls each
@@ -51,7 +51,7 @@ def generate_all(
 
     Args:
         results_dir: Base results directory to render from. None uses the
-            committed `results/`; a `runs/<level>/` directory renders a
+            `runs/full`; another `runs/<level>/` directory renders a
             reviewer's re-run.
         tables_dir: Directory tables are written to. None uses
             `tables/generated/`.
@@ -115,7 +115,7 @@ def main(argv: list[str] | None = None) -> int:
         "--results-dir",
         type=Path,
         default=None,
-        help="Base results directory to render from. Default: the committed results/.",
+        help="Base results directory to render from. Default: artifact/runs/full.",
     )
     args = parser.parse_args(argv)
 

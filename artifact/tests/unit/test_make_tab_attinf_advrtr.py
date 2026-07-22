@@ -1,6 +1,6 @@
 """Contract for the E3 table renderer (plan S8 Level 1, S7.1 table contract).
 
-A pure function of the committed CSV: hand-checked tiny CSV in, exact `.tex`
+A pure function of the result CSV: hand-checked tiny CSV in, exact `.tex`
 fragment out. Numbers are chosen so each mean and standard error is checkable by
 eye. The baseline measures attribute inference against the clean model and has
 no defended model to perturb, so its two robust-accuracy columns are always

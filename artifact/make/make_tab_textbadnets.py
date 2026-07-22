@@ -1,8 +1,8 @@
-"""Render `tab_textbadnets_interactions` (E5) from the committed result CSVs.
+"""Render `tab_textbadnets_interactions` (E5) from the E5 result CSVs.
 
     python artifact/make/make_tab_textbadnets.py
 
-Reads `artifact/results/e5_textbadnets/{onion,dp}.csv` and writes
+Reads `artifact/runs/full/e5_textbadnets/{onion,dp}.csv` and writes
 `artifact/tables/generated/tab_textbadnets_interactions.tex`. Rendering is a
 pure function of those two files: no GPU, no model, no `llm` extra, seconds
 (plan §13, decision 2).
@@ -16,7 +16,7 @@ never a crash and never a fabricated error bar.
 **Output goes to `tables/generated/`.** The paper's own tables are not mirrored
 in this repository, so the fixed point a rendered table is compared against is
 the paper itself: this script's blocks correspond to Table 3 (ONION) and Table 4
-(DP-SGD). The committed data does not yet cover every cell (the DP sweep is
+(DP-SGD). A partial run does not cover every cell (the DP sweep is
 still running; see the coverage report, which this script re-prints on every
 run).
 """
@@ -52,7 +52,7 @@ COLLAPSE_MARKER = "$^{*}$"
 _CHANCE_ACCURACY = 55.0
 
 # Poison rates and privacy budgets the paper reports, used only to tell a reader
-# which cells the committed CSVs do and do not cover.
+# which cells the run's CSVs do and do not cover.
 PAPER_ONION_PORTIONS = (0.0001, 0.001, 0.01, 0.02, 0.05)
 PAPER_DP_PORTIONS = (0.001, 0.01, 0.05)
 PAPER_TARGET_EPSILONS = (1.0, 8.0)
@@ -338,7 +338,7 @@ def render_table(onion_csv: Path, dp_csv: Path) -> str:
 
 
 def coverage(onion_csv: Path, dp_csv: Path) -> list[str]:
-    """List the paper's cells the committed CSVs do not cover, one line each.
+    """List the paper's cells the run's CSVs do not cover, one line each.
 
     Args:
         onion_csv: Path to the ONION result CSV.
@@ -389,7 +389,7 @@ def generate(
 
     Args:
         results_dir: Base directory holding `<experiment_id>/{onion,dp}.csv`.
-            None reads the committed `results/`; a `runs/<level>/` directory
+            None reads `runs/full`; another `runs/<level>/` directory
             renders a reviewer's re-run instead.
         out_dir: Directory the `.tex` is written to. None uses
             `tables/generated/`.
@@ -418,7 +418,7 @@ def main() -> None:
         "--results-dir",
         type=Path,
         default=None,
-        help="Base results directory to render from. Default: the committed results/.",
+        help="Base results directory to render from. Default: artifact/runs/full.",
     )
     args = parser.parse_args()
 

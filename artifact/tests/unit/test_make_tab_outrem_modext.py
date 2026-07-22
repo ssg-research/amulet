@@ -1,6 +1,6 @@
 """Contract for the E4 table renderer (plan S8 Level 1, S7.1 table contract).
 
-Rendering is a pure function of the committed CSV, so every case is a
+Rendering is a pure function of the result CSV, so every case is a
 hand-checked tiny CSV in, an exact `.tex` fragment out: no GPU, no model, no
 download. Numbers are chosen so each mean and standard error is checkable by
 eye. A two-seed cell of {94, 96} has mean 95.00 and standard error 1.00.

@@ -4,9 +4,10 @@ The make registry is the single source of truth both `make_all.py` and these
 tests iterate, so a paper artifact cannot silently fall out of the regeneration
 sweep. These tests pin: the registry lists exactly the six paper artifacts, each
 maps to a real `make_*` module with the uniform `generate` / `coverage_report`
-interface, and `make_all` regenerates all six from the shipped `results/` with no
-GPU, rendering a blank skeleton (not a crash) for the four experiments that ship
-no CSV yet and a populated table for E5, whose CSVs ship.
+interface, and `make_all` regenerates all six from a results tree with no
+GPU, rendering a blank skeleton (not a crash) when no run has produced a CSV
+yet. No result CSVs ship with the repository, so every table is populated by
+running the experiments first.
 
 Pure rendering: no torch, no model, no training. The `make_*` modules import
 matplotlib (for the figure) and the experiment schemas, never torch at module
@@ -96,26 +97,6 @@ def test_make_all_regenerates_every_artifact_without_gpu(tmp_path: Path) -> None
         (r.artifact_id, r.error) for r in results if r.error
     ]
     assert all(result.written for result in results)
-
-
-def test_make_all_renders_a_populated_e5_table_from_shipped_results(
-    tmp_path: Path,
-) -> None:
-    """From shipped `results/`, the E5 table renders with real aggregated data.
-
-    E5 is the one experiment whose ground-truth CSVs ship, so `make_all` fills
-    its table GPU-free while every other table renders blank. The numbers
-    themselves are checked against the CSVs in `test_make_tab_textbadnets.py`.
-    """
-    _ = make_all.generate_all(
-        tables_dir=tmp_path / "tables", plots_dir=tmp_path / "plots"
-    )
-
-    generated = (tmp_path / "tables" / "tab_textbadnets_interactions.tex").read_text()
-    assert generated.startswith("\\begin{table")
-    assert generated.rstrip().endswith("\\end{table*}")
-    # Aggregated cells carry a standard error, so shipped data reached the table.
-    assert "$\\pm$" in generated
 
 
 def test_make_all_renders_a_blank_skeleton_for_an_experiment_with_no_data(

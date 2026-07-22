@@ -1,8 +1,8 @@
 """Result-CSV layout, schema validation and idempotent appends.
 
-Every experiment writes one row per configuration into `artifact/results/`, and
-those CSVs are committed so each `make/` wrapper can render its table or plot in
-seconds with no GPU (plan §13, decision 2). Two properties follow from that:
+Every experiment writes one row per configuration into `artifact/runs/<level>/`,
+and each `make/` wrapper renders its table or plot from those CSVs in seconds
+with no GPU. Two properties follow from that:
 
 * **Appends are idempotent.** A sweep that dies halfway is resumed by re-running
   it; rows whose key columns already appear are skipped rather than duplicated.
@@ -71,26 +71,12 @@ class CsvSchema:
             raise ValueError(f"Row does not match the schema ({'; '.join(problems)}).")
 
 
-def results_root() -> Path:
-    """Return the directory holding the committed, ground-truth result CSVs.
-
-    This tree is git-tracked and read-only to the harness: no experiment's
-    `run()` writes here by default (all runs go to `runs/<level>/`, see
-    `run_output_dir`). Authors promote a completed L3 run by copying
-    `runs/full/<id>.csv` into here and committing.
-
-    Returns:
-        `artifact/results`, which is git-tracked.
-    """
-    return artifact_root() / "results"
-
-
 def runs_root() -> Path:
     """Return the directory holding harness run outputs, one subtree per level.
 
-    Every `run()` (test, smoke or full) writes under `runs/<level>/` by default,
-    never into the committed `results/` tree. This directory is gitignored: it
-    holds reviewer re-runs and author sweeps, not shipped ground truth.
+    Every `run()` (test, smoke or full) writes under `runs/<level>/`. This
+    directory is gitignored: results are produced by running the experiments,
+    never shipped with the repository.
 
     Returns:
         `artifact/runs`, which is gitignored.
@@ -98,13 +84,25 @@ def runs_root() -> Path:
     return artifact_root() / "runs"
 
 
+def default_results_dir() -> Path:
+    """Return the directory a `make_*` renderer reads when given no `--results-dir`.
+
+    No result CSVs ship with the repository, so the default is the output of a
+    full run. A reviewer who ran a different level points the renderers at that
+    level's tree instead.
+
+    Returns:
+        `artifact/runs/full`, which may not exist until a full run completes.
+    """
+    return runs_root() / "full"
+
+
 def run_output_dir(level_name: str) -> Path:
     """Return the results directory a run at `level_name` writes under.
 
-    The `runs/<level>/` tree mirrors the `results/` layout exactly (E1 and E5
-    write into a `<experiment_id>/` subdirectory of it; E2/E3/E4 write
-    `<experiment_id>.csv` directly into it), so a `make_*` renderer can read a
-    reviewer's `runs/full/` with the same path logic it uses for `results/`.
+    Every level uses one layout (E1 and E5 write into a `<experiment_id>/`
+    subdirectory; E2/E3/E4 write `<experiment_id>.csv` directly into it), so a
+    `make_*` renderer reads any level's tree with the same path logic.
 
     Args:
         level_name: The level, one of `common.config.LEVEL_NAMES`.
@@ -127,14 +125,14 @@ def results_path(
     Args:
         experiment_id: Registry ID, e.g. `"e2_advtr_modext"`.
         stem: Filename stem for experiments writing more than one CSV.
-        base: Directory the layout is rooted at. Defaults to `results_root()`
-            (the shipped ground truth); pass a `runs/<level>/` directory to
-            resolve a reviewer's re-run in the same layout.
+        base: Directory the layout is rooted at. Defaults to
+            `default_results_dir()` (`runs/full`); pass another `runs/<level>/`
+            directory to resolve a run at that level in the same layout.
 
     Returns:
         Path to the CSV. The file may not exist yet.
     """
-    root = results_root() if base is None else base
+    root = default_results_dir() if base is None else base
     if stem is None:
         return root / f"{experiment_id}.csv"
     return root / experiment_id / f"{stem}.csv"

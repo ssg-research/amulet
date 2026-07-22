@@ -5,8 +5,9 @@ experiment through `run_experiments`, then regenerate the artifacts from the run
 directory with `make_all` — but at `test` level (tiny synthetic data, CPU,
 seconds) rather than `smoke` (real models, a GPU, dataset downloads). It runs one
 experiment (E4, which needs no `llm` extra) and asserts the two load-bearing P5
-properties: the run's output lands under `runs/<level>/`, and the committed
-`results/` tree is left byte-for-byte untouched.
+properties: the run's output lands under `runs/<level>/` for its own level, and
+another level's tree (`runs/full/`, where a paper comparison reads from) is left
+byte-for-byte untouched.
 
 `run_smoke.sh` itself hard-wires `--level smoke`; running it for real needs a GPU
 and is out of scope for the fast tier, so its shell wiring is dry-verified
@@ -38,13 +39,14 @@ def _tree_digest(root: Path) -> dict[str, str]:
 
 
 @pytest.mark.integration
-def test_driver_writes_under_runs_and_leaves_results_untouched() -> None:
-    """`run_experiments` at test level writes E4's CSV under runs/, not results/."""
+def test_driver_writes_under_its_level_and_leaves_other_levels_untouched() -> None:
+    """`run_experiments` at test level writes E4's CSV under runs/test, not runs/full."""
     import run_experiments
 
-    from common.io import results_root, run_output_dir
+    from common.io import run_output_dir
 
-    committed_before = _tree_digest(results_root())
+    full_tree = run_output_dir("full")
+    full_before = _tree_digest(full_tree)
 
     results = run_experiments.run_experiments(
         level="test", seeds=(0,), only=("e4_outrem_modext",)
@@ -56,9 +58,9 @@ def test_driver_writes_under_runs_and_leaves_results_untouched() -> None:
     run_csv = run_output_dir("test") / "e4_outrem_modext.csv"
     assert run_csv.exists(), f"E4 did not write under runs/test: {run_csv}"
 
-    # The committed ground truth is untouched, and no E4 CSV appeared in results/.
-    assert _tree_digest(results_root()) == committed_before
-    assert not (results_root() / "e4_outrem_modext.csv").exists()
+    # A full run's tree is untouched: no E4 CSV appeared under runs/full.
+    assert _tree_digest(full_tree) == full_before
+    assert not (full_tree / "e4_outrem_modext.csv").exists()
 
 
 @pytest.mark.integration

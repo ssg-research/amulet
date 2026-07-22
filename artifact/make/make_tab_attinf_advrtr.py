@@ -1,8 +1,8 @@
-"""Render `tab_attinf_advrtr` (E3) from the committed result CSV.
+"""Render `tab_attinf_advrtr` (E3) from the E3 result CSV.
 
     python artifact/make/make_tab_attinf_advrtr.py
 
-Reads `artifact/results/e3_advtr_attrinf.csv` and writes
+Reads `artifact/runs/full/e3_advtr_attrinf.csv` and writes
 `artifact/tables/generated/tab_attinf_advrtr.tex`. A pure function of the CSV: no
 GPU, no model, no download (plan S13, decision 2).
 
@@ -211,7 +211,7 @@ def generate(
 
     Args:
         results_dir: Base directory holding the result CSV, in the shared
-            layout. None reads the committed `results/`; a `runs/<level>/`
+            layout. None reads `runs/full`; another `runs/<level>/`
             directory renders a reviewer's re-run instead.
         out_dir: Directory the `.tex` is written to. None uses
             `tables/generated/`.
@@ -239,7 +239,7 @@ def main() -> None:
         "--results-dir",
         type=Path,
         default=None,
-        help="Base results directory to render from. Default: the committed results/.",
+        help="Base results directory to render from. Default: artifact/runs/full.",
     )
     args = parser.parse_args()
 

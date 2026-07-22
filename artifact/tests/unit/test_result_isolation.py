@@ -1,17 +1,14 @@
-"""The results/runs split: no run() default touches the committed ground truth (P5).
+"""Level isolation: a run writes only under its own `runs/<level>/` tree (P5).
 
-`artifact/results/` holds committed, read-only ground-truth CSVs (the shipped
-single-seed data a `make_*` renders from). Every experiment's `run()` writes
-under a gitignored `artifact/runs/<level>/` tree instead, whatever the level, so
-neither a reviewer's `full` re-run nor a `smoke`/`test` run can clobber or dilute
-the shipped numbers.
+No result CSVs ship with the repository, so every number a reviewer sees comes
+from a run they performed. Each experiment's `run()` writes under a gitignored
+`artifact/runs/<level>/` tree keyed by its level, so a cheap `test` or `smoke`
+run can never dilute or overwrite the `full` results a paper comparison rests on.
 
-These are the promotion (per legacy-code-rescue) of the characterization that
-pinned the old behavior (`full` wrote into `results/`, `smoke` into
-`results/<id>/smoke`): the assertion here is the *intent* — every default output
-directory is under `runs/<level>/` and none is under `results/` — not the code's
-former output. They also pin the layout parity that lets one renderer read either
-tree: `runs/<level>/` mirrors `results/` exactly.
+These tests assert that intent directly: every default output directory is under
+`runs/<level>/` for its own level, and no level's tree overlaps another's. They
+also pin the layout every `make_*` renderer relies on to read any level's tree
+with one path rule.
 """
 
 from __future__ import annotations
@@ -21,7 +18,7 @@ from pathlib import Path
 import pytest
 
 from common.config import LevelConfig, get_level
-from common.io import results_path, results_root, run_output_dir, runs_root
+from common.io import default_results_dir, results_path, run_output_dir, runs_root
 from common.registry import EXPERIMENT_IDS
 
 _LEVELS = ("test", "smoke", "full")
@@ -49,18 +46,18 @@ def _all_default_dirs(name: str) -> dict[str, Path]:
 
 
 @pytest.mark.parametrize("name", _LEVELS)
-def test_no_default_output_dir_is_under_results(name: str) -> None:
-    """At every level, no experiment's default output directory is under results/.
+def test_no_default_output_dir_escapes_its_own_level(name: str) -> None:
+    """A run at one level never writes into another level's tree.
 
-    This is the load-bearing isolation property: the committed ground truth in
-    `results/` can never be written by a run, so a reviewer's re-run (or a
-    forgotten `full`) leaves the shipped CSVs byte-for-byte intact.
+    This is the load-bearing isolation property: a cheap `test` or `smoke` run
+    cannot land rows in `runs/full/`, where a paper comparison reads from.
     """
-    committed = results_root()
+    others = [run_output_dir(other) for other in _LEVELS if other != name]
     for label, directory in _all_default_dirs(name).items():
-        assert committed != directory and committed not in directory.parents, (
-            f"{label} at level {name} writes under results/: {directory}"
-        )
+        for other in others:
+            assert other != directory and other not in directory.parents, (
+                f"{label} at level {name} writes under {other}: {directory}"
+            )
 
 
 @pytest.mark.parametrize("name", _LEVELS)
@@ -74,13 +71,13 @@ def test_every_default_output_dir_is_under_runs_for_its_level(name: str) -> None
 
 
 @pytest.mark.parametrize("name", _LEVELS)
-def test_runs_tree_mirrors_the_results_layout(name: str) -> None:
-    """`runs/<level>/` uses the same per-experiment layout as `results/`.
+def test_every_level_tree_uses_the_same_layout(name: str) -> None:
+    """Every `runs/<level>/` uses one per-experiment layout.
 
     E1 and E5 write into a `<experiment_id>/` subdirectory (they emit several
     CSVs); E2/E3/E4 write a single `<experiment_id>.csv` directly into the level
-    root. This parity is what lets a `make_*` renderer read a reviewer's
-    `runs/full/` with the exact path logic it uses for `results/`.
+    root. This parity is what lets a `make_*` renderer read any level's tree with
+    the same path logic.
     """
     dirs = _all_default_dirs(name)
     level_root = run_output_dir(name)
@@ -93,15 +90,15 @@ def test_runs_tree_mirrors_the_results_layout(name: str) -> None:
 
 
 def test_results_path_base_swaps_the_root_but_keeps_the_layout() -> None:
-    """`results_path(base=runs/full)` resolves the same relative layout as under results/.
+    """`results_path(base=...)` resolves one layout under any level root.
 
-    A `make_*` reads shipped data at `results_path(id)` and a reviewer's re-run
-    at `results_path(id, base=runs/full)`; both must land on the same filename in
+    A `make_*` reads a full run at `results_path(id)` and any other level at
+    `results_path(id, base=runs/<level>)`; both must land on the same filename in
     their respective roots.
     """
     runs_full = run_output_dir("full")
 
-    assert results_path("e2_advtr_modext") == results_root() / "e2_advtr_modext.csv"
+    assert results_path("e2_advtr_modext") == runs_full / "e2_advtr_modext.csv"
     assert (
         results_path("e2_advtr_modext", base=runs_full)
         == runs_full / "e2_advtr_modext.csv"
@@ -113,9 +110,11 @@ def test_results_path_base_swaps_the_root_but_keeps_the_layout() -> None:
 
 
 def test_runs_root_is_the_artifact_runs_directory() -> None:
-    """`runs_root()` is `artifact/runs`, the gitignored sibling of `results/`."""
-    assert runs_root().name == "runs"
-    assert runs_root().parent == results_root().parent
+    """`runs_root()` is `artifact/runs`, and a full run is its default subtree."""
+    from common.paths import artifact_root
+
+    assert runs_root() == artifact_root() / "runs"
+    assert default_results_dir() == runs_root() / "full"
 
 
 def test_the_registry_still_lists_the_five_experiments() -> None:

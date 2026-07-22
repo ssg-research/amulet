@@ -1,7 +1,7 @@
 """Tests for common/io.py.
 
 Every experiment appends one row per configuration to a CSV under
-`artifact/results/`, and those CSVs are committed so the `make/` wrappers can
+`artifact/runs/<level>/`, and the `make/` wrappers render from them so they can
 render tables with no GPU (plan §13, decision 2). That makes two properties
 load-bearing: an interrupted sweep must be resumable without duplicating rows,
 and a header that has drifted from the schema must fail loudly rather than
@@ -13,7 +13,13 @@ from pathlib import Path
 
 import pytest
 
-from common.io import CsvSchema, append_row, read_rows, results_path, results_root
+from common.io import (
+    CsvSchema,
+    append_row,
+    default_results_dir,
+    read_rows,
+    results_path,
+)
 
 SCHEMA = CsvSchema(
     header=("dataset", "seed", "epsilon", "accuracy", "fidelity"),
@@ -34,19 +40,22 @@ def _rows(path: Path) -> list[dict[str, str]]:
         return list(csv.DictReader(handle))
 
 
-def test_results_root_is_under_the_artifact_tree() -> None:
+def test_the_default_results_dir_is_the_full_run_output() -> None:
+    """No CSVs ship, so a renderer given no directory reads a full run's output."""
     from common.paths import artifact_root
 
-    assert results_root() == artifact_root() / "results"
+    assert default_results_dir() == artifact_root() / "runs" / "full"
 
 
 def test_results_path_defaults_to_the_experiment_id() -> None:
-    assert results_path("e2_advtr_modext") == results_root() / "e2_advtr_modext.csv"
+    assert (
+        results_path("e2_advtr_modext") == default_results_dir() / "e2_advtr_modext.csv"
+    )
 
 
 def test_results_path_accepts_a_stem_for_multi_csv_experiments() -> None:
     path = results_path("e5_textbadnets", stem="onion_sst2")
-    assert path == results_root() / "e5_textbadnets" / "onion_sst2.csv"
+    assert path == default_results_dir() / "e5_textbadnets" / "onion_sst2.csv"
 
 
 def test_append_row_writes_a_header_then_the_row(tmp_path: Path) -> None:

@@ -9,7 +9,7 @@ Each `make_*` module exposes the same two entry points, so a driver treats all
 six alike:
 
 * ``generate(results_dir=None, out_dir=None) -> list[Path]`` renders the
-  artifact from a results base directory (``results/`` by default, or a
+  artifact from a results base directory (``runs/full`` by default, or a
   reviewer's ``runs/<level>/``) into a generated-output directory, returning the
   files written.
 * ``coverage_report(results_dir=None) -> list[str]`` reports which cells the
