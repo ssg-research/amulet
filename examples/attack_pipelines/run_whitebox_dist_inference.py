@@ -3,7 +3,7 @@ End-to-end pipeline: run the White-Box PIM distribution inference attack.
 
 Trains two populations of models (one per distribution ratio) on a tabular
 dataset, then uses a Permutation Invariant Model (PIM) meta-classifier to
-infer which distribution a held-out victim model was trained on based on
+infer which distribution a held-out target model was trained on based on
 its raw parameters.
 """
 

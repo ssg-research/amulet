@@ -5,12 +5,12 @@ Distribution inference attacks aim to determine which of two training distributi
 Both attacks share the `DistributionInferenceAttack` lifecycle:
 
 1. Construct the attack with the dataset arrays and a training configuration.
-2. Call `prepare_model_populations()` to train (or load cached) the four model populations: adversary distribution 1, adversary distribution 2, victim distribution 1, and victim distribution 2.
+2. Call `prepare_model_populations()` to train (or load cached) the four model populations: adversary distribution 1, adversary distribution 2, target distribution 1, and target distribution 2.
 3. Call `attack()` to run the distinguishing test.
 
 ## Black-Box Attack (KL divergence)
 
-To run the KL-divergence distinguishing test, use `amulet.distribution_inference.attacks.SuriEvans2022`. It measures how each victim model's outputs diverge from the adversary baseline models trained on each distribution.
+To run the KL-divergence distinguishing test, use `amulet.distribution_inference.attacks.SuriEvans2022`. It measures how each target model's outputs diverge from the adversary baseline models trained on each distribution.
 
 ```python
 from amulet.distribution_inference.attacks import SuriEvans2022
@@ -52,7 +52,7 @@ dist_inf.prepare_model_populations()
 results = dist_inf.attack()
 
 # results["predictions"]: attack scores in [0, 1] (threshold at 0.5 to decide)
-# results["ground_truth"]: 0 for distribution-1 victims, 1 for distribution-2 victims
+# results["ground_truth"]: 0 for distribution-1 targets, 1 for distribution-2 targets
 
 # 4. Evaluate results
 metrics = evaluate_distinguishing_accuracy(results["predictions"], results["ground_truth"])
@@ -60,11 +60,11 @@ print(f"Distinguishing Accuracy: {metrics['distinguishing_accuracy']}")
 print(f"AUC Score: {metrics['auc_score']}")
 ```
 
-The populations and test loaders built by `prepare_model_populations()` are the defaults for `attack()`. To score externally produced populations instead, pass them as keyword arguments (`models_adv_1`, `models_vic_1`, `test_loader_1`, and so on) to `attack()`.
+The populations and test loaders built by `prepare_model_populations()` are the defaults for `attack()`. To score externally produced populations instead, pass them as keyword arguments (`models_adv_1`, `models_target_1`, `test_loader_1`, and so on) to `attack()`.
 
 ## White-Box Attack (Permutation Invariant Model)
 
-To run the white-box attack, use `amulet.distribution_inference.attacks.WhiteBoxPIM`. Rather than observing outputs, it reads each model's raw Linear and Conv2d weights and trains a Permutation Invariant Model (PIM) meta-classifier on the adversary populations to distinguish the two distributions, then evaluates that meta-classifier on the held-out victim populations.
+To run the white-box attack, use `amulet.distribution_inference.attacks.WhiteBoxPIM`. Rather than observing outputs, it reads each model's raw Linear and Conv2d weights and trains a Permutation Invariant Model (PIM) meta-classifier on the adversary populations to distinguish the two distributions, then evaluates that meta-classifier on the held-out target populations.
 
 `WhiteBoxPIM` takes the same constructor arguments as `SuriEvans2022`, plus meta-classifier settings (`meta_epochs`, `lr`, `inside_dims`).
 
@@ -107,4 +107,4 @@ print(f"Distinguishing Accuracy: {metrics['distinguishing_accuracy']}")
 
 ## Metrics
 
-Distribution inference is evaluated by the attack's **Distinguishing Accuracy**: how often the adversary correctly identifies which of the two distributions trained a victim model. Use `amulet.distribution_inference.metrics.evaluate_distinguishing_accuracy`. It takes `results["predictions"]` and `results["ground_truth"]` and returns a dict with keys `distinguishing_accuracy` and `auc_score`.
+Distribution inference is evaluated by the attack's **Distinguishing Accuracy**: how often the adversary correctly identifies which of the two distributions trained a target model. Use `amulet.distribution_inference.metrics.evaluate_distinguishing_accuracy`. It takes `results["predictions"]` and `results["ground_truth"]` and returns a dict with keys `distinguishing_accuracy` and `auc_score`.

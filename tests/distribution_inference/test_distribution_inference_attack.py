@@ -405,19 +405,19 @@ class TestPrepareModelPopulationsState:
 
         assert len(attack.models_adv_2) > 0
 
-    def test_models_vic_1_non_empty(self, attack_factory) -> None:
+    def test_models_target_1_non_empty(self, attack_factory) -> None:
         attack = attack_factory(num_models=1)
 
         attack.prepare_model_populations()
 
-        assert len(attack.models_vic_1) > 0
+        assert len(attack.models_target_1) > 0
 
-    def test_models_vic_2_non_empty(self, attack_factory) -> None:
+    def test_models_target_2_non_empty(self, attack_factory) -> None:
         attack = attack_factory(num_models=1)
 
         attack.prepare_model_populations()
 
-        assert len(attack.models_vic_2) > 0
+        assert len(attack.models_target_2) > 0
 
     @pytest.mark.parametrize("n_models", [1, 2])
     def test_each_population_length_equals_num_models(
@@ -429,8 +429,8 @@ class TestPrepareModelPopulationsState:
 
         assert len(attack.models_adv_1) == n_models
         assert len(attack.models_adv_2) == n_models
-        assert len(attack.models_vic_1) == n_models
-        assert len(attack.models_vic_2) == n_models
+        assert len(attack.models_target_1) == n_models
+        assert len(attack.models_target_2) == n_models
 
 
 # ---------------------------------------------------------------------------
@@ -481,7 +481,7 @@ class TestPrepareModelPopulationsCheckpoints:
         # every checkpoint filename must match the expected pattern
         # {dataset}_dist_inf_{role}_{dist}_{arch}_{capacity}_{model_id}_{exp_id}.pth
         pattern = re.compile(
-            rf"^{re.escape(dataset)}_dist_inf_(adv|vic)_(1|2)_{re.escape(arch)}"
+            rf"^{re.escape(dataset)}_dist_inf_(adv|target)_(1|2)_{re.escape(arch)}"
             rf"_{re.escape(capacity)}_\d+_{re.escape(str(exp_id))}\.pth$"
         )
         for p in tmp_path.glob("*.pth"):
@@ -499,7 +499,12 @@ class TestPrepareModelPopulationsCheckpoints:
         names = " ".join(p.name for p in tmp_path.glob("*.pth"))
 
         # each role+dist combination must appear once
-        for role, dist in [("adv", "1"), ("adv", "2"), ("vic", "1"), ("vic", "2")]:
+        for role, dist in [
+            ("adv", "1"),
+            ("adv", "2"),
+            ("target", "1"),
+            ("target", "2"),
+        ]:
             assert f"_dist_inf_{role}_{dist}_" in names, (
                 f"No checkpoint for role='{role}', dist='{dist}'"
             )

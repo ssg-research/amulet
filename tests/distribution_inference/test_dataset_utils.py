@@ -22,8 +22,8 @@ from amulet.distribution_inference.dataset_utils import (
 
 def _loaders(result: DistributionSplits) -> list[DataLoader]:
     return [
-        result.vic_trainloader_1,
-        result.vic_trainloader_2,
+        result.target_trainloader_1,
+        result.target_trainloader_2,
         result.adv_trainloader_1,
         result.adv_trainloader_2,
         result.test_loader_1,
@@ -439,8 +439,8 @@ class TestPrepareDistributionSplits:
 
         # all six attributes are DataLoader instances
         loaders = [
-            result.vic_trainloader_1,
-            result.vic_trainloader_2,
+            result.target_trainloader_1,
+            result.target_trainloader_2,
             result.adv_trainloader_1,
             result.adv_trainloader_2,
             result.test_loader_1,
@@ -475,8 +475,8 @@ class TestPrepareDistributionSplits:
         result = prepare_distribution_splits(*args, **splits_kwargs)
 
         for loader in [
-            result.vic_trainloader_1,
-            result.vic_trainloader_2,
+            result.target_trainloader_1,
+            result.target_trainloader_2,
             result.adv_trainloader_1,
             result.adv_trainloader_2,
             result.test_loader_1,
@@ -494,7 +494,7 @@ class TestPrepareDistributionSplits:
         result = prepare_distribution_splits(*args, **splits_kwargs)
 
         # each x batch has shape (batch, n_features)
-        x_batch, _ = next(iter(result.vic_trainloader_1))
+        x_batch, _ = next(iter(result.target_trainloader_1))
         assert x_batch.ndim == 2
         assert x_batch.shape[1] == n_features
 
@@ -521,7 +521,7 @@ class TestPrepareDistributionSplits:
         )
 
         # each x sample has shape (C, H, W)
-        x_batch, _ = next(iter(result.vic_trainloader_1))
+        x_batch, _ = next(iter(result.target_trainloader_1))
         assert x_batch.shape[1:] == (c, h, w)
 
     def test_y_shape_2d_accepted(self, splits_inputs_factory, splits_kwargs):
@@ -537,7 +537,7 @@ class TestPrepareDistributionSplits:
         args = splits_inputs_factory()
 
         result = prepare_distribution_splits(*args, **splits_kwargs)
-        x_batch, _ = next(iter(result.vic_trainloader_1))
+        x_batch, _ = next(iter(result.target_trainloader_1))
 
         assert x_batch.dtype == torch.float32
 
@@ -545,7 +545,7 @@ class TestPrepareDistributionSplits:
         args = splits_inputs_factory()
 
         result = prepare_distribution_splits(*args, **splits_kwargs)
-        _, y_batch = next(iter(result.vic_trainloader_1))
+        _, y_batch = next(iter(result.target_trainloader_1))
 
         assert y_batch.dtype == torch.int64
 
@@ -595,8 +595,8 @@ class TestPrepareDistributionSplits:
 
         # dataset sizes must be identical when numpy state is reset
         for attr in [
-            "vic_trainloader_1",
-            "vic_trainloader_2",
+            "target_trainloader_1",
+            "target_trainloader_2",
             "adv_trainloader_1",
             "adv_trainloader_2",
             "test_loader_1",
@@ -617,7 +617,7 @@ class TestPrepareDistributionSplits:
         args = splits_inputs_factory()
         # Reseed the global RNG identically before each call, so any difference
         # is attributable to the ratio rather than RNG drift between calls. With
-        # the ratios swapped, vic_trainloader_1 (which uses ratio1) must sample a
+        # the ratios swapped, target_trainloader_1 (which uses ratio1) must sample a
         # different set of rows; a function that ignored the ratios would return
         # byte-identical data.
         np.random.seed(123)
@@ -629,8 +629,8 @@ class TestPrepareDistributionSplits:
             *args, **{**splits_kwargs, "ratio1": ratio2, "ratio2": ratio1}
         )
 
-        x1 = _all_x(result_1.vic_trainloader_1)
-        x2 = _all_x(result_2.vic_trainloader_1)
+        x1 = _all_x(result_1.target_trainloader_1)
+        x2 = _all_x(result_2.target_trainloader_1)
         assert not (x1.shape == x2.shape and torch.equal(x1, x2))
 
     @pytest.mark.parametrize("ratio1,ratio2", [(0.2, 0.8), (0.3, 0.7)])
@@ -659,12 +659,12 @@ class TestPrepareDistributionSplits:
         }
         result = prepare_distribution_splits(x, y, z, x_test, y_test, z_test, **kwargs)
 
-        frac_1 = float((_all_x(result.vic_trainloader_1)[:, 0] == 1).float().mean())
-        frac_2 = float((_all_x(result.vic_trainloader_2)[:, 0] == 1).float().mean())
+        frac_1 = float((_all_x(result.target_trainloader_1)[:, 0] == 1).float().mean())
+        frac_2 = float((_all_x(result.target_trainloader_2)[:, 0] == 1).float().mean())
         assert abs(frac_1 - ratio1) < 0.12
         assert abs(frac_2 - ratio2) < 0.12
 
-    def test_test_loaders_are_concatenated_from_vic_and_adv(
+    def test_test_loaders_are_concatenated_from_target_and_adv(
         self, splits_inputs_factory, splits_kwargs
     ):
         args = splits_inputs_factory(n_train=600, n_test=400)
@@ -672,7 +672,7 @@ class TestPrepareDistributionSplits:
 
         result = prepare_distribution_splits(*args, **splits_kwargs)
 
-        # Each test half (adv, vic) draws int(class_imbalance * test_subsample) +
+        # Each test half (adv, target) draws int(class_imbalance * test_subsample) +
         # test_subsample = 3*15 + 15 = 60 samples, so the concatenation of both
         # halves is exactly 120. A concat bug that dropped one half would halve
         # each combined test loader to 60.

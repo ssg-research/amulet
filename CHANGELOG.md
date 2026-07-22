@@ -5,7 +5,7 @@
 
 ### Features
 
-* **poisoning:** textual backdoor attack with `TextBadNets`, the LoRA `HFCausalLM` victim, an ONION text purifier, and Hugging Face text loaders ([#105](https://github.com/ssg-research/amulet/issues/105)) ([eab3fa6](https://github.com/ssg-research/amulet/commit/eab3fa6c5447a9c936c2b3ecfe5f519b2d53dc88))
+* **poisoning:** textual backdoor attack with `TextBadNets`, the LoRA `HFCausalLM` target, an ONION text purifier, and Hugging Face text loaders ([#105](https://github.com/ssg-research/amulet/issues/105)) ([eab3fa6](https://github.com/ssg-research/amulet/commit/eab3fa6c5447a9c936c2b3ecfe5f519b2d53dc88))
 * **dp:** opt-in `BatchMemoryManager` for DP-SGD ([#108](https://github.com/ssg-research/amulet/issues/108)) ([ca1f65a](https://github.com/ssg-research/amulet/commit/ca1f65a1e930b6de60f9296ee4b11bc4dc8c477c))
 
 

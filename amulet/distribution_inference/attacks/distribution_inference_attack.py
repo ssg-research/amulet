@@ -23,7 +23,7 @@ class DistributionInferenceAttack(ABC):
     Follows the same lifecycle as MembershipInferenceAttack:
     1. Construct with data and training parameters.
     2. Call prepare_model_populations() to train and cache the four model
-       populations (adversary D1, adversary D2, victim D1, victim D2).
+       populations (adversary D1, adversary D2, target D1, target D2).
     3. Call attack() to run the distinguishing test.
 
     Attributes:
@@ -114,8 +114,8 @@ class DistributionInferenceAttack(ABC):
         self.splits: DistributionSplits | None = None
         self.models_adv_1: list[nn.Module] = []
         self.models_adv_2: list[nn.Module] = []
-        self.models_vic_1: list[nn.Module] = []
-        self.models_vic_2: list[nn.Module] = []
+        self.models_target_1: list[nn.Module] = []
+        self.models_target_2: list[nn.Module] = []
 
     def train_model_population(
         self,
@@ -190,7 +190,7 @@ class DistributionInferenceAttack(ABC):
 
         Calls prepare_distribution_splits internally, then trains num_models
         models on each of the four resulting loaders (adversary D1, adversary D2,
-        victim D1, victim D2). Models are saved to models_dir; already-saved
+        target D1, target D2). Models are saved to models_dir; already-saved
         checkpoints are loaded rather than retrained.
 
         Must be called before attack().
@@ -226,11 +226,11 @@ class DistributionInferenceAttack(ABC):
         self.models_adv_2 = self.train_model_population(
             self.splits.adv_trainloader_2, checkpoint_tag=_tag("adv", "2")
         )
-        self.models_vic_1 = self.train_model_population(
-            self.splits.vic_trainloader_1, checkpoint_tag=_tag("vic", "1")
+        self.models_target_1 = self.train_model_population(
+            self.splits.target_trainloader_1, checkpoint_tag=_tag("target", "1")
         )
-        self.models_vic_2 = self.train_model_population(
-            self.splits.vic_trainloader_2, checkpoint_tag=_tag("vic", "2")
+        self.models_target_2 = self.train_model_population(
+            self.splits.target_trainloader_2, checkpoint_tag=_tag("target", "2")
         )
 
     @abstractmethod
@@ -239,7 +239,7 @@ class DistributionInferenceAttack(ABC):
 
         Returns:
             Dictionary with two 1-D arrays: "predictions" (attack scores) and
-            "ground_truth" (0 for distribution-1 victims, 1 for distribution-2
-            victims).
+            "ground_truth" (0 for distribution-1 targets, 1 for distribution-2
+            targets).
         """
         pass

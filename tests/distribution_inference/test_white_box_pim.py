@@ -226,7 +226,7 @@ def test_whitebox_pim_predictions_in_unit_interval(whitebox_attack_factory):
 @pytest.mark.integration
 @pytest.mark.timeout(300)
 def test_whitebox_pim_ground_truth_binary(whitebox_attack_factory):
-    """ground_truth must contain only 0s and 1s (dist-1 vs dist-2 victims)."""
+    """ground_truth must contain only 0s and 1s (dist-1 vs dist-2 targets)."""
     attack = whitebox_attack_factory(seed=4)
     attack.prepare_model_populations()
     results = attack.attack()

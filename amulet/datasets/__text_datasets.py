@@ -9,7 +9,7 @@ The Hugging Face stack ships in the optional `amuletml[llm]` extra, so its impor
 are guarded: `import amulet` still works without the extra, and calling a loader
 without it raises a clear "install amuletml[llm]" error.
 
-Each loader tokenizes the raw strings with the victim tokenizer, pads `input_ids` to
+Each loader tokenizes the raw strings with the target tokenizer, pads `input_ids` to
 a fixed per-dataset max sequence length, and retains the raw strings on the returned
 `TextTensorDataset` so an input-purification defense (ONION) can re-score and
 re-tokenize them. SST-2 uses `validation` as its labelled test split (the public
@@ -36,7 +36,7 @@ _LLM_INSTALL_HINT = (
     "`pip install amuletml[llm]` (or `uv sync --extra llm`)."
 )
 
-# The plan's license-free fallback victim; its tokenizer produces the input_ids.
+# The plan's license-free fallback target; its tokenizer produces the input_ids.
 _DEFAULT_TOKENIZER = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
 
 

@@ -85,10 +85,10 @@ hard convention, not a suggestion, and it is enforced by `tests/test_api_conform
 A defense may expose extra public helpers in addition to its entry point, never instead
 of it. `ONION` is the reference case: it is a poisoning defense subclassing
 `PoisoningDefense` alongside `OutlierRemoval`, so it implements `train_robust()` (purify the
-poisoned training data, then retrain the victim), and it also exposes
+poisoned training data, then retrain the target), and it also exposes
 `purify(dataset)` for cleaning inputs at test time. Do not add a defense on a bespoke base
 class with a non-standard entry point; reshape the shared base instead. The textual backdoor
-attack `TextBadNets` and the LoRA-LLM victim `HFCausalLM` need the optional `llm` extra; see
+attack `TextBadNets` and the LoRA-LLM target `HFCausalLM` need the optional `llm` extra; see
 [Optional extras](#optional-extras).
 
 Some classes expose additional public helpers for experimentation. For example, `MembershipInferenceAttack` has `train_shadow_model()` / `prepare_shadow_models()` and `DistributionInferenceAttack` has `train_model_population()` / `prepare_model_populations()`.
@@ -100,7 +100,7 @@ Any model under `amulet/models/` must subclass `AmuletModel` ([`amulet/models/ba
 Several modules depend on intermediate activations; omitting `get_hidden` breaks them silently.
 Match the base signature's parameter name `x` on both `forward` and `get_hidden` (basedpyright enforces override compatibility), even when the input is token ids rather than pixels.
 
-`HFCausalLM` ([`amulet/models/hf_causal_lm.py`](amulet/models/hf_causal_lm.py)) is the reference example of subclassing `AmuletModel` around a real pretrained backbone: a LoRA-adapted HuggingFace **causal (decoder-only) LM** (Llama, GPT-2, Mistral, …) that keeps its generative base. One shared adapted decoder backs three roles: classification (`forward` returns the bare logits tensor, not the `SequenceClassifierOutput`, so `train_classifier`, `DPSGD.train_private`, and `get_accuracy` drive it unchanged), perplexity scoring (`perplexity`, what `ONION` consumes, since the victim itself is the reference LM), and generation (`generate`). Encoder-only (BERT) and seq2seq (T5) models do not fit and are out of scope. It needs the `llm` extra.
+`HFCausalLM` ([`amulet/models/hf_causal_lm.py`](amulet/models/hf_causal_lm.py)) is the reference example of subclassing `AmuletModel` around a real pretrained backbone: a LoRA-adapted HuggingFace **causal (decoder-only) LM** (Llama, GPT-2, Mistral, …) that keeps its generative base. One shared adapted decoder backs three roles: classification (`forward` returns the bare logits tensor, not the `SequenceClassifierOutput`, so `train_classifier`, `DPSGD.train_private`, and `get_accuracy` drive it unchanged), perplexity scoring (`perplexity`, what `ONION` consumes, since the target itself is the reference LM), and generation (`generate`). Encoder-only (BERT) and seq2seq (T5) models do not fit and are out of scope. It needs the `llm` extra.
 
 `initialize_model` uses a central capacity map and only covers the built-in CNNs; models whose constructors do not fit its `(arch, capacity, num_features, num_classes)` signature (e.g. `HFCausalLM`) are constructed directly. See #104.
 
@@ -115,7 +115,7 @@ Image loaders follow a 3-step fallback to ensure availability:
 2. **Raw local** (e.g. `img_align_celeba/`, `lfw_home/`)
 3. **GDrive download**: IDs are hard-coded in [`amulet/datasets/__image_datasets.py`](amulet/datasets/__image_datasets.py) (similar to how PyTorch ships dataset URLs), so no configuration is needed.
 
-Text loaders ([`amulet/datasets/__text_datasets.py`](amulet/datasets/__text_datasets.py): `load_sst2`, `load_agnews`, `load_imdb`) instead pull from the Hugging Face hub via `datasets` into a project-local `./data/<name>` cache. That divergence is intentional: HF manages text corpora and their splits. They return an `AmuletDataset` with `modality="text"` whose `train_set`/`test_set` are `TextTensorDataset` instances, a `TensorDataset` of padded `input_ids` that also carries the raw `.texts` (so ONION can re-score perplexity before the victim tokenizer runs) and the `tokenizer_name`. `AmuletDataset.modality` is `Literal["image", "tabular", "text"]`. Text loaders need the `llm` extra.
+Text loaders ([`amulet/datasets/__text_datasets.py`](amulet/datasets/__text_datasets.py): `load_sst2`, `load_agnews`, `load_imdb`) instead pull from the Hugging Face hub via `datasets` into a project-local `./data/<name>` cache. That divergence is intentional: HF manages text corpora and their splits. They return an `AmuletDataset` with `modality="text"` whose `train_set`/`test_set` are `TextTensorDataset` instances, a `TensorDataset` of padded `input_ids` that also carries the raw `.texts` (so ONION can re-score perplexity before the target tokenizer runs) and the `tokenizer_name`. `AmuletDataset.modality` is `Literal["image", "tabular", "text"]`. Text loaders need the `llm` extra.
 
 ### Optional extras
 

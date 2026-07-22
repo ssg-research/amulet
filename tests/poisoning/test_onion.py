@@ -1,6 +1,6 @@
 """Tests for the ONION input-purification poisoning defense.
 
-ONION scores word fluency with the victim's perplexity head and removes perplexity
+ONION scores word fluency with the target's perplexity head and removes perplexity
 outliers (likely triggers). Two layers are covered:
 
 - The **removal algorithm** (leave-one-out suspicion, threshold, empty-fallback) is pinned
@@ -8,7 +8,7 @@ outliers (likely triggers). Two layers are covered:
   pretrained LM to be meaningful, and ``HFCausalLM.perplexity`` is tested in isolation in
   ``tests/models/test_hf_causal_lm.py``; stubbing it here isolates the algorithm around it.
 - The **dataset / retrain wiring** (``purify`` round-trip, ``train_robust``) runs against
-  the real tiny victim, so the perplexity oracle is exercised for real end to end.
+  the real tiny target, so the perplexity oracle is exercised for real end to end.
 """
 
 import pytest
@@ -21,7 +21,7 @@ from amulet.poisoning.defenses import ONION, PoisoningDefense
 
 @pytest.fixture
 def onion(tiny_text_classifier, text_tokenizer, cpu_device):
-    """An ONION whose reference LM is the tiny random-init victim."""
+    """An ONION whose reference LM is the tiny random-init target."""
     return ONION(
         model=tiny_text_classifier,
         tokenizer=text_tokenizer,
@@ -98,7 +98,7 @@ def test_purify_text_falls_back_to_original_when_emptied(onion, mocker):
     """A threshold so low every word is removed must not yield an empty string.
 
     ``purify_text`` returns the original (stripped) text rather than an empty input, so the
-    victim always receives something to classify.
+    target always receives something to classify.
     """
     mocker.patch.object(onion, "_perplexities", side_effect=_fake_ppls)
     onion.threshold = -1e9  # remove every word
@@ -140,7 +140,7 @@ def test_purify_text_scores_row_in_one_forward(onion, tiny_text_classifier):
 @pytest.mark.integration
 @pytest.mark.timeout(120)
 def test_purify_round_trips_dataset(onion, tiny_text_dataset):
-    """purify returns a valid TextTensorDataset (real victim scores perplexity)."""
+    """purify returns a valid TextTensorDataset (real target scores perplexity)."""
     max_len = tiny_text_dataset.tensors[0].shape[1]
     purified = onion.purify(tiny_text_dataset)
 
@@ -164,10 +164,10 @@ def test_purify_rejects_non_text_dataset(onion):
 
 @pytest.mark.integration
 @pytest.mark.timeout(180)
-def test_train_robust_returns_retrained_victim(
+def test_train_robust_returns_retrained_target(
     tiny_text_classifier, text_tokenizer, tiny_text_dataset, cpu_device
 ):
-    """train_robust purifies the training data, retrains the victim, and returns it.
+    """train_robust purifies the training data, retrains the target, and returns it.
 
     Mirrors OutlierRemoval's contract: a robust ``nn.Module`` comes back, and its trainable
     parameters have moved (retraining actually ran on the purified data).

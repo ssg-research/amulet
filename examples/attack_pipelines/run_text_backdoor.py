@@ -2,7 +2,7 @@
 
 This is the runnable efficacy surface for the LLM backdoor work and doubles as the
 "how to extend Amulet to an LLM" example. It flows the standard pipeline shape
-(AmuletDataset -> attack -> train -> metric) with a genuine decoder LLM victim:
+(AmuletDataset -> attack -> train -> metric) with a genuine decoder LLM target:
 
   1. Load a text dataset (SST-2 / AG News / IMDB) as token-id tensors.
   2. TextBadNets stamps a trigger into a fraction of training rows and flips their
@@ -10,7 +10,7 @@ This is the runnable efficacy surface for the LLM backdoor work and doubles as t
   3. Fine-tune HFCausalLM (AutoModelForCausalLM + LoRA, with a classification head) on
      the poisoned data and report clean accuracy and ASR.
   4. Report two interactions:
-       - intended:   ONION (scoring with the victim's own base LM) purifies the
+       - intended:   ONION (scoring with the target's own base LM) purifies the
                      triggered inputs, then re-measure ASR.
        - unintended: DP-LoRA fine-tuning (reused DPSGD) bounds each example's
                      influence; re-measure ASR and report epsilon.
@@ -129,7 +129,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--onion_score_with_adapters",
         action="store_true",
-        help="Score ONION perplexity through the victim's LoRA adapters (the fine-tuned "
+        help="Score ONION perplexity through the target's LoRA adapters (the fine-tuned "
         "model) instead of its clean base LM (canonical ONION uses the clean base).",
     )
     parser.add_argument("--sigma", type=float, default=1.0, help="DP noise multiplier.")
@@ -161,7 +161,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def load_text_dataset(args: argparse.Namespace) -> AmuletDataset:
-    """Load the requested text dataset, tokenized with the victim's tokenizer."""
+    """Load the requested text dataset, tokenized with the target's tokenizer."""
     max_train = None if args.max_train_samples < 0 else args.max_train_samples
     max_test = None if args.max_test_samples < 0 else args.max_test_samples
     data_path = Path(args.root) / "data" / args.dataset
@@ -174,8 +174,8 @@ def load_text_dataset(args: argparse.Namespace) -> AmuletDataset:
     )
 
 
-def build_victim(args: argparse.Namespace, num_classes: int, dtype: torch.dtype):
-    """Construct a fresh LoRA causal-LM victim (with a classification head) on device."""
+def build_target(args: argparse.Namespace, num_classes: int, dtype: torch.dtype):
+    """Construct a fresh LoRA causal-LM target (with a classification head) on device."""
     return HFCausalLM(
         model_name=args.model_name,
         num_labels=num_classes,
@@ -221,21 +221,21 @@ def main(args: argparse.Namespace) -> None:
     clean_test_loader = DataLoader(data.test_set, batch_size=args.batch_size)
     asr_loader = DataLoader(poisoned_test, batch_size=args.batch_size)
 
-    # Undefended backdoor: fine-tune the LoRA victim on the poisoned data.
+    # Undefended backdoor: fine-tune the LoRA target on the poisoned data.
     criterion = torch.nn.CrossEntropyLoss()
-    victim = build_victim(args, data.num_classes, torch.bfloat16)
-    optimizer = torch.optim.Adam(victim.trainable_parameters(), lr=args.lr)
-    victim = train_classifier(
-        victim, train_loader, criterion, optimizer, args.epochs, args.device
+    target = build_target(args, data.num_classes, torch.bfloat16)
+    optimizer = torch.optim.Adam(target.trainable_parameters(), lr=args.lr)
+    target = train_classifier(
+        target, train_loader, criterion, optimizer, args.epochs, args.device
     )
 
-    clean_acc = get_accuracy(victim, clean_test_loader, args.device)
-    asr = get_accuracy(victim, asr_loader, args.device)
+    clean_acc = get_accuracy(target, clean_test_loader, args.device)
+    asr = get_accuracy(target, asr_loader, args.device)
     log.info("Undefended | clean accuracy: %.2f | ASR: %.2f", clean_acc, asr)
 
     # Intended interaction: ONION purifies the triggered inputs before classification.
-    # ONION scores perplexity with the victim itself (its clean base LM by default), so
-    # the tokenizer it scores and re-tokenizes with must be the victim's own.
+    # ONION scores perplexity with the target itself (its clean base LM by default), so
+    # the tokenizer it scores and re-tokenizes with must be the target's own.
     if args.defense in ("onion", "both"):
         from transformers import AutoTokenizer
 
@@ -244,8 +244,8 @@ def main(args: argparse.Namespace) -> None:
             tokenizer.pad_token = tokenizer.eos_token
         onion = ONION(
             # train_classifier returns the shared nn.Module type; narrow back to the
-            # victim's concrete type, which ONION needs for its `perplexity` scorer.
-            model=cast(HFCausalLM, victim),
+            # target's concrete type, which ONION needs for its `perplexity` scorer.
+            model=cast(HFCausalLM, target),
             tokenizer=tokenizer,
             threshold=args.onion_threshold,
             score_with_adapters=args.onion_score_with_adapters,
@@ -253,20 +253,20 @@ def main(args: argparse.Namespace) -> None:
         )
         purified_test = onion.purify(poisoned_test)
         purified_loader = DataLoader(purified_test, batch_size=args.batch_size)
-        onion_asr = get_accuracy(victim, purified_loader, args.device)
+        onion_asr = get_accuracy(target, purified_loader, args.device)
         log.info(
-            "ONION | ASR %.2f -> %.2f (clean accuracy unchanged: victim is the same)",
+            "ONION | ASR %.2f -> %.2f (clean accuracy unchanged: target is the same)",
             asr,
             onion_asr,
         )
 
     # Unintended cross-risk interaction: DP-LoRA fine-tuning (reused DPSGD). The DP
-    # victim must be fp32 (bf16 trainable params break Opacus per-sample clipping).
+    # target must be fp32 (bf16 trainable params break Opacus per-sample clipping).
     if args.defense in ("dp", "both"):
-        dp_victim = build_victim(args, data.num_classes, torch.float32)
-        dp_optimizer = torch.optim.Adam(dp_victim.trainable_parameters(), lr=args.dp_lr)
+        dp_target = build_target(args, data.num_classes, torch.float32)
+        dp_optimizer = torch.optim.Adam(dp_target.trainable_parameters(), lr=args.dp_lr)
         dp_training = DPSGD(
-            model=dp_victim,
+            model=dp_target,
             criterion=criterion,
             optimizer=dp_optimizer,
             train_loader=train_loader,

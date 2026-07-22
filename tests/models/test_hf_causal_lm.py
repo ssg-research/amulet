@@ -1,4 +1,4 @@
-"""Unit tests for the unified HF causal-LM victim (`HFCausalLM`).
+"""Unit tests for the unified HF causal-LM target (`HFCausalLM`).
 
 `HFCausalLM` wraps a HuggingFace causal (decoder-only) LM and exposes three roles over
 one shared, LoRA-adapted decoder: classification (a trainable head over the pooled last
@@ -179,7 +179,7 @@ def test_generate_extends_prompt(tiny_causal_lm_factory):
 @pytest.mark.integration
 @pytest.mark.timeout(120)
 def test_overfits_single_classification_batch(tiny_causal_lm_factory):
-    """The victim can memorize one tiny batch: gradients reach the LoRA adapters + head.
+    """The target can memorize one tiny batch: gradients reach the LoRA adapters + head.
 
     A plateauing loss would mean broken gradient flow (frozen adapters, an untrained head,
     a wrong loss reduction). This is the load-bearing "does it learn" check.

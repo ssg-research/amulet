@@ -2,7 +2,7 @@
 End-to-end pipeline: run the Suri & Evans 2022 distribution inference attack.
 
 The adversary trains num_models models per distribution and uses them to infer
-which of two training distributions a set of victim models was drawn from.
+which of two training distributions a set of target models was drawn from.
 Distributions differ in the proportion of training samples where a chosen
 sensitive attribute equals filter_value.
 """

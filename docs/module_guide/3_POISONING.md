@@ -2,7 +2,7 @@
 
 Data poisoning attacks involve an adversary injecting malicious samples into a model's training set. Amulet implements the BadNets backdoor attack for image/tabular data and a textual variant (`TextBadNets`) for language models. It provides an outlier-removal defense based on KNN Shapley values, and (for the textual attack) the ONION perplexity-based defense.
 
-Both poisoning defenses follow the same shape and share the `PoisoningDefense` base class. They expose `train_robust()`, which cleans the (poisoned) training set, then retrains the victim on the cleaned data and returns it. `OutlierRemoval` drops low-Shapley outlier samples, and `ONION` removes perplexity-outlier trigger words. This mirrors the library-wide convention that every defense implements its risk's training entry point (`train_robust` / `train_private` / `train_fair`). `ONION` additionally exposes `purify(dataset)` to clean inputs at test time, alongside `train_robust()`.
+Both poisoning defenses follow the same shape and share the `PoisoningDefense` base class. They expose `train_robust()`, which cleans the (poisoned) training set, then retrains the target on the cleaned data and returns it. `OutlierRemoval` drops low-Shapley outlier samples, and `ONION` removes perplexity-outlier trigger words. This mirrors the library-wide convention that every defense implements its risk's training entry point (`train_robust` / `train_private` / `train_fair`). `ONION` additionally exposes `purify(dataset)` to clean inputs at test time, alongside `train_robust()`.
 
 ## Attack
 
@@ -88,7 +88,7 @@ print(f"ASR after defense: {defended_asr}%")
 
 ## Textual Backdoor (LLM)
 
-`amulet.poisoning.attacks.TextBadNets` is the NLP analog of `BadNets`: it inserts a rare-word or short-phrase trigger into a fraction of training examples (in string space) and relabels them to a target class. The victim is `HFCausalLM`, a LoRA-adapted HuggingFace causal (decoder-only) LM that keeps its generative base: it classifies (trainable head over the frozen base), scores perplexity (its base LM), and generates. This path requires the optional `llm` extra (`uv sync --extra <cuxxx> --extra llm`).
+`amulet.poisoning.attacks.TextBadNets` is the NLP analog of `BadNets`: it inserts a rare-word or short-phrase trigger into a fraction of training examples (in string space) and relabels them to a target class. The target is `HFCausalLM`, a LoRA-adapted HuggingFace causal (decoder-only) LM that keeps its generative base: it classifies (trainable head over the frozen base), scores perplexity (its base LM), and generates. This path requires the optional `llm` extra (`uv sync --extra <cuxxx> --extra llm`).
 
 ```python
 import torch
@@ -103,7 +103,7 @@ from amulet.utils import get_accuracy, train_classifier
 device = "cuda:0"
 model_name = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
 
-# 1. Load a text dataset (tokenized with the victim's tokenizer)
+# 1. Load a text dataset (tokenized with the target's tokenizer)
 data = load_sst2(path="./data/sst2", tokenizer_name=model_name, max_length=128)
 
 # 2. Poison: trigger + relabel a fraction of train; trigger every non-target test row
@@ -111,29 +111,29 @@ attack = TextBadNets(trigger="cf", trigger_label=1, portion=0.1, random_seed=0)
 poisoned_train = attack.poison_train(data.train_set)
 poisoned_test = attack.poison_test(data.test_set)   # accuracy on this vs. trigger_label is ASR
 
-# 3. Fine-tune the LoRA victim on the poisoned data
-victim = HFCausalLM(model_name=model_name, num_labels=data.num_classes).to(device)
-optimizer = torch.optim.Adam(victim.trainable_parameters(), lr=2e-4)
+# 3. Fine-tune the LoRA target on the poisoned data
+target = HFCausalLM(model_name=model_name, num_labels=data.num_classes).to(device)
+optimizer = torch.optim.Adam(target.trainable_parameters(), lr=2e-4)
 criterion = torch.nn.CrossEntropyLoss()
 train_loader = DataLoader(poisoned_train, batch_size=16, shuffle=True)
-victim = train_classifier(victim, train_loader, criterion, optimizer, 3, device)
+target = train_classifier(target, train_loader, criterion, optimizer, 3, device)
 
-asr = get_accuracy(victim, DataLoader(poisoned_test, batch_size=16), device)
+asr = get_accuracy(target, DataLoader(poisoned_test, batch_size=16), device)
 print(f"Attack Success Rate (ASR): {asr}%")
 
-# 4. Defend with ONION: purify triggered inputs, then re-measure ASR on the same victim.
-#    ONION scores perplexity with the victim's own base LM (its clean, pre-fine-tuning
-#    base by default), so it re-tokenizes with the victim's tokenizer.
+# 4. Defend with ONION: purify triggered inputs, then re-measure ASR on the same target.
+#    ONION scores perplexity with the target's own base LM (its clean, pre-fine-tuning
+#    base by default), so it re-tokenizes with the target's tokenizer.
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 if tokenizer.pad_token is None:
     tokenizer.pad_token = tokenizer.eos_token
-onion = ONION(model=victim, tokenizer=tokenizer, device=device)
+onion = ONION(model=target, tokenizer=tokenizer, device=device)
 purified_test = onion.purify(poisoned_test)
-defended_asr = get_accuracy(victim, DataLoader(purified_test, batch_size=16), device)
+defended_asr = get_accuracy(target, DataLoader(purified_test, batch_size=16), device)
 print(f"ASR after ONION: {defended_asr}%")
 ```
 
-An unintended cross-risk interaction is available by reusing the `DPSGD` membership-inference defense to fine-tune the LoRA victim with per-example clipping and noise (construct the victim with `dtype=torch.float32`, since bf16 trainable parameters break Opacus per-sample clipping). See `examples/attack_pipelines/run_text_backdoor.py` for the full pipeline reporting both the ONION and DP-LoRA interactions.
+An unintended cross-risk interaction is available by reusing the `DPSGD` membership-inference defense to fine-tune the LoRA target with per-example clipping and noise (construct the target with `dtype=torch.float32`, since bf16 trainable parameters break Opacus per-sample clipping). See `examples/attack_pipelines/run_text_backdoor.py` for the full pipeline reporting both the ONION and DP-LoRA interactions.
 
 ## Metrics
 
