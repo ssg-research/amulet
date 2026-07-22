@@ -24,10 +24,10 @@ Two kinds of claim back the paper, and both are reproducible from this tree:
 
 What reproduces without a GPU:
 
-- **E5 (text backdoor) reproduces the paper table numerically from committed
-  data, with no GPU.** `artifact/results/e5_textbadnets/onion.csv` and
+- **E5 (text backdoor) reproduces the paper's numbers from committed data, with
+  no GPU.** `artifact/results/e5_textbadnets/onion.csv` and
   `artifact/results/e5_textbadnets/dp.csv` ship in the repository, and the E5
-  wrapper renders Table 5 from them in seconds.
+  wrapper renders Tables 3 and 4 from them in seconds.
 - **E1 through E4 are code-complete and reproduce each table's structure
   now.** They ship no result CSVs yet, so their wrappers render a correct blank
   skeleton and report per-cell coverage as MISSING. Their numbers arrive after a
@@ -91,23 +91,24 @@ uv run python artifact/make/make_all.py
 ```
 
 Generated files land in `artifact/tables/generated/` and
-`artifact/plots/generated/`; the hand-authored references stay in
-`artifact/tables/` and `artifact/plots/`.
+`artifact/plots/generated/`.
+The paper's own tables and figures are not mirrored in this repository; compare
+a generated table against the paper itself.
 To render from your own re-run instead, pass
 `--results-dir artifact/runs/full`.
 
-| Experiment | Paper artifact                         | Reference                                                                    | Wrapper                                                  | Reproduces                                   |
-| ---------- | -------------------------------------- | ---------------------------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------- |
-| E1         | `tab_attack_results`                   | `artifact/tables/tab_attack_results.tex`                                     | `uv run python artifact/make/make_tab_attack_results.py` | structure now; numbers after L3              |
-| E2         | `tab_advtr_modext`                     | `artifact/tables/tab_advtr_modext.tex`                                       | `uv run python artifact/make/make_tab_advtr_modext.py`   | structure now; numbers after L3              |
-| E3         | `tab_attinf_advrtr`                    | `artifact/tables/tab_attinf_advrtr.tex`                                      | `uv run python artifact/make/make_tab_attinf_advrtr.py`  | structure now; numbers after L3              |
-| E4         | `tab_outrem_modext`                    | `artifact/tables/tab_outrem_modext.tex`                                      | `uv run python artifact/make/make_tab_outrem_modext.py`  | structure now; numbers after L3              |
-| E4         | `fig_outrem_fid`, `fig_outrem_cor_fid` | `artifact/plots/fig_outrem_fid.png`, `artifact/plots/fig_outrem_cor_fid.png` | `uv run python artifact/make/make_fig_outrem.py`         | structure now; numbers after L3              |
-| E5         | `tab_textbadnets_interactions`         | `artifact/tables/tab_textbadnets_interactions.tex`                           | `uv run python artifact/make/make_tab_textbadnets.py`    | **numerically, from committed data, no GPU** |
+| Experiment | Wrapper                                                  | Generates                                                   | Paper                             |
+| ---------- | -------------------------------------------------------- | ----------------------------------------------------------- | --------------------------------- |
+| E1         | `uv run python artifact/make/make_tab_attack_results.py` | `tab_attack_results.tex`                                    | Table 5                           |
+| E2         | `uv run python artifact/make/make_tab_advtr_modext.py`   | `tab_advtr_modext.tex`                                      | Table 7                           |
+| E3         | `uv run python artifact/make/make_tab_attinf_advrtr.py`  | `tab_attinf_advrtr.tex`                                     | Table 6                           |
+| E4         | `uv run python artifact/make/make_fig_outrem.py`         | `fig_outrem_fid.png`, `fig_outrem_cor_fid.png`              | Figures 3 and 4                   |
+| E4         | `uv run python artifact/make/make_tab_outrem_modext.py`  | `tab_outrem_modext.tex` (artifact-internal, no paper table) | --                                |
+| E5         | `uv run python artifact/make/make_tab_textbadnets.py`    | `tab_textbadnets_interactions.tex`                          | Table 3 (ONION), Table 4 (DP-SGD) |
 
-The tables compare numeric cells only, so reformatting the caption passes and
-any changed number fails.
-E5's regenerated table matches the reference byte-for-byte.
+E4's table is an artifact convenience: the paper reports that study as Figures 3
+and 4, so the figures are what an E4 run reproduces.
+E5's single generated table holds both paper tables, one block each.
 For E1 through E4 the wrappers print a per-cell coverage line showing which
 cells a full run still needs to fill.
 
@@ -130,6 +131,36 @@ uv run python artifact/experiments/e5_textbadnets/run.py --level test           
 | E3         | `e3_advtr_attrinf`    | adversarial training x attribute inference |
 | E4         | `e4_outrem_modext`    | outlier removal x model ownership          |
 | E5         | `e5_textbadnets`      | text backdoor x ONION and x DP-SGD         |
+
+## Reading a run's output
+
+Each `run.py` appends one row per configuration to a CSV under `runs/<level>/`,
+which mirrors the `results/` layout; a run never writes into the committed
+`results/`.
+After a run, open its CSV and compare the metric columns below against the
+corresponding table or figure in the paper.
+
+| Experiment | Output CSV (under `runs/<level>/`)                  | Metric columns to compare                                                                                                                                                                                                   | Compare against (paper)           |
+| ---------- | --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
+| E1         | `e1_attack_baselines/<risk>.csv` (one CSV per risk) | `robust_acc` (evasion), `pois_poison_acc` (poisoning), `attack_auc` (attribute inference), `online_auc` / `offline_auc` (membership inference), `fidelity` (model extraction), `ssim_avg` / `mse_avg` (data reconstruction) | Table 5                           |
+| E2         | `e2_advtr_modext.csv`                               | `defended_robust_acc`, `stolen_test_acc`, `fidelity`, `correct_fidelity`                                                                                                                                                    | Table 7                           |
+| E3         | `e3_advtr_attrinf.csv`                              | `acc_att_race`, `auc_race`, `acc_att_sex`, `auc_sex` (per `model_role`: baseline vs defended)                                                                                                                               | Table 6                           |
+| E4         | `e4_outrem_modext.csv`                              | `stolen_test_acc`, `fidelity`, `correct_fidelity` (per `percent`)                                                                                                                                                           | Figures 3 and 4                   |
+| E5         | `e5_textbadnets/onion.csv`, `e5_textbadnets/dp.csv` | `undef_asr` against `def_asr` (ONION) and `dp_asr` (DP-SGD); the `*_test_acc` columns                                                                                                                                       | Table 3 (ONION), Table 4 (DP-SGD) |
+
+For example, a full E2 run:
+
+```bash
+uv run python artifact/experiments/e2_advtr_modext/run.py --level full
+```
+
+writes `artifact/runs/full/e2_advtr_modext.csv`, one row per `(dataset, seed, epsilon)` cell.
+Read `defended_robust_acc` and the surrogate's `fidelity`, then compare them
+against the matching cells of Table 7 in the paper.
+
+E5 is the one experiment whose CSVs already ship in `results/`
+(`artifact/results/e5_textbadnets/onion.csv` and `dp.csv`), so its numbers can be
+read and compared without a run.
 
 ## Claim to evidence
 
@@ -156,8 +187,8 @@ artifact/
     e4_outrem_modext/      #   outlier removal x model ownership
     e5_textbadnets/        #   text backdoor x ONION and x DP-SGD
   make/                    # one wrapper per paper table/plot; make_all.py runs them
-  tables/                  # reference .tex; generated/ holds regenerated output
-  plots/                   # reference .png; generated/ holds regenerated output
+  tables/generated/        # regenerated .tex (gitignored)
+  plots/generated/         # regenerated .png (gitignored)
   results/                 # committed ground-truth CSVs (E5 ships data)
   runs/                    # reviewer re-runs and author sweeps (gitignored)
   tests/                   # unit/ (pure logic) and integration/ (tiny end-to-end)

@@ -21,8 +21,9 @@ __pycache__/
 
 # Generated tables and plots are reproducible from the committed CSVs by
 # `make/make_all.py` and are ephemeral, so they are not committed: the shipped
-# ground truth is `tables/*.tex` + `plots/*.png` + `results/`, and the
-# reproducibility guarantee is the test suite, not a checked-in generated file.
+# ground truth is `results/`, and the reproducibility guarantee is the test
+# suite, not a checked-in generated file. The paper's own tables and figures are
+# not mirrored here; compare a run's numbers against the paper itself.
 # These re-ignore a subdirectory of the `!tables/`/`!plots/` dirs above (a later
 # pattern wins, and the parent dir is included, so the subdir can be re-ignored).
 tables/generated/

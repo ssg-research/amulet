@@ -13,12 +13,12 @@ as the bare value, which is exactly the shape the paper's DP-SGD block has. A
 reviewer who re-runs one seed gets a one-seed table with the same structure,
 never a crash and never a fabricated error bar.
 
-**Output goes to `tables/generated/`, not over the reference table.** The
-reference in `artifact/tables/` is the paper's own file and stays the fixed
-point everything is compared against. Overwriting it in place would make the
-comparison vacuous, and would destroy paper numbers the committed data does not
-yet cover (the DP sweep is still running; see the P1 coverage report, which this
-script re-prints on every run).
+**Output goes to `tables/generated/`.** The paper's own tables are not mirrored
+in this repository, so the fixed point a rendered table is compared against is
+the paper itself: this script's blocks correspond to Table 3 (ONION) and Table 4
+(DP-SGD). The committed data does not yet cover every cell (the DP sweep is
+still running; see the coverage report, which this script re-prints on every
+run).
 """
 
 from __future__ import annotations

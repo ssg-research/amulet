@@ -19,9 +19,9 @@ capacity simply has no data yet. The two are indistinguishable in the `.tex`, so
 `coverage()` reports which cells are backed by data and which are missing, and
 `main` prints it on every run.
 
-**Output goes to `tables/generated/`, not over the reference table.** The
-reference in `artifact/tables/` is the paper's own file and stays the fixed
-point everything is compared against (plan §7.1).
+**Output goes to `tables/generated/`.** The paper's own tables are not mirrored
+in this repository, so the fixed point a rendered table is compared against is
+the paper itself (Table 5).
 """
 
 from __future__ import annotations

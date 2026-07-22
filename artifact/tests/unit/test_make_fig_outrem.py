@@ -6,8 +6,9 @@ download. The numeric contract is `series_for`, checked by eye; the drawing
 contract is the axis labels, the two legends, and a non-empty PNG on disk.
 
 E4 is a reconstruction with no source CSV, so these tests pin the figures'
-*structure* against the reference PNGs, never their pixel values; numeric
-reproduction waits on an L3 run (plan S13.3).
+*structure* (axis labels, legends, a non-empty PNG), never their pixel values.
+The paper's own figures are not mirrored in this repository, so numeric
+reproduction is a comparison against the paper's Figures 3 and 4 after an L3 run.
 """
 
 from __future__ import annotations

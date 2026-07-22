@@ -16,8 +16,9 @@ column.
 baseline's robust-accuracy columns are structurally blank: there is no defended
 model to perturb.
 
-**Output goes to `tables/generated/`, never over the reference** (plan S7.1).
-Numbers must match; formatting is free.
+**Output goes to `tables/generated/`.** The paper's own tables are not mirrored
+in this repository, so the fixed point a rendered table is compared against is
+the paper itself (Table 6). Numbers must match; formatting is free.
 """
 
 from __future__ import annotations

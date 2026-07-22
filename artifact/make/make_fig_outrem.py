@@ -13,12 +13,12 @@ clean baseline $\\modelstd$) and differ only in the solid series:
 
 * `fig_outrem_fid`: dashed = $Acc_{te}$ of $\\modeldef$, solid = $Fid$ of the
   stolen model. Error bars from the per-seed standard error.
-* `fig_outrem_cor_fid`: dashed = $Acc_{te}$, solid = $Fid_{cor}$. The reference
-  omits error bars here for readability, so this figure does too.
+* `fig_outrem_cor_fid`: dashed = $Acc_{te}$, solid = $Fid_{cor}$. The paper's
+  figure omits error bars here for readability, so this figure does too.
 
-Both are written as PNG (matching the committed reference format) and PDF (what
-the paper's `\\includegraphics` pulls). A cell aggregates over whatever seeds the
-CSV holds; a dataset with no rows is simply absent from the plot.
+These reproduce the paper's Figures 3 and 4. Both are written as PNG and PDF
+(what the paper's `\\includegraphics` pulls). A cell aggregates over whatever
+seeds the CSV holds; a dataset with no rows is simply absent from the plot.
 """
 
 from __future__ import annotations

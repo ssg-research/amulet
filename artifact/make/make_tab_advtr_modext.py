@@ -14,10 +14,9 @@ several as `mean ~$\\pm$~ SE`, one as the bare value. The baseline's clean test
 accuracy is epsilon-independent, so it is pooled once per seed from every row of
 that dataset.
 
-**Output goes to `tables/generated/`, never over the reference.** The reference in
-`artifact/tables/` stays the fixed point comparisons are made against (plan S7.1).
-Numbers must match; formatting is free, so this does not chase byte-for-byte
-equality with the reference's rule layout.
+**Output goes to `tables/generated/`.** The paper's own tables are not mirrored
+in this repository, so the fixed point a rendered table is compared against is
+the paper itself (Table 7).
 """
 
 from __future__ import annotations

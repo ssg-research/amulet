@@ -15,10 +15,9 @@ clean baseline $\\modelstd$ (removal 0) followed by 10/20/30/40%.
 **Seed-count agnostic.** A cell aggregates over whatever seeds the CSV holds:
 several as `mean ~$\\pm$~ SE`, one as the bare value, none as a dash.
 
-**Output goes to `tables/generated/`, never over the reference.** The reference
-in `artifact/tables/` stays the fixed point comparisons are made against (plan
-S7.1). Numbers must match; formatting is free, so this does not chase
-byte-for-byte equality with the reference's rule layout.
+**Output goes to `tables/generated/`.** This table is internal to the artifact:
+the paper reports E4 as Figures 3 and 4, rendered by `make_fig_outrem.py`, so
+there is no paper table to compare it against.
 """
 
 from __future__ import annotations
