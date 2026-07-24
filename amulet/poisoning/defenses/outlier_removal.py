@@ -121,16 +121,34 @@ class OutlierRemoval(PoisoningDefense):
         shapley_scores = self._knn_shapley(
             train_features, train_targets, test_features, test_targets, k=5
         )
-        normalized_scores = (shapley_scores - min(shapley_scores)) / (
-            max(shapley_scores) - min(shapley_scores)
-        )
+        score_range = max(shapley_scores) - min(shapley_scores)
 
         print("Retraining Model")
-        # Remove the lowest-scoring self.percent% (outliers have low Shapley values)
-        shap_val_thresh = np.percentile(normalized_scores, self.percent)
-        mask = np.argwhere(normalized_scores >= shap_val_thresh)
-        train_inputs_new = np.squeeze(train_inputs[mask])
-        train_targets_new = np.squeeze(train_targets[mask])
+        # Remove the lowest-scoring self.percent% (outliers have low Shapley values).
+        # `argwhere` returns a column of kept indices ([k, 1]); flattening it to a
+        # 1-D index array selects the kept rows without adding a spurious axis, so
+        # each sample keeps its full shape. An earlier `np.squeeze` here removed
+        # that axis but also collapsed the size-1 channel of single-channel images
+        # ([k, 1, H, W] -> [k, H, W]), which the retrain conv then rejected.
+        if score_range == 0:
+            # Every train point scored identically, so the scores rank nothing and
+            # no point is an outlier relative to another. Normalizing here would
+            # divide by zero: the scores would all become NaN, `>= NaN` is False
+            # for every point, and the retrain set would come out empty. Keep the
+            # whole split instead. kNN-Shapley ties like this whenever label
+            # agreement is constant across the test split, which a single-class
+            # test split guarantees and a small one makes likely.
+            print(
+                "kNN Shapley scores are all equal; no outliers to remove, "
+                "retraining on the full training set"
+            )
+            keep_indices = np.arange(len(train_targets))
+        else:
+            normalized_scores = (shapley_scores - min(shapley_scores)) / score_range
+            shap_val_thresh = np.percentile(normalized_scores, self.percent)
+            keep_indices = np.argwhere(normalized_scores >= shap_val_thresh).flatten()
+        train_inputs_new = train_inputs[keep_indices]
+        train_targets_new = train_targets[keep_indices]
 
         train_data_new = TensorDataset(
             torch.from_numpy(np.array(train_inputs_new)).type(torch.float),
