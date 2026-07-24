@@ -1,15 +1,15 @@
-"""Render `tab_attinf_advrtr` (E3) from the E3 result CSV.
+"""Render `tab_advtr_attrinf` (E3) from the E3 result CSV.
 
-    python artifact/make/make_tab_attinf_advrtr.py
+    python artifact/make/make_tab_advtr_attrinf.py
 
 Reads `artifact/runs/full/e3_advtr_attrinf.csv` and writes
-`artifact/tables/generated/tab_attinf_advrtr.tex`. A pure function of the CSV: no
-GPU, no model, no download (plan S13, decision 2).
+`artifact/tables/generated/tab_advtr_attrinf.tex`. A pure function of the CSV: no
+GPU, no model, no download.
 
 **Multi-dataset blocks.** One block per dataset (census, lfw), each a
 `Baseline ($\\modelstd$)` row measuring attribute inference against the clean
 model, plus one row per budget measuring it against the adversarially-trained
-$\\modeldef$. Both sensitive attributes (race and sex) get an accuracy and an AUC
+defended model. Both sensitive attributes (race and sex) get an accuracy and an AUC
 column.
 
 **Seed-count agnostic.** Cells aggregate over whatever seeds the CSV holds. The
@@ -44,7 +44,7 @@ from experiments.e3_advtr_attrinf.schemas import (
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
-TABLE_STEM = "tab_attinf_advrtr"
+TABLE_STEM = "tab_advtr_attrinf"
 
 _INDENT = " " * 8
 

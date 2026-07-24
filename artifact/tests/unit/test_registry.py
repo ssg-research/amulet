@@ -2,7 +2,7 @@
 
 The registry is the single source of truth mapping experiment IDs to modules, so
 the sweepers, the `make/` wrappers and the tests all iterate one list and cannot
-drift (plan §9). Resolution is lazy on purpose: importing the registry must not
+drift. Resolution is lazy on purpose: importing the registry must not
 import five experiment modules (and their torch/transformers stacks).
 """
 

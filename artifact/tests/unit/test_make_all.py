@@ -1,4 +1,4 @@
-"""Contract for the make registry and `make_all.py` (plan §9, P5).
+"""Contract for the make registry and `make_all.py`.
 
 The make registry is the single source of truth both `make_all.py` and these
 tests iterate, so a paper artifact cannot silently fall out of the regeneration
@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 _EXPECTED_ARTIFACTS = {
     "tab_attack_results",
     "tab_advtr_modext",
-    "tab_attinf_advrtr",
+    "tab_advtr_attrinf",
     "tab_outrem_modext",
     "fig_outrem",
     "tab_textbadnets_interactions",

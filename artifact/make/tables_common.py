@@ -1,10 +1,8 @@
 """Seed-count-agnostic cell aggregation shared by the interaction-table renderers.
 
-E2 and E3 both render multi-dataset blocks whose cells are means over whatever
-seeds a run's CSVs happen to contain: several seeds as
-`mean ~$\\pm$~ standard error`, one seed as the bare value, no data as a dash
-(plan S7.1, the table contract). That pooling logic is identical for both, so it
-lives here rather than in each `make_` script.
+Every renderer aggregates a cell over whatever seeds a run's CSVs contain:
+several seeds as `mean ~$\\pm$~ standard error`, one seed as the bare value, no
+data as a dash. That pooling logic lives here rather than in each `make_` script.
 
 Rendering stays a pure function of the CSV rows: no torch, no model, no GPU.
 """
@@ -43,23 +41,26 @@ def mean_and_standard_error(values: Sequence[float]) -> tuple[float, float]:
     return mean, statistics.stdev(values) / len(values) ** 0.5
 
 
-def format_cell(values: Sequence[float], precision: int = 2) -> str:
+def format_cell(values: Sequence[float], precision: int = 2, marker: str = "") -> str:
     """Render one table cell from the per-seed measurements behind it.
 
     Args:
         values: One measurement per seed. At least one.
         precision: Decimal places for the mean and the error.
+        marker: Text appended to the rendered cell, e.g. a footnote marker for a
+            collapsed DP-SGD cell (E5). Empty for an ordinary cell.
 
     Returns:
-        `"57.17~$\\pm$~0.15"` for several seeds, `"57.17"` for one.
+        `"57.17~$\\pm$~0.15"` for several seeds, `"57.17"` for one, each with any
+        `marker` appended.
 
     Raises:
         ValueError: If `values` is empty.
     """
     mean, standard_error = mean_and_standard_error(values)
     if len(values) == 1:
-        return f"{mean:.{precision}f}"
-    return f"{mean:.{precision}f}~$\\pm$~{standard_error:.{precision}f}"
+        return f"{mean:.{precision}f}{marker}"
+    return f"{mean:.{precision}f}~$\\pm$~{standard_error:.{precision}f}{marker}"
 
 
 def pooled_by_seed(

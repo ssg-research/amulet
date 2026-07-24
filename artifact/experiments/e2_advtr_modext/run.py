@@ -1,10 +1,10 @@
 """Uniform entry point for E2, Adversarial Training x Model Ownership.
 
-Registry `e2_advtr_modext`. For each requested (dataset, seed, epsilon) the
-sweep trains a clean baseline $\\modelstd$ (once per dataset/seed, reused across
-budgets), adversarially trains a defended model $\\modeldef$ at the budget,
-distils a stolen surrogate $\\modelstol$ from $\\modeldef$, and records both
-models' clean and robust accuracies and the surrogate's fidelity:
+Registry `e2_advtr_modext`. For each requested (dataset, seed, epsilon) the sweep
+trains a clean baseline (once per dataset/seed, reused across budgets),
+adversarially trains a defended model at the budget, distils a surrogate from the
+defended model, and records both models' clean and robust accuracies and the
+surrogate's fidelity:
 
     python artifact/experiments/e2_advtr_modext/run.py --level test
     python artifact/experiments/e2_advtr_modext/run.py --level full --datasets census,lfw
@@ -12,177 +12,35 @@ models' clean and robust accuracies and the surrogate's fidelity:
 
 `run(...)` is the same path under a callable name, used by the level sweepers and
 the tiny end-to-end test. `--level test` substitutes tiny synthetic tabular data
-for every dataset, so the fast tier needs no download.
-
-The old `advtr_modelext.py:189` overwrote the adversarially-trained model with
-the plain target before evaluation. We do not: $\\modelstd$ and $\\modeldef$ are
-separate checkpoints, and every "defended" measurement here is $\\modeldef$'s.
+for every dataset, so the fast tier needs no download. The clean and defended
+models are separate checkpoints, so every "defended" measurement is the defended
+model's, not the clean one's.
 """
 
 from __future__ import annotations
 
 import sys
 import time
-from dataclasses import dataclass
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import argparse
-from typing import TYPE_CHECKING
 
 import torch
-import torch.nn as nn
 
+from common import run_context, training
+from common.cli import parse_seeds
 from common.config import LEVEL_NAMES, get_level
-from experiments import shared_targets as targets
-from experiments.e1_attack_baselines.run import parse_seeds
+from experiments.e2_advtr_modext import train_targets
 from experiments.e2_advtr_modext.schemas import CAPACITY, DATASETS, EPSILONS, SCHEMA
-
-if TYPE_CHECKING:
-    from amulet.datasets import AmuletDataset
-    from common.models import ModelSpec
+from experiments.e2_advtr_modext.train_targets import BATCH_SIZE, PAPER_EPOCHS
 
 EXPERIMENT_ID = "e2_advtr_modext"
 
-# The paper trains the E2 targets for 100 epochs (`advtr_modelext.py` default);
-# `full` defers to this via `with_defaults`.
-PAPER_EPOCHS = 100
-
-# Batch size from the old `advtr_modelext.py` default.
-BATCH_SIZE = 256
-
-
-@dataclass(frozen=True)
-class ModelBundle:
-    """The three models one E2 cell trains, plus the specs that keyed them.
-
-    Exposed as a seam so a test can confirm the defended model is genuinely the
-    adversarially-trained one, distinct from the clean target (plan S5).
-
-    Attributes:
-        clean: The clean baseline $\\modelstd$.
-        defended: The adversarially-trained $\\modeldef$.
-        stolen: The surrogate $\\modelstol$ distilled from $\\modeldef$.
-        clean_spec: The spec that keyed `clean`.
-        defended_spec: The spec that keyed `defended`.
-    """
-
-    clean: nn.Module
-    defended: nn.Module
-    stolen: nn.Module
-    clean_spec: ModelSpec
-    defended_spec: ModelSpec
-
-
-def build_models(
-    ctx: targets.RunContext, dataset: str, epsilon: float, capacity: str = CAPACITY
-) -> tuple[ModelBundle, AmuletDataset]:
-    """Train (or load) the clean, defended and stolen models for one cell.
-
-    Args:
-        ctx: The run context (level, seed, device, cache directory).
-        dataset: The dataset name.
-        epsilon: The perturbation budget (the swept value, which keys the row).
-        capacity: The capacity tier.
-
-    Returns:
-        The three models with their specs, and the loaded dataset.
-    """
-    from amulet.unauth_model_ownership.attacks import ModelExtraction
-
-    data = ctx.data(dataset)
-    num_features, num_classes = data.num_features, data.num_classes
-    batch_size = targets.batch_for(ctx.level, BATCH_SIZE)
-    applied_epsilon = targets.epsilon_for(ctx.level, epsilon)
-    iterations = targets.pgd_iterations_for(ctx.level)
-
-    target_set, adversary_set = targets.dataset_adversary_split(
-        data.train_set, ctx.seed
-    )
-    target_loader = targets.loader_for(target_set, batch_size)
-    adversary_loader = targets.loader_for(adversary_set, batch_size)
-
-    clean_spec = targets.clean_target_spec(
-        ctx.level,
-        dataset,
-        ctx.seed,
-        capacity,
-        num_features,
-        num_classes,
-        batch_size,
-        targets.DATASET_SPLIT_TARGET,
-    )
-    defended_spec = targets.defended_target_spec(
-        ctx.level,
-        dataset,
-        ctx.seed,
-        capacity,
-        num_features,
-        num_classes,
-        batch_size,
-        epsilon,
-        targets.DATASET_SPLIT_TARGET,
-    )
-    stolen_spec = targets.stolen_model_spec(
-        ctx.level,
-        dataset,
-        ctx.seed,
-        capacity,
-        num_features,
-        num_classes,
-        batch_size,
-        epsilon,
-        targets.DATASET_SPLIT_ADVERSARY,
-    )
-
-    clean = ctx.get_or_train(
-        clean_spec,
-        num_features,
-        num_classes,
-        lambda model: targets.train_clean(
-            model, target_loader, ctx.device, clean_spec.epochs
-        ),
-    )
-    defended = ctx.get_or_train(
-        defended_spec,
-        num_features,
-        num_classes,
-        lambda model: targets.adversarially_train(
-            model,
-            target_loader,
-            ctx.device,
-            defended_spec.epochs,
-            applied_epsilon,
-            iterations,
-        ),
-    )
-
-    def distil(model: nn.Module) -> nn.Module:
-        # The surrogate is distilled from the DEFENDED model, never the clean
-        # target: the adversary steals the robust model (plan S5, confirmed
-        # against the committed CSVs where stolen accuracy tracks $\\modeldef$).
-        extraction = ModelExtraction(
-            defended,
-            model,
-            torch.optim.Adam(model.parameters(), lr=1e-3),
-            adversary_loader,
-            ctx.device,
-            stolen_spec.epochs,
-            loss_type="mse",
-        )
-        return extraction.attack()
-
-    stolen = ctx.get_or_train(stolen_spec, num_features, num_classes, distil)
-
-    return (
-        ModelBundle(clean, defended, stolen, clean_spec, defended_spec),
-        data,
-    )
-
 
 def run_cell(
-    ctx: targets.RunContext, dataset: str, epsilon: float, output_dir: Path
+    ctx: run_context.RunContext, dataset: str, epsilon: float, output_dir: Path
 ) -> list[dict[str, object]]:
     """Run one (dataset, seed, epsilon) cell and append its result row.
 
@@ -209,23 +67,22 @@ def run_cell(
         return []
 
     started = time.perf_counter()
-    bundle, data = build_models(ctx, dataset, epsilon)
-    batch_size = targets.batch_for(ctx.level, BATCH_SIZE)
-    applied_epsilon = targets.epsilon_for(ctx.level, epsilon)
-    iterations = targets.pgd_iterations_for(ctx.level)
-    test_loader = targets.loader_for(data.test_set, batch_size)
+    bundle, data = train_targets.build_models(ctx, dataset, epsilon)
+    batch_size = run_context.batch_for(ctx.level, BATCH_SIZE)
+    applied_epsilon = run_context.epsilon_for(ctx.level, epsilon)
+    iterations = run_context.pgd_iterations_for(ctx.level)
+    test_loader = training.loader_for(data.test_set, batch_size)
 
     from amulet.utils import get_accuracy
 
-    # Every "defended" number is measured on $\\modeldef$; the clean baseline
-    # test accuracy is $\\modelstd$'s. Were these the same object (the old bug),
-    # the two test accuracies would be identical by construction.
+    # Every "defended" number is measured on the defended model, the target
+    # accuracy on the clean baseline; they are distinct checkpoints.
     target_test_acc = get_accuracy(bundle.clean, test_loader, ctx.device)
     defended_test_acc = get_accuracy(bundle.defended, test_loader, ctx.device)
-    target_robust_acc = targets.robust_accuracy(
+    target_robust_acc = training.robust_accuracy(
         bundle.clean, test_loader, ctx.device, batch_size, applied_epsilon, iterations
     )
-    defended_robust_acc = targets.robust_accuracy(
+    defended_robust_acc = training.robust_accuracy(
         bundle.defended,
         test_loader,
         ctx.device,
@@ -245,9 +102,9 @@ def run_cell(
         "training_size": ctx.level.train_fraction,
         "epochs": bundle.defended_spec.epochs,
         "batch_size": batch_size,
-        "adv_train_fraction": targets.ADVERSARY_FRACTION,
+        "adv_train_fraction": train_targets.ADVERSARY_FRACTION,
         "epsilon": epsilon,
-        "step_size": targets.step_size_for(applied_epsilon),
+        "step_size": training.step_size_for(applied_epsilon),
         "iterations": iterations,
         "target_test_acc": target_test_acc,
         "defended_test_acc": defended_test_acc,
@@ -280,8 +137,8 @@ def run(
         datasets: Datasets to sweep, a subset of `schemas.DATASETS`.
         epsilons: Budgets to sweep, a subset of `schemas.EPSILONS`.
         output_dir: Directory the result CSV goes in. None keeps the per-level
-            default from `default_output_dir`: `runs/<level>/` for every level,
-            never the committed `results/` tree.
+            default from `default_output_dir`: each level's own `runs/<level>/`
+            subtree, so a cheap run never overwrites a `full` run's numbers.
         cache_dir: Checkpoint cache directory. None keeps the per-level default.
         device: Torch device. None picks CUDA when available, else CPU.
 
@@ -305,22 +162,38 @@ def run(
     directory = (
         output_dir
         if output_dir is not None
-        else targets.default_output_dir(config, EXPERIMENT_ID)
+        else run_context.default_output_dir(config, EXPERIMENT_ID)
     )
     directory.mkdir(parents=True, exist_ok=True)
     resolved_cache = (
-        cache_dir if cache_dir is not None else targets.default_cache_dir(config)
+        cache_dir if cache_dir is not None else run_context.default_cache_dir(config)
     )
 
+    from common import progress
+
+    sweep = [
+        (seed, dataset, epsilon)
+        for seed in config.seeds
+        for dataset in datasets
+        for epsilon in epsilons
+    ]
+
     rows: list[dict[str, object]] = []
-    for seed in config.seeds:
-        targets.seed_everything(seed)
-        ctx = targets.RunContext(
-            level=config, seed=seed, device=resolved_device, cache_dir=resolved_cache
-        )
-        for dataset in datasets:
-            for epsilon in epsilons:
-                rows.extend(run_cell(ctx, dataset, epsilon, directory))
+    ctx: run_context.RunContext | None = None
+    current_seed: int | None = None
+    for seed, dataset, epsilon in progress.cells(sweep, EXPERIMENT_ID):
+        if seed != current_seed:
+            training.seed_everything(seed)
+            ctx = run_context.RunContext(
+                level=config,
+                seed=seed,
+                device=resolved_device,
+                cache_dir=resolved_cache,
+            )
+            current_seed = seed
+        assert ctx is not None
+        progress.log(f"[{EXPERIMENT_ID}] {dataset} eps={epsilon:g} seed={seed}")
+        rows.extend(run_cell(ctx, dataset, epsilon, directory))
     return rows
 
 

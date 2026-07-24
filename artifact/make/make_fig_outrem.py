@@ -4,15 +4,15 @@
 
 Reads `artifact/runs/full/e4_outrem_modext.csv` and writes two figures into
 `artifact/plots/generated/`, mirroring the `tables/generated/` convention for
-tables (plan S7.1). Rendering is a pure function of the CSV: no GPU, no model,
-no download, seconds (plan S13, decision 2). The table renderer
+tables. Rendering is a pure function of the CSV: no GPU, no model,
+no download, seconds. The table renderer
 (`make_tab_outrem_modext.py`) reads the *same* CSV.
 
 The two figures share one x-axis (percentage of outliers removed, `0` being the
-clean baseline $\\modelstd$) and differ only in the solid series:
+clean baseline) and differ only in the solid series:
 
-* `fig_outrem_fid`: dashed = $Acc_{te}$ of $\\modeldef$, solid = $Fid$ of the
-  stolen model. Error bars from the per-seed standard error.
+* `fig_outrem_fid`: dashed = $Acc_{te}$ of the defended model, solid = $Fid$ of
+  the surrogate. Error bars from the per-seed standard error.
 * `fig_outrem_cor_fid`: dashed = $Acc_{te}$, solid = $Fid_{cor}$. The paper's
   figure omits error bars here for readability, so this figure does too.
 
@@ -63,7 +63,7 @@ _TEST_ACC_COLUMN = "defended_test_acc"
 
 # Dataset -> colour, chosen to match the reference figures (census blue, lfw
 # green, fmnist orange, cifar red). Cosmetic; the qualitative structure is what
-# the reconstruction reproduces (plan S13.3).
+# the reconstruction reproduces.
 _DATASET_COLOR: dict[str, str] = {
     "census": "C0",
     "lfw": "C2",

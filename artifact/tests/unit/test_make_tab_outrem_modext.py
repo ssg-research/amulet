@@ -1,4 +1,4 @@
-"""Contract for the E4 table renderer (plan S8 Level 1, S7.1 table contract).
+"""Contract for the E4 table renderer.
 
 Rendering is a pure function of the result CSV, so every case is a
 hand-checked tiny CSV in, an exact `.tex` fragment out: no GPU, no model, no
@@ -6,7 +6,7 @@ download. Numbers are chosen so each mean and standard error is checkable by
 eye. A two-seed cell of {94, 96} has mean 95.00 and standard error 1.00.
 
 E4 is a reconstruction: no original CSV survived, so numeric reproduction waits
-on an L3 run (plan S13.3). These tests pin the renderer's *structure*, never its
+on an L3 run. These tests pin the renderer's *structure*, never its
 values, so a completed sweep drops straight in. This table is internal to the
 artifact; the paper reports E4 as Figures 3 and 4.
 """
@@ -94,7 +94,7 @@ def _census_two_seeds(directory: Path) -> Path:
 
 
 def test_the_baseline_column_is_a_real_measurement(tmp_path: Path) -> None:
-    """The $\\modelstd$ column (removal 0) carries real numbers, not blanks.
+    """The clean-baseline column (removal 0) carries real numbers, not blanks.
 
     Unlike E2's baseline row, E4's zero-removal column is a full model-extraction
     of the clean model: every one of the four metric rows has a value in it.
@@ -114,7 +114,7 @@ def test_the_baseline_column_is_a_real_measurement(tmp_path: Path) -> None:
 
 
 def test_a_single_seed_cell_has_no_error_term(tmp_path: Path) -> None:
-    """One seed has no spread, so a removal cell is the bare value (plan S1)."""
+    """One seed has no spread, so a removal cell is the bare value."""
     path = _write(
         tmp_path,
         [
@@ -184,10 +184,10 @@ def test_the_rendered_table_carries_one_row_per_dataset_and_percentage(
 ) -> None:
     """Every (dataset, removal percentage) cell becomes exactly one row.
 
-    E4 is a reconstruction with no source CSV, so this pins structure, not
-    values. This table is internal to the artifact: the paper reports E4 as
-    figures, so there is no paper table to compare against and the shape is
-    asserted against the renderer's own declared layout.
+    This pins the table's structure against the renderer's own declared layout:
+    the four per-dataset metric rows across the clean-baseline column and the
+    four removal percentages, matching the paper's Outlier Removal x Model
+    Ownership table.
     """
     from make.make_tab_outrem_modext import _PREAMBLE
 

@@ -1,7 +1,6 @@
 """Tests for common/models.py.
 
-`ModelSpec` is the artifact's answer to "share models aggressively but safely"
-(plan §6). The cache key is content-addressed on every weight-affecting field,
+`ModelSpec` is the artifact's answer to "share models aggressively but safely". The cache key is content-addressed on every weight-affecting field,
 so two experiments needing the identical target model collide on one checkpoint
 and anything that diverges in any field cannot collide. The tests below pin both
 halves of that claim, plus the sidecar that makes the cache auditable.
@@ -211,6 +210,17 @@ def test_sidecar_is_human_readable_json_carrying_the_key(tmp_path: Path) -> None
     assert payload["key"] == BASE.key()
     assert payload["spec"]["dataset"] == "celeba"
     assert payload["spec"]["label_attribute"] == "Smiling"
+
+
+def test_get_or_train_leaves_no_temporary_files(tmp_path: Path) -> None:
+    # The checkpoint is published through a per-process temp file plus os.replace.
+    # A completed train must leave only the final .pt and .json in the cache, with
+    # no torn .tmp remnant, and the .pt must be a complete, loadable state dict.
+    _ = get_or_train(BASE, TinyNet, lambda m: m, cache_dir=tmp_path)
+
+    assert list(tmp_path.glob("*.tmp*")) == []
+    loaded = torch.load(checkpoint_path(BASE, cache_dir=tmp_path), weights_only=True)
+    assert "linear.weight" in loaded
 
 
 def test_sidecar_is_only_written_alongside_a_real_checkpoint(tmp_path: Path) -> None:

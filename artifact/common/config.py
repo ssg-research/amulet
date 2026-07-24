@@ -1,14 +1,13 @@
 """Verification-level presets shared by every experiment.
 
-The artifact is verifiable at three escalating levels (plan §8):
+The artifact is verifiable at three escalating levels:
 
 * `test` — does the script *work*? Tiny data, tiny model, one epoch, CPU.
 * `smoke` — is the experiment *sound*? Real architectures, one epoch, a small
   fraction of *both* splits, and every repeated-work loop shrunk to its floor
   (shadow bank, inversion steps, PGD chain, E5's poison-rate grid); minutes on
-  one GPU. Only `full` reads a whole split or runs a paper-sized loop, so a knob
-  that reduces a level's cost is gated on `train_fraction < 1.0`, not on
-  `tiny_model` (which fires only at `test`).
+  one GPU. A knob that reduces a level's cost is gated on `train_fraction < 1.0`,
+  so it fires at `smoke` too, not on `tiny_model` (which fires only at `test`).
 * `full` — do we reproduce the paper? Paper settings, one seed by default.
 
 `full` deliberately leaves `epochs` unset: the paper epoch count differs per

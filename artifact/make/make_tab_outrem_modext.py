@@ -4,20 +4,21 @@
 
 Reads `artifact/runs/full/e4_outrem_modext.csv` and writes
 `artifact/tables/generated/tab_outrem_modext.tex`. Rendering is a pure function
-of the CSV: no GPU, no model, no download, seconds (plan S13, decision 2). The
+of the CSV: no GPU, no model, no download, seconds. The
 figures share this same CSV through `make_fig_outrem.py`.
 
 **Multi-dataset blocks.** One `\\multicolumn` block per dataset (census, lfw,
-fmnist, cifar), each four rows deep ($Acc_{te}$ of $\\modeldef$, then the stolen
-surrogate's $Acc_{te}$, $Fid$ and $Fid_{cor}$) across five removal columns: the
-clean baseline $\\modelstd$ (removal 0) followed by 10/20/30/40%.
+fmnist, cifar), each four rows deep ($Acc_{te}$ of the defended model, then the surrogate's
+$Acc_{te}$, $Fid$ and $Fid_{cor}$) across five removal columns: the clean baseline
+(removal 0) followed by 10/20/30/40%.
 
 **Seed-count agnostic.** A cell aggregates over whatever seeds the CSV holds:
 several as `mean ~$\\pm$~ SE`, one as the bare value, none as a dash.
 
-**Output goes to `tables/generated/`.** This table is internal to the artifact:
-the paper reports E4 as Figures 3 and 4, rendered by `make_fig_outrem.py`, so
-there is no paper table to compare it against.
+**Output goes to `tables/generated/`.** This reproduces the paper's Table 8
+(Outlier Removal x Model Ownership), the tabular form of the same result its
+Figures 3 and 4 plot; `make_fig_outrem.py` renders those figures from this same
+CSV.
 """
 
 from __future__ import annotations

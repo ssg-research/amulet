@@ -1,11 +1,8 @@
-"""E1-poisoning: the BadNets backdoor on CelebA (row \\ref{poison}).
+"""E1 poisoning: the BadNets backdoor on CelebA.
 
-Ports the old `experiments/attacks/run_poisoning.py`. Two targets are trained: a
-clean baseline $\\modelstd$ and a backdoored $\\modelpois$ on data `BadNets` has
-poisoned. Each is scored on both the clean and the triggered test set, giving
-the four accuracies the table's poisoning block reports. The old script's
-`.attack(ds)` / `.attack(ds, mode="test")` are now `poison_train` / `poison_test`
-(the unified poisoning ABC, per AGENTS.md).
+Trains a clean target and a backdoored target (on BadNets-poisoned data), and
+scores each on the clean and the triggered test set, giving the four accuracies
+the poisoning block reports.
 """
 
 from __future__ import annotations
@@ -17,7 +14,8 @@ import torch.nn as nn
 
 from amulet.poisoning.attacks import BadNets
 from amulet.utils import get_accuracy
-from experiments.e1_attack_baselines import shared
+from common import training
+from experiments.e1_attack_baselines import context, train_targets
 from experiments.e1_attack_baselines.schemas import POISONING_SCHEMA
 
 if TYPE_CHECKING:
@@ -28,7 +26,7 @@ SCHEMA = POISONING_SCHEMA
 
 
 def run_cell(
-    ctx: shared.RunContext, capacity: str, output_dir: Path
+    ctx: context.RunContext, capacity: str, output_dir: Path
 ) -> list[dict[str, object]]:
     """Train both targets if needed, score them, and append one result row.
 
@@ -42,7 +40,7 @@ def run_cell(
     """
     from common.io import append_row, row_exists
 
-    batch_size = shared.batch_for(ctx.level, shared.POISONING_BATCH_SIZE)
+    batch_size = context.batch_for(ctx.level, context.POISONING_BATCH_SIZE)
     output = output_dir / f"{CSV_STEM}.csv"
     if row_exists(
         output,
@@ -50,30 +48,30 @@ def run_cell(
         {
             "exp_id": ctx.seed,
             "capacity": capacity,
-            "poisoned_portion": shared.POISONED_PORTION,
+            "poisoned_portion": context.POISONED_PORTION,
         },
     ):
         return []
 
     started = time.perf_counter()
 
-    data = ctx.data(shared.DEFAULT_TARGET_ATTRIBUTE, ctx.level.train_fraction)
-    clean_spec = shared.poisoning_clean_spec(
+    data = ctx.data(context.DEFAULT_TARGET_ATTRIBUTE, ctx.level.train_fraction)
+    clean_spec = train_targets.poisoning_clean_spec(
         ctx.level, ctx.seed, capacity, data.num_features, data.num_classes
     )
-    backdoor_spec = shared.poisoning_backdoored_spec(
+    backdoor_spec = train_targets.poisoning_backdoored_spec(
         ctx.level, ctx.seed, capacity, data.num_features, data.num_classes
     )
 
     attack = BadNets(
-        shared.TRIGGER_LABEL, shared.POISONED_PORTION, ctx.seed, dataset_type="image"
+        context.TRIGGER_LABEL, context.POISONED_PORTION, ctx.seed, dataset_type="image"
     )
     poisoned_train = attack.poison_train(data.train_set)
     poisoned_test = attack.poison_test(data.test_set)
 
     def train_clean(model: nn.Module) -> nn.Module:
-        loader = shared.loader_for(data.train_set, batch_size)
-        return shared.train_with_sgd(
+        loader = training.loader_for(data.train_set, batch_size)
+        return training.train_with_sgd(
             model,
             loader,
             ctx.device,
@@ -85,10 +83,9 @@ def run_cell(
         )
 
     def train_backdoored(model: nn.Module) -> nn.Module:
-        loader = shared.loader_for(poisoned_train, batch_size)
-        # The original trains the backdoored target without a schedule (it builds
-        # one but never passes it), so this recipe leaves the learning rate flat.
-        return shared.train_with_sgd(
+        loader = training.loader_for(poisoned_train, batch_size)
+        # The backdoored target trains at a flat learning rate (no schedule).
+        return training.train_with_sgd(
             model,
             loader,
             ctx.device,
@@ -100,20 +97,20 @@ def run_cell(
             schedule=False,
         )
 
-    clean_model = shared.train_target_via_cache(
-        ctx, clean_spec, data.num_features, data.num_classes, train_clean
+    clean_model = ctx.get_or_train(
+        clean_spec, data.num_features, data.num_classes, train_clean
     )
-    backdoored_model = shared.train_target_via_cache(
-        ctx, backdoor_spec, data.num_features, data.num_classes, train_backdoored
+    backdoored_model = ctx.get_or_train(
+        backdoor_spec, data.num_features, data.num_classes, train_backdoored
     )
 
-    test_loader = shared.loader_for(data.test_set, batch_size)
-    poison_loader = shared.loader_for(poisoned_test, batch_size)
+    test_loader = training.loader_for(data.test_set, batch_size)
+    poison_loader = training.loader_for(poisoned_test, batch_size)
 
     row: dict[str, object] = {
-        **shared.leading_row(clean_spec, shared.DEFAULT_TARGET_ATTRIBUTE),
-        "poisoned_portion": shared.POISONED_PORTION,
-        "trigger_label": shared.TRIGGER_LABEL,
+        **context.leading_row(clean_spec, context.DEFAULT_TARGET_ATTRIBUTE),
+        "poisoned_portion": context.POISONED_PORTION,
+        "trigger_label": context.TRIGGER_LABEL,
         "std_test_acc": get_accuracy(clean_model, test_loader, ctx.device),
         "std_poison_acc": get_accuracy(clean_model, poison_loader, ctx.device),
         "pois_test_acc": get_accuracy(backdoored_model, test_loader, ctx.device),

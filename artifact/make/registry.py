@@ -3,7 +3,7 @@
 This is the make-side analogue of `common.registry` (which maps experiment IDs
 to runner modules): `make/make_all.py` and the test suite both iterate this one
 list, so neither can drift from the other, and a paper table or plot cannot be
-silently dropped from the regeneration sweep (plan §9).
+silently dropped from the regeneration sweep.
 
 Each `make_*` module exposes the same two entry points, so a driver treats all
 six alike:
@@ -80,11 +80,11 @@ MAKE_ARTIFACTS: tuple[MakeArtifact, ...] = (
         outputs=("tab_advtr_modext",),
     ),
     MakeArtifact(
-        artifact_id="tab_attinf_advrtr",
+        artifact_id="tab_advtr_attrinf",
         kind="table",
         experiment_id="e3_advtr_attrinf",
-        module="make.make_tab_attinf_advrtr",
-        outputs=("tab_attinf_advrtr",),
+        module="make.make_tab_advtr_attrinf",
+        outputs=("tab_advtr_attrinf",),
     ),
     MakeArtifact(
         artifact_id="tab_outrem_modext",

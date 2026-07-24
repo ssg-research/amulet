@@ -6,7 +6,7 @@
 Iterates the make registry (`make.registry.MAKE_ARTIFACTS`) and calls each
 `make_*` module's `generate`, writing tables into `tables/generated/` and plots
 into `plots/generated/`. Rendering is a pure function of the CSVs: no GPU, no
-model, no training, seconds (plan §9, §13, decision 2). An experiment whose CSV
+model, no training, seconds. An experiment whose CSV
 is absent (E1-E4 ship no data yet) renders a correct blank skeleton rather than
 crashing, and its per-artifact coverage is reported as MISSING.
 """

@@ -4,24 +4,22 @@ Cross-risk composition: DP-SGD (a membership-inference/privacy defense, reused) 
 while measuring a poisoning attack. Three conditions per cell: a clean baseline, an
 undefended poisoned target, and a DP-defended target trained on the same poisoned data
 with per-example clipping and noise. The defense acts at training time only — test inputs
-are unprocessed. Realizes H1 (attack) and H3 (unintended interaction). See
-experiments/text_backdoor_experiments.md in the repository root.
+are unprocessed.
 
 Per seed the clean baseline is trained once and whatever (poison rate, target epsilon)
 cells the level selects are swept internally (the undefended target is trained once per
 poison rate and reused across that rate's epsilon rows); one row per cell lands in
-`results/e5_textbadnets/dp.csv`. `exp_id` is the seed everywhere.
+`runs/<level>/e5_textbadnets/dp.csv`. `exp_id` is the seed everywhere.
 
     python artifact/experiments/e5_textbadnets/dp.py --level test
     python artifact/experiments/e5_textbadnets/dp.py --level full --seeds 0-4
 
-Levels come from `common.config` (plan §8). `test` is the old `--smoke` path: a tiny
-random-init target on CPU. `smoke` fine-tunes a real pretrained 1.1B Llama
-(`SMOKE_MODEL_NAME`) on a small fixed slice of the corpus (`SMOKE_MAX_TRAIN_SAMPLES`)
-for one epoch, and runs a single (poison rate, epsilon) cell (see `apply_level` for the
-model swap, the data cap, and why the grid collapses). `full` is the paper run: the 3B
-target over the whole grid and the whole corpus. Requires the LLM extra: `uv sync --extra cu130
---extra llm` (or `--extra cpu` for `--level test`).
+`test` runs a tiny random-init target on CPU. `smoke` fine-tunes a real pretrained
+1.1B Llama (`SMOKE_MODEL_NAME`) on a small fixed slice of the corpus for one epoch
+and a single (poison rate, epsilon) cell (see `apply_level` for the model swap, the
+data cap, and why the grid collapses). `full` is the paper run: the 3B target over
+the whole grid and corpus. Needs the LLM extra: `uv sync --extra cu130 --extra llm`
+(or `--extra cpu` for `--level test`).
 """
 
 from __future__ import annotations
@@ -55,8 +53,8 @@ from experiments.e5_textbadnets.llm_backdoor_common import (
     default_model_cache,
     get_or_train,
     load_sst2_seeded,
-    make_smoke_setup,
     make_target_factory,
+    make_test_setup,
     seed_all,
     train_target,
 )
@@ -229,6 +227,8 @@ def run_experiment(
     output: Path,
 ) -> list[dict[str, object]]:
     """Sweep the poison-rate x epsilon grid for one seed, appending a row per cell."""
+    from common import progress
+
     device = args.device
     portions = [float(p) for p in str(args.poisoned_portions).split(",")]
     target_epsilons = [float(e) for e in str(args.target_epsilons).split(",")]
@@ -277,11 +277,14 @@ def run_experiment(
     # is the cached checkpoint under cache_dir; nothing is written to the result CSV,
     # which holds measurements rather than progress.
     if args.clean_only:
+        progress.log(
+            f"    dp seed={args.exp_id}: clean baseline fine-tune (clean-only gate)"
+        )
         m = get_or_train(cache_dir, clean_key, _train_clean)
         if device.startswith("cuda"):
             torch.cuda.empty_cache()
-        print(
-            f"clean baseline ready exp_id={args.exp_id}: "
+        progress.log(
+            f"    dp seed={args.exp_id}: clean baseline ready "
             f"test_acc={m['clean_baseline_test_acc']:.2f} "
             f"(runtime {m['clean_train_runtime_sec']:.0f}s)"
         )
@@ -309,11 +312,14 @@ def run_experiment(
         if todo:
             pending[portion] = todo
     if not pending:
-        print(f"skip exp_id={args.exp_id}: all poison x epsilon cells already done")
+        progress.log(
+            f"    dp seed={args.exp_id}: all poison x epsilon cells already recorded"
+        )
         return []
 
     # Clean baseline (condition 1) — poison-independent, trained once per seed and shared
     # across every cell. Loaded from cache (populated by the clean-only gate) on a hit.
+    progress.log(f"    dp seed={args.exp_id}: clean baseline fine-tune")
     clean_metrics = get_or_train(cache_dir, clean_key, _train_clean)
     clean_baseline_test_acc = clean_metrics["clean_baseline_test_acc"]
     clean_runtime = clean_metrics["clean_train_runtime_sec"]
@@ -323,8 +329,12 @@ def run_experiment(
     rows: list[dict[str, object]] = []
     for portion in portions:
         if portion not in pending:
-            print(f"skip exp_id={args.exp_id} p={portion}: all epsilons already done")
+            progress.log(
+                f"    dp seed={args.exp_id} p={portion}: all epsilons already recorded"
+            )
             continue
+
+        progress.log(f"    dp seed={args.exp_id} p={portion}: undefended target")
 
         # Poison at this rate.
         attack = TextBadNets(
@@ -382,6 +392,9 @@ def run_experiment(
 
         for target_epsilon in pending[portion]:
             # DP-defended (condition 3).
+            progress.log(
+                f"    dp seed={args.exp_id} p={portion} target_eps={target_epsilon:g}: DP-SGD target"
+            )
             dp_model, epsilon, sigma, dp_runtime = train_dp(
                 args, factory, poisoned_train, target_epsilon, dp_lr, dp_epochs
             )
@@ -432,8 +445,8 @@ def run_experiment(
             }
             _ = append_row(output, DP_SCHEMA, row)
             rows.append(row)
-            print(
-                f"exp_id={args.exp_id} p={portion} target_eps={target_epsilon} "
+            progress.log(
+                f"    dp seed={args.exp_id} p={portion} target_eps={target_epsilon} "
                 f"(eps={epsilon:.2f} sigma={sigma:.3f}) | clean {clean_baseline_test_acc:.1f} | "
                 f"undef acc {undef_test_acc:.1f} asr {undef_asr:.1f} | dp acc {dp_test_acc:.1f} "
                 f"asr {dp_asr:.1f}"
@@ -506,7 +519,7 @@ def build_inputs(
         The dataset and a factory producing a fresh untrained target.
     """
     if config.tiny_model:
-        return make_smoke_setup()
+        return make_test_setup()
     data = load_sst2_seeded(
         args.exp_id,
         args.model_name,
@@ -539,13 +552,13 @@ def _cache_dir(args: argparse.Namespace, config: LevelConfig) -> Path:
 def default_output_dir(config: LevelConfig) -> Path:
     """Return the directory this level's result CSV belongs in.
 
-    Every level writes under `runs/<level>/<experiment_id>/`, never into the
-    committed `results/` tree: a `full` re-run must not clobber the shipped
-    ground truth, and a `smoke`/`test` run must not have its reduced-budget or
-    random-init numbers averaged into the paper's. The `runs/<level>/` tree
-    mirrors `results/` (E5's `onion.csv`/`dp.csv` live in a `<experiment_id>/`
-    subdirectory of both), so a `make_*` renderer reads either the same way.
-    Authors promote a completed `full` run by copying its CSVs into `results/`.
+    Every level writes under its own `runs/<level>/<experiment_id>/` subtree, so a
+    cheap `test` or `smoke` run never overwrites the `full` results a paper
+    comparison reads from, nor has its reduced-budget or random-init numbers
+    averaged into them. No result data ships with the repository; every number
+    comes from a run that lands here. E5's `onion.csv`/`dp.csv` live in a
+    `<experiment_id>/` subdirectory, the layout a `make_*` renderer reads with one
+    path rule at any level.
 
     Args:
         config: The level preset.
@@ -588,7 +601,7 @@ def run_level(
 
 def main(argv: list[str] | None = None) -> None:
     """Run the DP-SGD study over the level's seeds from the command line."""
-    from experiments.e5_textbadnets.run import parse_seeds
+    from common.cli import parse_seeds
 
     arguments = sys.argv[1:] if argv is None else argv
     args = parse_args(arguments)

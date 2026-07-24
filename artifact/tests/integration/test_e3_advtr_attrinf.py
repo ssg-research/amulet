@@ -1,4 +1,4 @@
-"""Tiny end-to-end run of E3, Adversarial Training x Attribute Inference (plan S8, L1).
+"""Tiny end-to-end run of E3, Adversarial Training x Attribute Inference.
 
 At `test` level a small dense net over synthetic tabular rows with two sensitive
 columns stands in for census/lfw, so the whole pipeline (split, train the clean
@@ -8,7 +8,7 @@ Assertions are "well-formed rows with in-range numbers, reproducibly", never
 paper accuracy.
 
 As in E2, the load-bearing test is that the defended model is genuinely the
-adversarially-trained one, distinct from the clean target (plan S5).
+adversarially-trained one, distinct from the clean target.
 """
 
 from __future__ import annotations
@@ -35,13 +35,13 @@ _UNIT_COLUMNS = ("auc_race", "auc_sex")
 
 def _context(tmp_path: Path, seed: int = 0):
     """Build a `test`-level run context over a throwaway cache."""
+    from common import run_context, training
     from common.config import get_level
-    from experiments import shared_targets as targets
 
     config = get_level("test").with_defaults(epochs=100)
     torch.set_num_threads(1)
-    targets.seed_everything(seed)
-    return targets.RunContext(
+    training.seed_everything(seed)
+    return run_context.RunContext(
         level=config, seed=seed, device="cpu", cache_dir=tmp_path / "models"
     )
 
@@ -106,17 +106,19 @@ def test_the_baseline_leaves_robust_columns_blank_and_budget_fills_them(
 
 @pytest.mark.integration
 def test_the_defended_model_is_not_the_clean_target(tmp_path: Path) -> None:
-    """The defended model is a distinct, differently-trained network (plan S5).
+    """The defended model is a distinct, differently-trained network.
 
     The old `advtr_attrinf.py` ran inference against the plain target whenever
-    adversarial training was off; here the epsilon rows use a $\\modeldef$ that is
-    a separate checkpoint with different weights from $\\modelstd$.
+    adversarial training was off; here the epsilon rows use a defended model that is
+    a separate checkpoint with different weights from the clean baseline.
     """
-    from experiments.e3_advtr_attrinf import run as e3
+    from experiments.e3_advtr_attrinf import train_targets
 
     ctx = _context(tmp_path)
-    clean, split, data, clean_spec = e3.clean_target(ctx, "census")
-    defended, defended_spec = e3.defended_target(ctx, "census", 0.01, split, data)
+    clean, split, data, clean_spec = train_targets.clean_target(ctx, "census")
+    defended, defended_spec = train_targets.defended_target(
+        ctx, "census", 0.01, split, data
+    )
 
     assert clean is not defended
     assert clean_spec.key() != defended_spec.key()

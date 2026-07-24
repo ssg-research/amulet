@@ -1,4 +1,4 @@
-"""Tiny end-to-end run of E5, the text-backdoor experiment (plan §8, Level 1).
+"""Tiny end-to-end run of E5, the text-backdoor experiment.
 
 The `test` level substitutes a two-layer randomly initialised Llama for the
 3B LoRA target and eight synthetic SST-2-shaped sentences for the real corpus,

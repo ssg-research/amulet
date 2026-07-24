@@ -1,4 +1,4 @@
-"""Tiny end-to-end run of E2, Adversarial Training x Model Ownership (plan S8, L1).
+"""Tiny end-to-end run of E2, Adversarial Training x Model Ownership.
 
 At `test` level a small dense net over a handful of synthetic tabular rows
 stands in for every dataset, so the whole pipeline (load, split, train the clean
@@ -8,7 +8,8 @@ download. What is asserted is "each cell produces a well-formed row with finite,
 in-range numbers, reproducibly", never paper accuracy.
 
 The load-bearing test here is `test_the_defended_model_is_not_the_clean_target`:
-it is what proves the old `advtr_modelext.py:189` bug is not reproduced.
+it proves the defended model is genuinely the adversarially-trained one, not the
+plain target measured as if defended.
 """
 
 from __future__ import annotations
@@ -35,13 +36,13 @@ _PERCENT_COLUMNS = (
 
 def _context(tmp_path: Path, seed: int = 0):
     """Build a `test`-level run context over a throwaway cache."""
+    from common import run_context, training
     from common.config import get_level
-    from experiments import shared_targets as targets
 
     config = get_level("test").with_defaults(epochs=100)
     torch.set_num_threads(1)
-    targets.seed_everything(seed)
-    return targets.RunContext(
+    training.seed_everything(seed)
+    return run_context.RunContext(
         level=config, seed=seed, device="cpu", cache_dir=tmp_path / "models"
     )
 
@@ -71,16 +72,14 @@ def test_test_level_run_writes_an_in_range_row(tmp_path: Path) -> None:
 def test_the_defended_model_is_not_the_clean_target(tmp_path: Path) -> None:
     """The defended model is a distinct, differently-trained network.
 
-    This is the correctness pin for plan S5: the old script did
-    `defended_model = target_model`, throwing the adversarially-trained model
-    away. Here the clean and defended models are separate objects, hash to
-    separate checkpoints, and hold different weights, so the "defended"
-    measurements cannot secretly be the plain target's.
+    The clean and defended models are separate objects, hash to separate
+    checkpoints, and hold different weights, so the "defended" measurements
+    cannot secretly be the plain target's.
     """
-    from experiments.e2_advtr_modext import run as e2
+    from experiments.e2_advtr_modext import train_targets
 
     ctx = _context(tmp_path)
-    bundle, _ = e2.build_models(ctx, "census", 0.01)
+    bundle, _ = train_targets.build_models(ctx, "census", 0.01)
 
     assert bundle.clean is not bundle.defended
     assert bundle.clean_spec.key() != bundle.defended_spec.key()
@@ -100,16 +99,19 @@ def test_the_defended_metrics_are_measured_on_the_defended_model(
     """The row's defended test accuracy is the defended model's, not the clean one's.
 
     A regression guard for the wiring: were the defended metric sourced from the
-    clean target (the old bug's effect), this equality would read the wrong
-    model whenever the two accuracies differ.
+    clean target, this equality would read the wrong model whenever the two
+    accuracies differ.
     """
     from amulet.utils import get_accuracy
-    from experiments import shared_targets as targets
+    from common import run_context, training
     from experiments.e2_advtr_modext import run as e2
+    from experiments.e2_advtr_modext import train_targets
 
     ctx = _context(tmp_path)
-    bundle, data = e2.build_models(ctx, "census", 0.01)
-    test_loader = targets.loader_for(data.test_set, targets.batch_for(ctx.level, 256))
+    bundle, data = train_targets.build_models(ctx, "census", 0.01)
+    test_loader = training.loader_for(
+        data.test_set, run_context.batch_for(ctx.level, 256)
+    )
 
     row = e2.run_cell(_context(tmp_path), "census", 0.01, tmp_path / "out")[0]
 
@@ -123,7 +125,7 @@ def test_the_defended_metrics_are_measured_on_the_defended_model(
 
 @pytest.mark.integration
 def test_the_clean_baseline_is_trained_once_across_budgets(tmp_path: Path) -> None:
-    """Two budgets share one clean checkpoint (plan S6): 1 clean + 2 defended + 2 stolen.
+    """Two budgets share one clean checkpoint: 1 clean + 2 defended + 2 stolen.
 
     Were the clean target keyed on epsilon, this would train it twice and leave
     six checkpoints; the epsilon-independent clean spec leaves five.

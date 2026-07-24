@@ -1,4 +1,4 @@
-"""End-to-end wiring of the P5 driver path at `test` level (plan §8 L1, §9, P5).
+"""End-to-end wiring of the P5 driver path at `test` level.
 
 This exercises the same two-step path `run_smoke.sh` runs — drive every
 experiment through `run_experiments`, then regenerate the artifacts from the run

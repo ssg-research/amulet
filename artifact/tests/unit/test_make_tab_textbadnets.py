@@ -1,4 +1,4 @@
-"""Contract for the E5 table renderer (plan §8, Level 1 unit tier).
+"""Contract for the E5 table renderer.
 
 Rendering is a pure function of the two E5 result CSVs, so every case
 here is a hand-checked tiny CSV in, an exact `.tex` string out — no GPU, no

@@ -1,9 +1,9 @@
 """Uniform entry point for E3, Adversarial Training x Attribute Inference.
 
 Registry `e3_advtr_attrinf`. For each dataset the sweep trains a clean baseline
-$\\modelstd$ once, runs attribute inference against it for the baseline row, then
-for each budget adversarially trains a $\\modeldef$, records both models' robust
-accuracies, and runs attribute inference against $\\modeldef$:
+once, runs attribute inference against it for the baseline row, then for each
+budget adversarially trains a defended model, records both models' robust
+accuracies, and runs attribute inference against the defended model:
 
     python artifact/experiments/e3_advtr_attrinf/run.py --level test
     python artifact/experiments/e3_advtr_attrinf/run.py --level full --datasets census
@@ -13,10 +13,8 @@ accuracies, and runs attribute inference against $\\modeldef$:
 tiny synthetic tabular data with two sensitive columns for every dataset.
 
 Both sensitive attributes are inferred together (census: race, sex; lfw: race,
-gender). The old `advtr_attrinf.py` ran inference against the plain target with
-adversarial training defaulted off; here the epsilon rows run it against the
-adversarially-trained $\\modeldef$, and $\\modelstd$/$\\modeldef$ are distinct
-checkpoints (plan S5).
+gender). The clean and defended models are distinct checkpoints, so the baseline
+row measures the clean model and each budget row the defended one.
 """
 
 from __future__ import annotations
@@ -32,11 +30,11 @@ import argparse
 from typing import TYPE_CHECKING
 
 import torch
-import torch.nn as nn
 
+from common import run_context, training
+from common.cli import parse_seeds
 from common.config import LEVEL_NAMES, get_level
-from experiments import shared_targets as targets
-from experiments.e1_attack_baselines.run import parse_seeds
+from experiments.e3_advtr_attrinf import train_targets
 from experiments.e3_advtr_attrinf.schemas import (
     BASELINE_EPSILON,
     CAPACITY,
@@ -46,19 +44,13 @@ from experiments.e3_advtr_attrinf.schemas import (
 )
 
 if TYPE_CHECKING:
+    import torch.nn as nn
+
     from amulet.datasets import AmuletDataset
     from common.models import ModelSpec
-    from experiments.shared_targets import AdversarySplit
+    from common.training import AdversarySplit
 
 EXPERIMENT_ID = "e3_advtr_attrinf"
-
-# Target training budget for the E3 datasets; `full` defers to this. The old
-# `advtr_attrinf.py` default (200) was tuned for a CelebA ResNet, not the tabular
-# census/lfw targets here, so we use the 100 the paper states for its main runs.
-PAPER_EPOCHS = 100
-
-# Batch size from the old `advtr_attrinf.py` default.
-BATCH_SIZE = 128
 
 # The two sensitive attributes the attack infers, in the order the reference
 # table's columns appear. Attribute index 0 is race for both datasets; index 1
@@ -75,78 +67,6 @@ class AttributeScores:
     auc_race: float
     acc_sex: float
     auc_sex: float
-
-
-def clean_target(
-    ctx: targets.RunContext, dataset: str, capacity: str = CAPACITY
-) -> tuple[nn.Module, AdversarySplit, AmuletDataset, ModelSpec]:
-    """Train (or load) the clean baseline $\\modelstd$ and the adversary split.
-
-    Args:
-        ctx: The run context.
-        dataset: The dataset name (must carry NumPy views and sensitive attributes).
-        capacity: The capacity tier.
-
-    Returns:
-        The clean model, the numpy adversary split, the dataset, and the spec
-        that keyed the model.
-    """
-    data = ctx.data(dataset)
-    split = targets.adversary_split(data, ctx.seed)
-    batch_size = targets.batch_for(ctx.level, BATCH_SIZE)
-    spec = targets.clean_target_spec(
-        ctx.level,
-        dataset,
-        ctx.seed,
-        capacity,
-        data.num_features,
-        data.num_classes,
-        batch_size,
-        targets.ARRAY_SPLIT_TARGET,
-    )
-    loader = targets.loader_for(split.target_set, batch_size)
-    model = ctx.get_or_train(
-        spec,
-        data.num_features,
-        data.num_classes,
-        lambda m: targets.train_clean(m, loader, ctx.device, spec.epochs),
-    )
-    return model, split, data, spec
-
-
-def defended_target(
-    ctx: targets.RunContext,
-    dataset: str,
-    epsilon: float,
-    split: AdversarySplit,
-    data: AmuletDataset,
-    capacity: str = CAPACITY,
-) -> tuple[nn.Module, ModelSpec]:
-    """Train (or load) the adversarially-trained $\\modeldef$ at one budget."""
-    batch_size = targets.batch_for(ctx.level, BATCH_SIZE)
-    applied_epsilon = targets.epsilon_for(ctx.level, epsilon)
-    iterations = targets.pgd_iterations_for(ctx.level)
-    spec = targets.defended_target_spec(
-        ctx.level,
-        dataset,
-        ctx.seed,
-        capacity,
-        data.num_features,
-        data.num_classes,
-        batch_size,
-        epsilon,
-        targets.ARRAY_SPLIT_TARGET,
-    )
-    loader = targets.loader_for(split.target_set, batch_size)
-    model = ctx.get_or_train(
-        spec,
-        data.num_features,
-        data.num_classes,
-        lambda m: targets.adversarially_train(
-            m, loader, ctx.device, spec.epochs, applied_epsilon, iterations
-        ),
-    )
-    return model, spec
 
 
 def infer_attributes(
@@ -190,7 +110,7 @@ def infer_attributes(
 
 
 def _leading(
-    ctx: targets.RunContext,
+    ctx: run_context.RunContext,
     dataset: str,
     spec: ModelSpec,
     epsilon: float,
@@ -206,25 +126,25 @@ def _leading(
         "capacity": CAPACITY,
         "training_size": ctx.level.train_fraction,
         "epochs": spec.epochs,
-        "batch_size": targets.batch_for(ctx.level, BATCH_SIZE),
-        "adv_train_fraction": targets.ADVERSARY_FRACTION,
+        "batch_size": run_context.batch_for(ctx.level, train_targets.BATCH_SIZE),
+        "adv_train_fraction": train_targets.ADVERSARY_FRACTION,
         "epsilon": epsilon,
-        "step_size": targets.step_size_for(applied_epsilon),
-        "iterations": targets.pgd_iterations_for(ctx.level),
+        "step_size": training.step_size_for(applied_epsilon),
+        "iterations": run_context.pgd_iterations_for(ctx.level),
         "sensitive_attr_1": sensitive[0],
         "sensitive_attr_2": sensitive[1],
     }
 
 
 def run_dataset(
-    ctx: targets.RunContext,
+    ctx: run_context.RunContext,
     dataset: str,
     epsilons: tuple[float, ...],
     output_dir: Path,
 ) -> list[dict[str, object]]:
     """Run one dataset's baseline row and every budget row, appending each.
 
-    The clean $\\modelstd$ is trained once and reused for the baseline attribute
+    The clean baseline is trained once and reused for the baseline attribute
     inference and for every budget's undefended robust accuracy.
 
     Args:
@@ -240,7 +160,7 @@ def run_dataset(
     from common.io import append_row, row_exists
 
     output = output_dir / f"{EXPERIMENT_ID}.csv"
-    batch_size = targets.batch_for(ctx.level, BATCH_SIZE)
+    batch_size = run_context.batch_for(ctx.level, train_targets.BATCH_SIZE)
     rows: list[dict[str, object]] = []
 
     needed = [BASELINE_EPSILON, *epsilons]
@@ -259,12 +179,15 @@ def run_dataset(
     ):
         return rows
 
-    # The baseline row carries the shared $\\modelstd$ training; each budget's
+    # The baseline row carries the shared clean baseline training; each budget's
     # row is timed from the top of its own iteration. The rows are therefore
     # disjoint and sum to the dataset's cost.
+    from common import progress
+
     started = time.perf_counter()
-    clean, split, data, clean_spec = clean_target(ctx, dataset)
-    test_loader = targets.loader_for(data.test_set, batch_size)
+    progress.log(f"    {dataset}: clean baseline + attribute inference")
+    clean, split, data, clean_spec = train_targets.clean_target(ctx, dataset)
+    test_loader = training.loader_for(data.test_set, batch_size)
 
     baseline_key = {
         "exp_id": ctx.seed,
@@ -303,9 +226,12 @@ def run_dataset(
         if row_exists(output, SCHEMA, key):
             continue
         budget_started = time.perf_counter()
-        applied_epsilon = targets.epsilon_for(ctx.level, epsilon)
-        iterations = targets.pgd_iterations_for(ctx.level)
-        defended, defended_spec = defended_target(ctx, dataset, epsilon, split, data)
+        progress.log(f"    {dataset} eps={epsilon:g}: defended + attribute inference")
+        applied_epsilon = run_context.epsilon_for(ctx.level, epsilon)
+        iterations = run_context.pgd_iterations_for(ctx.level)
+        defended, defended_spec = train_targets.defended_target(
+            ctx, dataset, epsilon, split, data
+        )
         defended_scores = infer_attributes(
             defended, split, data, batch_size, ctx.device
         )
@@ -313,10 +239,10 @@ def run_dataset(
             **_leading(ctx, dataset, defended_spec, epsilon, applied_epsilon, data),
             "model_role": "defended",
             "test_acc": get_accuracy(defended, test_loader, ctx.device),
-            "target_robust_acc": targets.robust_accuracy(
+            "target_robust_acc": training.robust_accuracy(
                 clean, test_loader, ctx.device, batch_size, applied_epsilon, iterations
             ),
-            "defended_robust_acc": targets.robust_accuracy(
+            "defended_robust_acc": training.robust_accuracy(
                 defended,
                 test_loader,
                 ctx.device,
@@ -360,7 +286,7 @@ def run(
     Returns:
         Every row appended by this call. Cells already recorded are skipped.
     """
-    config = get_level(level).with_defaults(epochs=PAPER_EPOCHS)
+    config = get_level(level).with_defaults(epochs=train_targets.PAPER_EPOCHS)
     if seeds is not None:
         config = config.override(seeds=tuple(seeds))
 
@@ -375,21 +301,33 @@ def run(
     directory = (
         output_dir
         if output_dir is not None
-        else targets.default_output_dir(config, EXPERIMENT_ID)
+        else run_context.default_output_dir(config, EXPERIMENT_ID)
     )
     directory.mkdir(parents=True, exist_ok=True)
     resolved_cache = (
-        cache_dir if cache_dir is not None else targets.default_cache_dir(config)
+        cache_dir if cache_dir is not None else run_context.default_cache_dir(config)
     )
 
+    from common import progress
+
+    sweep = [(seed, dataset) for seed in config.seeds for dataset in datasets]
+
     rows: list[dict[str, object]] = []
-    for seed in config.seeds:
-        targets.seed_everything(seed)
-        ctx = targets.RunContext(
-            level=config, seed=seed, device=resolved_device, cache_dir=resolved_cache
-        )
-        for dataset in datasets:
-            rows.extend(run_dataset(ctx, dataset, epsilons, directory))
+    ctx: run_context.RunContext | None = None
+    current_seed: int | None = None
+    for seed, dataset in progress.cells(sweep, EXPERIMENT_ID):
+        if seed != current_seed:
+            training.seed_everything(seed)
+            ctx = run_context.RunContext(
+                level=config,
+                seed=seed,
+                device=resolved_device,
+                cache_dir=resolved_cache,
+            )
+            current_seed = seed
+        assert ctx is not None
+        progress.log(f"[{EXPERIMENT_ID}] {dataset} seed={seed}")
+        rows.extend(run_dataset(ctx, dataset, epsilons, directory))
     return rows
 
 

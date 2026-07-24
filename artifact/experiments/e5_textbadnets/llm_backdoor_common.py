@@ -1,15 +1,14 @@
 """Shared plumbing for the LLM text-backdoor experiments (ONION + DP-SGD).
 
-Not part of the amulet package; imported by `onion.py` and `dp.py` alongside it, both
-driven by `run.py`. See experiments/text_backdoor_experiments.md in the repository root
-for the design.
+Not part of the amulet package; imported by `onion.py` and `dp.py`, both driven by
+`run.py`.
 
 Everything below the dataset loader is E5's own machinery and is deliberately *not*
-routed through `common.models`: that cache is built around `ModelSpec` + `initialize_model`,
-which construct one of the library's CNNs from `(arch, capacity, num_features,
-num_classes)`. A LoRA-adapted `HFCausalLM` does not fit that signature, and what E5 caches
-is the trainable adapter slice rather than a whole state dict, under a cross-process
-directory lock the sweep needs (plan §6, §7.1 "PRESERVE E5's LLM internals").
+routed through `common.models`: that cache is built around `ModelSpec` +
+`initialize_model`, which construct one of the library's CNNs from `(arch, capacity,
+num_features, num_classes)`. A LoRA-adapted `HFCausalLM` does not fit that signature,
+and what E5 caches is the trainable adapter slice rather than a whole state dict,
+under a cross-process directory lock the parallel sweep needs.
 """
 
 from __future__ import annotations
@@ -55,8 +54,8 @@ def default_onion_cache(level: str) -> Path:
     return _ONION_CACHE_BASE / level
 
 
-# The random-init tokenizer the `test` level builds its synthetic stand-in from.
-_SMOKE_TOKENIZER = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+# The tokenizer the `test` level builds its random-init synthetic stand-in from.
+_TEST_TOKENIZER = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
 
 # The real, pretrained causal LM the `smoke` level fine-tunes, in place of the
 # paper's `meta-llama/Llama-3.2-3B` (which `full` keeps). It is a genuine
@@ -105,7 +104,7 @@ def load_sst2_seeded(
 
     ``root`` defaults to the repository root resolved from this file's location, so the
     corpus lands in the same ``data/`` cache the rest of the library uses and a reviewer
-    never passes a path (plan §1).
+    never passes a path.
     """
     from datasets import load_dataset
 
@@ -162,17 +161,18 @@ def make_target_factory(
     return factory
 
 
-def make_smoke_setup(max_len: int = 16) -> tuple[AmuletDataset, TargetFactory]:
-    """A tiny random-init Llama target + synthetic SST-2-shaped data, all on CPU.
+def make_test_setup(max_len: int = 16) -> tuple[AmuletDataset, TargetFactory]:
+    """Build the `test`-level stand-in: a tiny random-init Llama and synthetic data.
 
-    Despite the name, this builds the **`test`**-level stand-in (`tiny_model`),
-    not the `smoke` one: `smoke` keeps the real Llama and a tenth of SST-2. The
-    name is from when `test` was called `--smoke`; the callers gate it on
-    `config.tiny_model`. Renaming it is left to the coming refactor.
+    A two-layer randomly-initialised Llama target over eight hand-written SST-2
+    -shaped sentences, all on CPU, so the fast tier exercises every E5 code path
+    (HFCausalLM, LoRA, TextBadNets, ONION, DP-SGD) in seconds with no download.
+    The callers gate this on `config.tiny_model`; `smoke` and `full` build a real
+    pretrained Llama instead.
     """
     from transformers import LlamaConfig
 
-    tokenizer = _load_tokenizer(_SMOKE_TOKENIZER)
+    tokenizer = _load_tokenizer(_TEST_TOKENIZER)
     train_texts = [
         "a genuinely wonderful and moving film",
         "the acting here was truly superb",
@@ -187,7 +187,7 @@ def make_smoke_setup(max_len: int = 16) -> tuple[AmuletDataset, TargetFactory]:
 
     def to_set(texts: list[str], labels: torch.Tensor) -> TextTensorDataset:
         return TextTensorDataset(
-            _tokenize(texts, tokenizer, max_len), labels, texts, _SMOKE_TOKENIZER
+            _tokenize(texts, tokenizer, max_len), labels, texts, _TEST_TOKENIZER
         )
 
     data = AmuletDataset(

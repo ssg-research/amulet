@@ -1,17 +1,12 @@
-"""E1-model-extraction: distilling a stolen surrogate (row \\ref{modelext}).
+"""E1 model extraction: distilling a surrogate.
 
-Ports the old `experiments/attacks/run_model_extraction.py`. Half the training
-split is reserved for the adversary; the target is trained on the other half,
-and `ModelExtraction` distills a surrogate from the target's responses to the
-adversary's queries. `evaluate_extraction` then reports the surrogate's test
-accuracy, its fidelity to the target and its correct fidelity.
+Reserves half the training split for the adversary, trains the target on the
+other half, and distils a surrogate from the target's responses to the
+adversary's queries. `evaluate_extraction` reports the surrogate's test accuracy,
+its fidelity to the target and its correct fidelity.
 
-The current `ModelExtraction` dropped the old `criterion` positional argument
-(the loss is chosen by `loss_type`) and renamed `train_attack_model()` to
-`attack()` (plan §5, confirmed against `model_extraction.py`).
-
-The target is described by `shared.adversary_split_target_spec`, the identical
-spec `attribute_inference` builds, so the two share one cached checkpoint.
+The target spec is identical to attribute inference's, so the two share one
+cached checkpoint.
 """
 
 from __future__ import annotations
@@ -24,7 +19,8 @@ import torch.nn as nn
 
 from amulet.unauth_model_ownership.attacks import ModelExtraction
 from amulet.unauth_model_ownership.metrics import evaluate_extraction
-from experiments.e1_attack_baselines import shared
+from common import training
+from experiments.e1_attack_baselines import context, train_targets
 from experiments.e1_attack_baselines.schemas import MODEL_EXTRACTION_SCHEMA
 
 if TYPE_CHECKING:
@@ -42,13 +38,13 @@ def target_spec(
     level: LevelConfig, seed: int, capacity: str, num_features: int, num_classes: int
 ) -> ModelSpec:
     """Return the spec of the target extracted here, shared with attribute inference."""
-    return shared.adversary_split_target_spec(
+    return train_targets.adversary_split_target_spec(
         level, seed, capacity, num_features, num_classes
     )
 
 
 def run_cell(
-    ctx: shared.RunContext, capacity: str, output_dir: Path
+    ctx: context.RunContext, capacity: str, output_dir: Path
 ) -> list[dict[str, object]]:
     """Train (or reuse) the target, distil a surrogate, and append one row.
 
@@ -69,34 +65,32 @@ def run_cell(
         {
             "exp_id": ctx.seed,
             "capacity": capacity,
-            "adv_train_fraction": shared.ADVERSARY_FRACTION,
+            "adv_train_fraction": context.ADVERSARY_FRACTION,
         },
     ):
         return []
 
     started = time.perf_counter()
 
-    batch_size = shared.batch_for(ctx.level, shared.ADVERSARY_SPLIT_BATCH_SIZE)
-    data = ctx.data(shared.DEFAULT_TARGET_ATTRIBUTE, ctx.level.train_fraction)
-    split = shared.adversary_split(data, ctx.seed)
+    batch_size = context.batch_for(ctx.level, context.ADVERSARY_SPLIT_BATCH_SIZE)
+    data = ctx.data(context.DEFAULT_TARGET_ATTRIBUTE, ctx.level.train_fraction)
+    split = training.adversary_split(data, ctx.seed)
 
-    spec = shared.adversary_split_target_spec(
+    spec = train_targets.adversary_split_target_spec(
         ctx.level, ctx.seed, capacity, data.num_features, data.num_classes
     )
-    stolen_spec = shared.stolen_model_spec(
+    stolen_spec = train_targets.stolen_model_spec(
         ctx.level, ctx.seed, capacity, data.num_features, data.num_classes
     )
 
     def train_target(model: nn.Module) -> nn.Module:
-        loader = shared.loader_for(split.target_set, batch_size)
-        return shared.train_with_adam(model, loader, ctx.device, spec.epochs)
+        loader = training.loader_for(split.target_set, batch_size)
+        return training.train_with_adam(model, loader, ctx.device, spec.epochs)
 
-    target = shared.train_target_via_cache(
-        ctx, spec, data.num_features, data.num_classes, train_target
-    )
+    target = ctx.get_or_train(spec, data.num_features, data.num_classes, train_target)
 
     def train_stolen(model: nn.Module) -> nn.Module:
-        loader = shared.loader_for(split.adversary_set, batch_size)
+        loader = training.loader_for(split.adversary_set, batch_size)
         extraction = ModelExtraction(
             target,
             model,
@@ -108,16 +102,16 @@ def run_cell(
         )
         return extraction.attack()
 
-    stolen = shared.train_target_via_cache(
-        ctx, stolen_spec, data.num_features, data.num_classes, train_stolen
+    stolen = ctx.get_or_train(
+        stolen_spec, data.num_features, data.num_classes, train_stolen
     )
 
-    test_loader = shared.loader_for(data.test_set, batch_size)
+    test_loader = training.loader_for(data.test_set, batch_size)
     scores = evaluate_extraction(target, stolen, test_loader, ctx.device)
 
     row: dict[str, object] = {
-        **shared.leading_row(spec, shared.DEFAULT_TARGET_ATTRIBUTE),
-        "adv_train_fraction": shared.ADVERSARY_FRACTION,
+        **context.leading_row(spec, context.DEFAULT_TARGET_ATTRIBUTE),
+        "adv_train_fraction": context.ADVERSARY_FRACTION,
         "loss_type": LOSS_TYPE,
         "target_test_acc": scores["target_accuracy"],
         "stolen_test_acc": scores["stolen_accuracy"],

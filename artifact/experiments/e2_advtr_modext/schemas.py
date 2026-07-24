@@ -1,9 +1,9 @@
 """Result-CSV schema and sweep grid for E2 (Adversarial Training x Model Ownership).
 
 Kept free of torch imports so the table renderer in `make/` can validate a CSV
-header without loading a model (plan S7.1).
+header without loading a model.
 
-One CSV, `results/e2_advtr_modext.csv`, holds every dataset block. A row records
+One CSV per run, `runs/<level>/e2_advtr_modext.csv`, holds every dataset block. A row records
 one $(\\text{dataset}, \\text{seed}, \\epsilon)$ cell: the clean baseline's test
 accuracy (epsilon-independent, so identical across a seed's rows and pooled once
 for the baseline row), the defended model's clean and robust accuracies, the
@@ -51,12 +51,12 @@ SCHEMA = CsvSchema(
         # Clean baseline test accuracy, epsilon-independent: identical across a
         # seed's rows, pooled once per seed for the `Baseline (M_std)` row.
         "target_test_acc",
-        # Defended model ($\\modeldef$) clean test accuracy.
+        # Defended model clean test accuracy.
         "defended_test_acc",
         # Robust accuracy under PGD at this budget: undefended, then defended.
         "target_robust_acc",
         "defended_robust_acc",
-        # Stolen surrogate ($\\modelstol$), distilled from and scored against $\\modeldef$.
+        # Surrogate, distilled from and scored against the defended model.
         "stolen_test_acc",
         "fidelity",
         "correct_fidelity",

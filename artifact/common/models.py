@@ -1,11 +1,10 @@
 """Content-addressed model cache shared by every artifact experiment.
 
-The problem this solves (plan §6): a target model tied to a seed should be
-trained once and reused by every attack that needs *that exact model*, and must
-never be reused by one that needs a different model. Keying a checkpoint on the
-script that produced it fails both halves — two scripts training the identical
-model write two files, and one script whose hyperparameters changed silently
-reloads stale weights.
+The problem this solves: a target model tied to a seed should be trained once and
+reused by every attack that needs *that exact model*, and never reused by one
+that needs a different model. Keying a checkpoint on the script that produced it
+fails both halves — two scripts training the identical model write two files, and
+one script whose hyperparameters changed silently reloads stale weights.
 
 `ModelSpec` captures every field that affects the resulting weights and hashes
 them into the filename. Sharing is then automatic when the specs match and
@@ -18,6 +17,12 @@ supplies (e.g. `"adversary_half"`, `"sgd_lr1e-2_steplr"`). They stand in for
 choices too structured to hash directly; the contract is that the same string
 means the same procedure, so callers must change the string when they change
 the procedure.
+
+Checkpoint writes are atomic: `get_or_train` saves through a temporary file and
+`os.replace`, so two processes training the same spec at once can never leave a
+torn checkpoint for a third to read. Sharing therefore needs no lock and no
+coordinator; a cache hit is simply what happens when two specs come out
+byte-for-byte identical.
 """
 
 from __future__ import annotations
@@ -28,8 +33,6 @@ from dataclasses import dataclass, fields
 from dataclasses import replace as dataclasses_replace
 from hashlib import sha256
 from typing import TYPE_CHECKING, Any, cast
-
-from amulet.utils import load_or_train
 
 from .paths import artifact_root
 
@@ -217,6 +220,33 @@ def _write_sidecar(spec: ModelSpec, cache_dir: Path) -> None:
     os.replace(tmp, path)
 
 
+def _atomic_save_state_dict(model: nn.Module, path: Path) -> None:
+    """Save `model`'s state dict to `path` through an atomic replace.
+
+    Writes to a per-process temporary file in the destination directory, then
+    `os.replace`s it onto `path`. `os.replace` is atomic within a filesystem, so
+    a reader always sees either the previous checkpoint or the complete new one,
+    never a half-written file. Two processes that train the same spec at once are
+    therefore safe: each writes its own temporary, the last replace wins, and no
+    torn `.pt` can result.
+    """
+    import torch
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(f"{path.name}.tmp.{os.getpid()}")
+    torch.save(model.state_dict(), tmp)
+    os.replace(tmp, path)
+
+
+def _load_into_fresh_model(init_fn: Callable[[], nn.Module], path: Path) -> nn.Module:
+    """Instantiate a fresh model via `init_fn` and load `path`'s weights into it."""
+    import torch
+
+    model = init_fn()
+    model.load_state_dict(torch.load(path, weights_only=True))
+    return model
+
+
 def get_or_train(
     spec: ModelSpec,
     init_fn: Callable[[], nn.Module],
@@ -227,10 +257,11 @@ def get_or_train(
 ) -> nn.Module:
     """Load `spec`'s model from the shared cache, or train and cache it.
 
-    Thin wrapper over `amulet.utils.load_or_train` that supplies the
-    content-addressed path and records the spec alongside the weights. The
-    sidecar is written only after training succeeds, so its presence always
-    implies a complete checkpoint.
+    Content-addresses the checkpoint by `spec` (via `checkpoint_path`) and records
+    the spec in a neighbouring JSON sidecar. On a cache miss the model is trained,
+    saved atomically (see `_atomic_save_state_dict`), and only then is the sidecar
+    written, so the sidecar's presence always implies a complete checkpoint. The
+    atomic save is what lets parallel processes train the same spec without a lock.
 
     No experiment logic lives here: `init_fn` and `train_fn` are caller-supplied
     closures, and it is the caller's responsibility that they actually implement
@@ -239,7 +270,7 @@ def get_or_train(
     Args:
         spec: The training spec; determines the cache key.
         init_fn: Zero-argument callable returning a fresh model on the target
-            device, as required by `load_or_train`.
+            device.
         train_fn: Callable taking the fresh model and returning it trained.
         log: Optional logger for cache hit/miss messages.
         cache_dir: Cache directory, from `model_cache_root(level)`.
@@ -247,12 +278,15 @@ def get_or_train(
     Returns:
         The loaded or newly trained model.
     """
-    model = load_or_train(
-        checkpoint_path(spec, cache_dir=cache_dir),
-        init_fn,
-        train_fn,
-        log,
-        f"{spec.arch}/{spec.capacity} on {spec.dataset} (seed {spec.seed})",
-    )
+    path = checkpoint_path(spec, cache_dir=cache_dir)
+    description = f"{spec.arch}/{spec.capacity} on {spec.dataset} (seed {spec.seed})"
+    if path.exists():
+        if log is not None:
+            log.info("Loading %s from %s", description, path)
+        return _load_into_fresh_model(init_fn, path)
+    if log is not None:
+        log.info("Training %s", description)
+    model = train_fn(init_fn())
+    _atomic_save_state_dict(model, path)
     _write_sidecar(spec, cache_dir)
     return model

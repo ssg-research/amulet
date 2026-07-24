@@ -1,4 +1,4 @@
-"""Contract for the E1 table renderer (plan §8, Level 1 unit tier).
+"""Contract for the E1 table renderer.
 
 Rendering is a pure function of the six committed result CSVs, so every case
 here is a hand-checked tiny CSV in, an exact `.tex` string out — no GPU, no
@@ -23,12 +23,8 @@ import re
 from typing import TYPE_CHECKING
 
 import pytest
-from make.make_tab_attack_results import (
-    coverage,
-    format_cell,
-    mean_and_standard_error,
-    render_table,
-)
+from make.make_tab_attack_results import coverage, render_table
+from make.tables_common import format_cell, mean_and_standard_error
 
 from experiments.e1_attack_baselines.schemas import SCHEMAS
 
@@ -228,7 +224,7 @@ def test_renders_mean_and_standard_error_over_the_seeds_present(
     """Two seeds per cell render as `mean ~$\\pm$~ standard error`.
 
     Only the VGG11 column was swept, so every other column is blank. The header
-    row's $Acc_{te}$ is the poisoning study's clean baseline $\\modelstd$, which
+    row's $Acc_{te}$ is the poisoning study's clean baseline, which
     is the model the paper's table names there.
     """
     rendered = render_table(two_seed_results)
@@ -272,7 +268,7 @@ def test_renders_mean_and_standard_error_over_the_seeds_present(
 def test_single_seed_cells_render_without_an_error_term(tmp_path: Path) -> None:
     """One seed has no spread to report, so the cell is the bare value.
 
-    This is what a reviewer's default one-seed re-run produces (plan §1): the
+    This is what a reviewer's default one-seed re-run produces: the
     renderer never assumes ten seeds and never invents an error bar.
     """
     _write(
@@ -412,7 +408,7 @@ def _body_numbers(latex: str) -> list[float]:
 
     Restricted to the body, which structurally excludes the caption, so
     rewording the caption can never fail a comparison while a changed number
-    always does (plan §7.1, the table contract).
+    always does.
     """
     body = latex.split("\\begin{tabularx}")[1].split("\\end{tabularx}")[0]
     return [float(token) for token in _NUMBER.findall(body)]

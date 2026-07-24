@@ -1,4 +1,4 @@
-"""Contract for the E2 table renderer (plan S8 Level 1, S7.1 table contract).
+"""Contract for the E2 table renderer.
 
 Rendering is a pure function of the result CSV, so every case is a
 hand-checked tiny CSV in, an exact `.tex` fragment out: no GPU, no model, no
@@ -102,7 +102,7 @@ def _census_two_seeds(directory: Path) -> Path:
 def test_the_baseline_pools_one_clean_accuracy_per_seed(tmp_path: Path) -> None:
     """The baseline row is `mean $\\pm$ SE` over one clean test accuracy per seed.
 
-    The clean $\\modelstd$ is epsilon-independent, so its accuracy is pooled from
+    The clean baseline is epsilon-independent, so its accuracy is pooled from
     the dataset's rows (one per seed: 82 and 84 -> 83.00 $\\pm$ 1.00), and the
     five defended/stolen columns are structurally blank on this row.
     """
@@ -126,7 +126,7 @@ def test_a_budget_row_renders_mean_and_standard_error(tmp_path: Path) -> None:
 
 
 def test_a_single_seed_cell_has_no_error_term(tmp_path: Path) -> None:
-    """One seed has no spread, so the budget cell is the bare value (plan S1)."""
+    """One seed has no spread, so the budget cell is the bare value."""
     path = _write(
         tmp_path,
         [

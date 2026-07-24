@@ -9,12 +9,12 @@ seed at a time, through the shared content-addressed model cache:
 
 `run(level, seeds, attacks, capacities, output_dir, cache_dir)` is the same path
 under a callable name, used by the level sweepers and the tiny end-to-end test.
-This runner exposes only what every experiment in the artifact exposes, so the
-sweepers can treat all five alike (plan §9).
+This runner exposes only what every experiment exposes, so the sweepers treat all
+five alike.
 
 CelebA is a large download `amulet.utils.load_data` handles on first use;
 `--level test` never touches it, substituting tiny synthetic tensors so the fast
-verification tier runs anywhere (plan §8, the data note).
+tier runs anywhere.
 """
 
 from __future__ import annotations
@@ -29,8 +29,10 @@ from typing import TYPE_CHECKING
 
 import torch
 
+from common.cli import parse_seeds
 from common.config import LEVEL_NAMES, get_level
-from experiments.e1_attack_baselines import shared
+from common.training import seed_everything
+from experiments.e1_attack_baselines import context
 from experiments.e1_attack_baselines.schemas import (
     ATTACKS,
     CAPACITIES,
@@ -42,35 +44,8 @@ if TYPE_CHECKING:
 
 EXPERIMENT_ID = "e1_attack_baselines"
 
-# The paper's epoch count, which the `full` level defers to (plan §7.1).
-PAPER_EPOCHS = shared.PAPER_EPOCHS
-
-
-def parse_seeds(text: str) -> tuple[int, ...]:
-    """Parse a seed selection such as `0`, `0-9` or `0,2,3`.
-
-    Args:
-        text: Comma-separated seeds and inclusive `start-end` ranges.
-
-    Returns:
-        The seeds in the order given, without duplicates.
-
-    Raises:
-        ValueError: If a part is neither an integer nor an inclusive range.
-    """
-    seeds: list[int] = []
-    for part in text.split(","):
-        piece = part.strip()
-        if not piece:
-            continue
-        if "-" in piece.removeprefix("-"):
-            start, _, end = piece.partition("-")
-            seeds.extend(range(int(start), int(end) + 1))
-        else:
-            seeds.append(int(piece))
-    if not seeds:
-        raise ValueError(f"No seeds parsed from {text!r}.")
-    return tuple(dict.fromkeys(seeds))
+# The paper's epoch count, which the `full` level defers to.
+PAPER_EPOCHS = context.PAPER_EPOCHS
 
 
 def _parse_selection(text: str, allowed: tuple[str, ...], noun: str) -> tuple[str, ...]:
@@ -135,9 +110,8 @@ def run(
         attacks: Sub-attacks to run, a subset of `schemas.ATTACKS`.
         capacities: VGG capacities to sweep, a subset of `schemas.CAPACITIES`.
         output_dir: Directory the result CSVs go in. None keeps the per-level
-            default from `default_output_dir`: `runs/<level>/` for every level,
-            never the committed `results/` tree, so no run overwrites the paper's
-            shipped data.
+            default from `default_output_dir`: each level's own `runs/<level>/`
+            subtree, so a cheap run never overwrites a `full` run's numbers.
         cache_dir: Checkpoint cache directory. None keeps the per-level default
             from `default_cache_dir`: this level's own `.model_cache/<level>/`
             for `smoke`/`full`, a temporary one for `test`.
@@ -164,24 +138,39 @@ def run(
         else ("cuda" if torch.cuda.is_available() else "cpu")
     )
     directory = (
-        output_dir if output_dir is not None else shared.default_output_dir(config)
+        output_dir if output_dir is not None else context.default_output_dir(config)
     )
     directory.mkdir(parents=True, exist_ok=True)
     resolved_cache = (
-        cache_dir if cache_dir is not None else shared.default_cache_dir(config)
+        cache_dir if cache_dir is not None else context.default_cache_dir(config)
     )
 
+    from common import progress
+
     modules = _load_modules(attacks)
+    sweep = [
+        (seed, attack, capacity)
+        for seed in config.seeds
+        for attack in attacks
+        for capacity in _capacities_for(attack, capacities)
+    ]
+
     rows: list[dict[str, object]] = []
-    for seed in config.seeds:
-        shared.seed_everything(seed)
-        ctx = shared.RunContext(
-            level=config, seed=seed, device=resolved_device, cache_dir=resolved_cache
-        )
-        for attack in attacks:
-            module = modules[attack]
-            for capacity in _capacities_for(attack, capacities):
-                rows.extend(module.run_cell(ctx, capacity, directory))
+    ctx: context.RunContext | None = None
+    current_seed: int | None = None
+    for seed, attack, capacity in progress.cells(sweep, EXPERIMENT_ID):
+        if seed != current_seed:
+            seed_everything(seed)
+            ctx = context.RunContext(
+                level=config,
+                seed=seed,
+                device=resolved_device,
+                cache_dir=resolved_cache,
+            )
+            current_seed = seed
+        assert ctx is not None
+        progress.log(f"[{EXPERIMENT_ID}] {attack} {capacity} seed={seed}")
+        rows.extend(modules[attack].run_cell(ctx, capacity, directory))
     return rows
 
 
@@ -194,7 +183,9 @@ def _load_modules(attacks: tuple[str, ...]) -> dict[str, ModuleType]:
     import importlib
 
     return {
-        attack: importlib.import_module(f"experiments.e1_attack_baselines.{attack}")
+        attack: importlib.import_module(
+            f"experiments.e1_attack_baselines.attacks.{attack}"
+        )
         for attack in attacks
     }
 

@@ -4,7 +4,7 @@ The experiments carry their own dataset labels: `cifar` is what the paper's
 tables and figures label the column, what the result CSVs record, and what the
 model-spec cache keys are built from. `amulet.utils.load_data` knows the same
 dataset as `cifar10` and raises `ValueError: Unknown dataset` for anything else,
-so the two vocabularies are bridged by `shared_targets.loader_name`.
+so the two vocabularies are bridged by `common.run_context.loader_name`.
 
 That bridge is invisible at `--level test`, which substitutes synthetic tabular
 data for every dataset and never calls `load_data` at all. A label that no
@@ -19,10 +19,10 @@ import inspect
 
 import pytest
 
+from common.run_context import loader_name
 from experiments.e2_advtr_modext.schemas import DATASETS as E2_DATASETS
 from experiments.e3_advtr_attrinf.schemas import DATASETS as E3_DATASETS
 from experiments.e4_outrem_modext.schemas import DATASETS as E4_DATASETS
-from experiments.shared_targets import loader_name
 
 
 def library_dataset_names() -> frozenset[str]:
@@ -61,7 +61,7 @@ def test_every_swept_dataset_resolves_to_a_library_loader(dataset: str) -> None:
     assert resolved in library_dataset_names(), (
         f"Experiments sweep {dataset!r}, which resolves to {resolved!r}, but "
         f"load_data only knows {sorted(library_dataset_names())}. Add an entry "
-        f"to shared_targets.LOADER_NAMES."
+        f"to common.run_context.LOADER_NAMES."
     )
 
 

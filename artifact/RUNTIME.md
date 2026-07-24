@@ -1,83 +1,76 @@
 # Runtime
 
-Where the time goes, per experiment and per phase. [`ARTIFACT.md`](ARTIFACT.md)
-carries the headline per-experiment estimates; this file is the breakdown behind
-them, the measured numbers where they exist, and the method for regenerating the
-rest.
+Where the time goes, per experiment and per phase.
+[`ARTIFACT.md`](ARTIFACT.md) carries the headline numbers; this file is the
+breakdown behind them and the method for regenerating it.
 
-Every figure here is compute time. It assumes [`setup_assets.py`](setup_assets.py)
-has already downloaded every dataset and model weight; downloads are not
-included.
+Every figure here is compute time.
+It assumes [`setup_assets.py`](setup_assets.py) has already downloaded every
+dataset and model weight; downloads are not included.
 
 ## Reference host
 
-Every number below is quoted for a single **NVIDIA A100 (40 GB)**. The
-`--level smoke` sweep was measured on one directly. E5's `--level full`
-per-phase numbers were originally measured on a slower A40; quoting them as A100
-is deliberate and conservative, because a real A100 run comes in at or under the
-stated figure rather than over it.
+Every number is quoted for a single **NVIDIA A100 (40 GB)**.
+Precision is fp32 throughout: DP-SGD's Opacus hooks do not compose with 4-bit or
+fp16 layers, so E5 pins fp32 and the others follow for comparability.
+One experiment runs per GPU.
+All numbers are wall clock, so they include data loading and evaluation, not just
+training. A different GPU scales roughly with its fp32 throughput.
 
-Precision is fp32 throughout. DP-SGD's Opacus hooks do not compose with 4-bit or
-fp16 layers, so E5 pins fp32 and the other experiments follow for comparability.
-One experiment runs per GPU; nothing below assumes a second device. All numbers
-are wall clock, not GPU-busy time, so they include data loading and evaluation as
-well as training. A run on different hardware scales roughly with that GPU's fp32
-throughput.
-
-Note the two meanings of "full": `--level full` (L3) is the full paper setup for
-a **single seed, seed 0** — what a reviewer runs and what the L3 figures describe.
-The paper's five-seed sweep is a separate, larger cost, labelled as such
-wherever it appears.
+"Full" here means `--level full` for a single seed (seed 0), which is what a
+reviewer runs. The paper's five-seed sweep is a separate, larger cost, labelled
+as such wherever it appears.
 
 ## How runtime is measured
 
-Every result row records what it cost, so the tables below are recomputed from a
-run rather than estimated by hand.
+Every result row records what it cost, so these tables are recomputed from a run
+rather than estimated by hand.
 
 - **E1 through E4** write a `runtime_sec` column: wall clock from just after the
   cell's resume check to just before its row is written.
-- **E5** predates that column and writes a finer breakdown instead, one column
-  per training phase: `clean_train_runtime_sec`, `undef_train_runtime_sec`,
-  `def_train_runtime_sec` and `onion_purify_runtime_sec` for ONION, and
-  `clean_train_runtime_sec`, `undef_train_runtime_sec` and `dp_train_runtime_sec`
-  for DP-SGD.
+- **E5** writes a finer breakdown, one column per training phase
+  (`clean_train_runtime_sec`, `undef_train_runtime_sec`, `def_train_runtime_sec`,
+  and `onion_purify_runtime_sec` for ONION; the first three plus `dp_train_runtime_sec`
+  for DP-SGD).
 
-Read both with the model caches in mind, in two separate respects.
+Read these with the model cache in mind, in two respects.
 
 A baseline trained once and reused across cells is charged to whichever row
-trained it, and repeated on the rows that reuse it. Summing a column down a CSV
-therefore overstates the real cost; the sweep totals below de-duplicate the
-shared phases first, and say so.
+trained it, then repeated on the rows that reuse it. Summing a column down a CSV
+therefore overstates the real cost; the totals below de-duplicate the shared
+phases first.
 
 Two independent caches also decide whether a row's time reflects real work. The
-CSV resume check skips **writing a row** whose cell is already recorded, while
-the content-addressed checkpoint cache under `.model_cache/<level>/` skips
-**training** a model it has already seen. They are not the same: a row absent
-from the CSV is recomputed and written, but if its checkpoints are still on disk
-the training is a load, and `runtime_sec` records seconds rather than the real
-cost. A timing run must therefore start from a `.model_cache/<level>/` that does
-not already hold the models it is about to train, or it silently understates. The
-caches are per level, so a `smoke` timing is not corrupted by a previous `full`
-run and vice versa, but re-timing the same level twice needs its cache cleared
-between runs.
+CSV resume check skips **writing a row** whose cell is already recorded; the
+content-addressed checkpoint cache under `.model_cache/<level>/` skips **training**
+a model it already holds. A row absent from the CSV is recomputed and written,
+but if its checkpoint is still on disk the training is only a load, and
+`runtime_sec` records seconds rather than the real cost. A timing run must
+therefore start from a `.model_cache/<level>/` that does not already hold the
+models it is about to train. The caches are per level, so a `smoke` timing is not
+corrupted by a previous `full` run.
 
-## `--level smoke` (measured)
+## `--level smoke`
 
-Measured on the A100 above, from an empty `.model_cache/smoke/`, one seed. This
-is what `run_smoke.sh` costs a reviewer once the assets are downloaded.
+This is what `run_smoke.sh` costs once the assets are downloaded: all five
+experiments at a reduced budget, one seed. Measured on the reference host from a
+cold `.model_cache/smoke/`.
 
-| Experiment |  Wall clock | Cells | What dominates                                                        |
-| ---------- | ----------: | ----: | --------------------------------------------------------------------- |
-| E1         |      5m 08s |    21 | Membership inference's 8-model shadow bank; evasion over 4 capacities |
-| E2         |        49 s |    16 | PGD-7 adversarial training over 4 datasets x 4 budgets                |
-| E3         |      1m 10s |    10 | PGD-7 adversarial training over 2 datasets x 5 budgets                |
-| E4         |      1m 57s |    20 | kNN-Shapley over 4 datasets x 5 removal levels                        |
-| E5         |      2m 35s |     2 | Two 1.1B-Llama fine-tunes per study over a 256-record slice           |
-| **Total**  | **11m 39s** |    69 |                                                                       |
+| Experiment |  Wall clock | What dominates                                                   |
+| ---------- | ----------: | ---------------------------------------------------------------- |
+| E1         |      5m 26s | membership inference's shadow bank; evasion over four capacities |
+| E2         |         39s | PGD adversarial training over 4 datasets x 4 budgets             |
+| E3         |         48s | PGD adversarial training over 2 datasets x budgets               |
+| E4         |      1m 46s | kNN-Shapley over 4 datasets x 5 removal levels                   |
+| E5         |      2m 23s | two 1.1B-Llama fine-tunes per study over a small fixed slice     |
+| **Total**  | **11m 02s** |                                                                  |
+
+Rendering the tables and figures adds about 15 seconds, so `run_smoke.sh` end to
+end is about 11.5 minutes.
 
 Smoke reduces every repeated-work loop, not just the data fraction (see
 [`common/config.py`](common/config.py) and the `test_*_level_budget.py` tests).
-The knobs that make these numbers what they are, all recorded in the CSVs:
+The knobs that set these numbers, all recorded in the CSVs:
 
 | Knob                       |     full |          smoke |
 | -------------------------- | -------: | -------------: |
@@ -90,105 +83,52 @@ The knobs that make these numbers what they are, all recorded in the CSVs:
 | E5 target model            | 3B Llama | 1.1B TinyLlama |
 | E5 train records           |      67k |            256 |
 
-E5 is the exception that proves the rule about model size. E1-E4 keep their real
-architectures at smoke because those are already cheap; E5's real architecture is
-a 3B LLM, so smoke additionally swaps in a smaller real model (TinyLlama-1.1B)
-and caps the corpus at a fixed 256 records rather than the level's 10% (which is
-~6735 of SST-2's 67k). Every code path still runs; see `e5_textbadnets/onion.py`
-`apply_level`.
+E1-E4 keep their real architectures at smoke because those are already cheap.
+E5's real architecture is a 3B LLM, so smoke additionally swaps in a smaller real
+model (TinyLlama-1.1B) and caps the corpus at a fixed 256 records.
+Every code path still runs; see `apply_level` in `e5_textbadnets/onion.py`.
 
-### E1 per sub-attack (smoke)
+## `--level full`
 
-Sum of `runtime_sec` over the cells the clean run wrote.
-
-| Sub-attack           | Cells |    Sum | Note                                               |
-| -------------------- | ----: | -----: | -------------------------------------------------- |
-| membership_inference |     1 | 63.4 s | 8 shadow ResNets trained then scored               |
-| evasion              |     4 | 98.3 s | one target per capacity, PGD-7 over the test split |
-| data_reconstruction  |     4 | 43.2 s | 50 inversion steps per class                       |
-| poisoning            |     4 | 36.7 s |                                                    |
-| attribute_inference  |     4 | 34.9 s | shares its target with model extraction            |
-| model_extraction     |     4 | 18.5 s | reuses the shared adversary-split target           |
-
-### E4 per dataset (smoke)
-
-kNN-Shapley is `O(train x test)` (see below), so the cost tracks each dataset's
-test-split size. At smoke both splits are a tenth, which is what makes census
-and the image sets cost seconds rather than the minutes they would at full.
-
-| Dataset | Cells |    Sum | Per removal cell (percent > 0) |
-| ------- | ----: | -----: | -----------------------------: |
-| cifar   |     5 | 38.8 s |                         ~8.9 s |
-| fmnist  |     5 | 38.0 s |                         ~9.2 s |
-| census  |     5 | 27.8 s |                         ~6.6 s |
-| lfw     |     5 |  1.8 s |                         ~0.2 s |
-
-## E5 at `--level full` (measured)
+### E5 (measured)
 
 Measured from the per-phase runtime columns in the paper's own result CSVs, on
-SST-2 with a LoRA-adapted Llama-3.2-3B target. The paper's run covered 25 ONION
-cells (5 seeds x 5 poison rates) and 40 DP-SGD cells (5 seeds x 4 poison rates x
-2 privacy budgets); an L3 reviewer runs one seed of that, and the per-cell phase
-costs below are what both are built from.
+SST-2 with a LoRA-adapted Llama-3.2-3B target.
+E5 is the one experiment whose full cost is known rather than projected, because
+the paper's run wrote it.
+(Some cells were originally measured on a slower A40; quoting them as A100 is
+conservative, since a real A100 run comes in at or under these figures.)
 
-### Per-phase cost
+Per cell, LoRA fine-tuning at this scale is a flat ~5 h regardless of what the
+data has had done to it, so the poison rate and privacy budget do not move the
+cost. ONION's purification is not a preprocessing afterthought: at ~2.1 h it is
+40% of a training run on its own, because it scores perplexity for every training
+sentence. DP-SGD's own step is the cheapest phase, because the paper's DP
+schedule runs fewer epochs than the fine-tune it is compared against.
 
-Mean per cell, with the observed spread across cells.
+| Phase                  | What it does                                              |   Mean |
+| ---------------------- | --------------------------------------------------------- | -----: |
+| `clean_train`          | fine-tune the clean baseline on unpoisoned SST-2          | ~5.2 h |
+| `undef_train`          | fine-tune the undefended target on poisoned SST-2         | ~5.1 h |
+| `def_train` (ONION)    | fine-tune on ONION-purified poisoned data                 | ~5.2 h |
+| `onion_purify` (ONION) | perplexity-score and purify the corpus and triggered test | ~2.1 h |
+| `dp_train` (DP-SGD)    | train under Opacus per-sample clipping and noise          | ~1.8 h |
 
-| Phase                  | What it does                                                                        |  Mean | Range       |
-| ---------------------- | ----------------------------------------------------------------------------------- | ----: | ----------- |
-| `clean_train`          | Fine-tune the clean baseline target on unpoisoned SST-2                             | 5.2 h | 5.0 – 5.6 h |
-| `undef_train`          | Fine-tune the undefended target on poisoned SST-2                                   | 5.1 h | 5.0 – 5.6 h |
-| `def_train` (ONION)    | Fine-tune the target on ONION-purified poisoned data                                | 5.2 h | 5.2 – 5.6 h |
-| `onion_purify` (ONION) | Perplexity-score and purify the whole training corpus plus the triggered test split | 2.1 h | 1.9 – 2.2 h |
-| `dp_train` (DP-SGD)    | Train the target under Opacus per-sample clipping and noise                         | 1.8 h | 1.8 – 1.9 h |
+One full seed of ONION is ~68 h (1 clean + 5 undefended + 5 defended + 5
+purify); one full seed of DP-SGD is ~40 h (1 clean + 4 undefended + 8 DP). E5's
+full cost for one seed is therefore **~108 h (~4.5 GPU-days)**.
+The paper's five-seed sweep is ~540 h (~22 GPU-days); seeds are independent and
+share no cache, so N nodes give close to an N-fold speedup.
+E5's full sweep does not need re-running: the paper's CSVs are what this section
+is measured from.
 
-LoRA fine-tuning at this scale is a flat ~5 h regardless of what the data has
-been done to, so the poison rate and the privacy budget do not move the cost.
-ONION's purification is not a preprocessing afterthought: at 2.1 h it is 40% of a
-training run on its own, because it scores perplexity for every training
-sentence. DP-SGD's own step is the cheapest phase here, because the paper's DP
-schedule runs fewer epochs than the standard fine-tune it is compared against.
+### E1 through E4 (not yet measured)
 
-### L3 cost (one seed, what a reviewer runs)
+These four have no measured full breakdown yet.
+Their `runtime_sec` column was added after the paper run, so the first
+`--level full` sweep is what will populate this section.
 
-Derived from the per-phase means and the caching the runners do. One L3 seed of
-ONION is 5 cells (1 clean + 5 undefended + 5 defended + 5 purify) at ~68 h; one
-L3 seed of DP-SGD is 8 cells at ~40 h.
-
-| Study (one seed) | Phase accounting                               |                      Total |
-| ---------------- | ---------------------------------------------- | -------------------------: |
-| ONION            | 1 clean + 5 undefended + 5 defended + 5 purify |                      ~68 h |
-| DP-SGD           | 1 clean + 4 undefended + 8 DP                  |                      ~40 h |
-| **E5 L3 total**  |                                                | **~108 h (~4.5 GPU-days)** |
-
-### Paper five-seed cost (for context, not an L3 task)
-
-The paper's full sweep multiplies the per-seed cost across five independent
-seeds. It is the authors' cost, shown so the per-seed number above has a scale;
-a reviewer never runs it.
-
-| Sweep           | Phase accounting                                  |                     Total |
-| --------------- | ------------------------------------------------- | ------------------------: |
-| ONION           | 5 clean + 25 undefended + 25 defended + 25 purify |                    ~340 h |
-| DP-SGD          | 5 clean + 20 undefended + 40 DP                   |                    ~200 h |
-| **Paper total** |                                                   | **~540 h (~22 GPU-days)** |
-
-Seeds are independent and share no cache, so N nodes give close to an N-fold
-speedup when the authors do run the full sweep.
-
-**E5's `full` sweep does not need re-running.** The paper's result CSVs are the
-ones this section is measured from. It is documented here because it is the one
-experiment whose `full` cost is known rather than projected.
-
-## E1 through E4 at `--level full`: not yet measured
-
-These four have no measured `full` breakdown yet. Their `runtime_sec` column was
-added after the paper run, so the first `--level full` sweep is what will
-populate it. [`ARTIFACT.md`](ARTIFACT.md) carries order-of-magnitude estimates in
-the meantime, and flags them as estimates.
-
-Once a full run exists, regenerate this section from its CSVs:
+Once a full run exists, regenerate this from its CSVs:
 
 ```bash
 uv run python - <<'PY'
@@ -198,44 +138,28 @@ for path in sorted(glob.glob("artifact/runs/full/**/*.csv", recursive=True)):
     times = [float(row["runtime_sec"]) for row in rows if row.get("runtime_sec")]
     if times:
         print(f"{path:56} {len(times):3} cells  "
-              f"mean {statistics.mean(times)/3600:5.2f} h  "
-              f"total {sum(times)/3600:6.1f} h")
+              f"mean {statistics.mean(times) / 3600:5.2f} h  "
+              f"total {sum(times) / 3600:6.1f} h")
 PY
 ```
 
-For E1, group by `capacity` before averaging: the six attacks share one target
-per (seed, capacity), so the attack that trains it absorbs the training cost and
-the rest are much cheaper. For E2 and E4, group by `dataset`: the four differ
-enough that a mean across them describes none of them. For E3, the baseline row
-carries the shared clean-target training and each budget row carries only its own
-work, so the rows are disjoint and can be summed directly.
+Group before averaging, because a mean over unlike cells describes none of them:
+E1 by `capacity` (the six attacks share one target per seed and capacity, so the
+attack that trains it absorbs the cost), E2 and E4 by `dataset`. E3's baseline
+row carries the shared clean-target training and each budget row only its own
+work, so E3's rows are disjoint and sum directly.
 
-### Why E4 will dominate at full, and why its cheap-looking datasets are not cheap
+E4 is expected to dominate, for a reason the smoke numbers hide. Its per-cell
+cost is not training but `OutlierRemoval._knn_shapley`, a double loop over
+`train x test`. Both factors matter: a small training set does not imply a cheap
+cell, because the outer loop walks the **test** split, and census has the largest
+test split of the four despite being tabular. And the gap from smoke to full is
+quadratic, not linear: smoke cuts both factors to a tenth, so a full cell is
+roughly 100x its smoke cell.
 
-E4's per-cell cost is not training but `OutlierRemoval._knn_shapley`, a pure
-Python double loop over train x test:
-
-```python
-for i in range(m):            # m = every test point
-    for _ in range(n - 1):    # n = every train point
-```
-
-Measured at about 2.6 microseconds per inner iteration, so a cell costs roughly
-`2.6e-6 * n * m` seconds before any retraining. Both factors matter, which has
-two consequences at full that the smoke numbers above do not show. A small
-**training** set does not imply a cheap cell, because `m` is the test split the
-outer loop walks: census has the largest test split of the four (23,224 at full),
-so despite being tabular it sits alongside the image datasets rather than below
-them. And the gap between smoke and full is quadratic-ish, not linear: smoke cuts
-**both** `n` and `m` to a tenth, so a full cell is roughly 100x its smoke cell,
-not 10x.
-
-| Dataset | n x m (full)    | Shapley (full, projected) |
-| ------- | --------------- | ------------------------: |
-| fmnist  | 30,000 x 10,000 |                    13 min |
-| cifar   | 25,000 x 10,000 |                    11 min |
-| census  | 11,611 x 23,224 |                    12 min |
-| lfw     | 2,395 x 2,053   |                      13 s |
-
-At `--level full` that is roughly 2.5 GPU-hours of pure Shapley across E4's 16
-removal cells, on top of the retraining and distillation each cell also pays.
+| Dataset | train x test (full) |
+| ------- | ------------------- |
+| fmnist  | 30,000 x 10,000     |
+| cifar   | 25,000 x 10,000     |
+| census  | 11,611 x 23,224     |
+| lfw     | 2,395 x 2,053       |

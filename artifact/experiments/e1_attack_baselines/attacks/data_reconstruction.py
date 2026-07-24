@@ -1,13 +1,10 @@
-"""E1-data-reconstruction: model inversion per class (row \\ref{datarecon}).
+"""E1 data reconstruction: model inversion per class.
 
-Ports the old `experiments/attacks/run_data_recon.py`. The target is a VGG
-trained on the full split against CelebA's `Wavy_Hair` label; `FredriksonCCS2015`
-inverts it once per class, and `evaluate_similarity` reports the average and
-per-class MSE against the true class means. The old `get_reconstructed_data()`
-is now `attack()` (plan §5, confirmed against `fredrikson_ccs_2015.py`).
-
-The target uses the `Wavy_Hair` label, so it is a different model from every
-Smiling-labelled target and correctly does not share a checkpoint.
+The target is a VGG trained on the full split against the `Wavy_Hair` label.
+`FredriksonCCS2015` inverts it once per class, and `evaluate_similarity` reports
+the average and per-class MSE against the true class means. The `Wavy_Hair` label
+makes it a different model from every `Smiling`-labelled target, so it correctly
+does not share a checkpoint.
 """
 
 from __future__ import annotations
@@ -20,7 +17,8 @@ import torch.nn as nn
 from amulet.data_reconstruction.attacks import FredriksonCCS2015
 from amulet.data_reconstruction.metrics import evaluate_similarity
 from amulet.utils import get_accuracy
-from experiments.e1_attack_baselines import shared
+from common import training
+from experiments.e1_attack_baselines import context, train_targets
 from experiments.e1_attack_baselines.schemas import DATA_RECONSTRUCTION_SCHEMA
 
 if TYPE_CHECKING:
@@ -45,7 +43,7 @@ _TINY_ALPHA = 5
 _SMOKE_ALPHA = 50
 
 
-def _alpha(ctx: shared.RunContext) -> int:
+def _alpha(ctx: context.RunContext) -> int:
     """Return the inversion iteration count this level can afford.
 
     Only `full` runs the paper's budget. The count is a CSV key column, so a
@@ -61,11 +59,11 @@ def _alpha(ctx: shared.RunContext) -> int:
         return _TINY_ALPHA
     if ctx.level.train_fraction < 1.0:
         return _SMOKE_ALPHA
-    return shared.RECONSTRUCTION_ALPHA
+    return context.RECONSTRUCTION_ALPHA
 
 
 def run_cell(
-    ctx: shared.RunContext, capacity: str, output_dir: Path
+    ctx: context.RunContext, capacity: str, output_dir: Path
 ) -> list[dict[str, object]]:
     """Train the target if needed, invert it, and append one result row.
 
@@ -80,7 +78,7 @@ def run_cell(
     from common.io import append_row, row_exists
 
     alpha = _alpha(ctx)
-    batch_size = shared.batch_for(ctx.level, shared.RECONSTRUCTION_BATCH_SIZE)
+    batch_size = context.batch_for(ctx.level, context.RECONSTRUCTION_BATCH_SIZE)
     output = output_dir / f"{CSV_STEM}.csv"
     if row_exists(
         output, SCHEMA, {"exp_id": ctx.seed, "capacity": capacity, "alpha": alpha}
@@ -89,20 +87,18 @@ def run_cell(
 
     started = time.perf_counter()
 
-    data = ctx.data(shared.PRIVACY_TARGET_ATTRIBUTE, ctx.level.train_fraction)
-    spec = shared.reconstruction_target_spec(
+    data = ctx.data(context.PRIVACY_TARGET_ATTRIBUTE, ctx.level.train_fraction)
+    spec = train_targets.reconstruction_target_spec(
         ctx.level, ctx.seed, capacity, data.num_features, data.num_classes
     )
 
     def train_target(model: nn.Module) -> nn.Module:
-        loader = shared.loader_for(data.train_set, batch_size)
-        return shared.train_with_adam(model, loader, ctx.device, spec.epochs)
+        loader = training.loader_for(data.train_set, batch_size)
+        return training.train_with_adam(model, loader, ctx.device, spec.epochs)
 
-    target = shared.train_target_via_cache(
-        ctx, spec, data.num_features, data.num_classes, train_target
-    )
+    target = ctx.get_or_train(spec, data.num_features, data.num_classes, train_target)
 
-    test_loader = shared.loader_for(data.test_set, batch_size)
+    test_loader = training.loader_for(data.test_set, batch_size)
     target_test_acc = get_accuracy(target, test_loader, ctx.device)
 
     input_size = (1, *tuple(data.test_set[0][0].shape))  # type: ignore[reportArgumentType]
@@ -110,13 +106,13 @@ def run_cell(
     attack = FredriksonCCS2015(target, input_size, output_size, ctx.device, alpha)
     reconstructed = attack.attack()
 
-    per_image_train = shared.loader_for(data.train_set, 1)
+    per_image_train = training.loader_for(data.train_set, 1)
     similarity = evaluate_similarity(
         per_image_train, reconstructed, input_size, output_size, ctx.device
     )
 
     row: dict[str, object] = {
-        **shared.leading_row(spec, shared.PRIVACY_TARGET_ATTRIBUTE),
+        **context.leading_row(spec, context.PRIVACY_TARGET_ATTRIBUTE),
         "alpha": alpha,
         "target_test_acc": target_test_acc,
         "mse_avg": similarity["mean_mse"],

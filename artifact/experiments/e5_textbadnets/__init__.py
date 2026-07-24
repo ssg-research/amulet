@@ -1,4 +1,4 @@
-"""E5: the textual backdoor and its two defenses on SST-2 (plan §3, §12 P1).
+"""E5: the textual backdoor and its two defenses on SST-2.
 
 Adopted from the live sweep in the repository-root `experiments/` tree, which
 stays where it is: this is a copy wearing the artifact harness (`common.io`

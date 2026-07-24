@@ -15,15 +15,15 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 
 cat <<'BANNER'
 ============================================================================
- run_all.sh: FULL (Level 3) run.
+ run_full.sh: FULL (Level 3) run.
  This is paper-scale training: GPU-hours to GPU-days on one consumer GPU.
  Output goes to artifact/runs/full/ ; other levels' results are untouched.
  Interrupt now (Ctrl-C) if you meant to run run_smoke.sh instead.
 ============================================================================
 BANNER
 
-echo "== run_all.sh: running all experiments at full level =="
+echo "== run_full.sh: running all experiments at full level =="
 uv run python "${HERE}/run_experiments.py" --level full "$@"
 
-echo "== run_all.sh: regenerating tables and plots from runs/full =="
+echo "== run_full.sh: regenerating tables and plots from runs/full =="
 uv run python "${HERE}/make/make_all.py" --results-dir "${HERE}/runs/full"

@@ -2,7 +2,7 @@
 
 Every experiment appends one row per configuration to a CSV under
 `artifact/runs/<level>/`, and the `make/` wrappers render from them so they can
-render tables with no GPU (plan §13, decision 2). That makes two properties
+render tables with no GPU. That makes two properties
 load-bearing: an interrupted sweep must be resumable without duplicating rows,
 and a header that has drifted from the schema must fail loudly rather than
 silently writing a misaligned row.

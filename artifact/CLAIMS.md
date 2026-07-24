@@ -1,15 +1,14 @@
 # Design Claims: Consistency and Extensibility
 
-This document substantiates the two design desiderata the paper argues by
-construction: **D2 (consistent)** from the framework section, and **D3
-(extensible)** from the extensibility section.
-It is a companion to [`ARTIFACT.md`](ARTIFACT.md), which covers the empirical
-claims.
+Two of Amulet's design claims are argued in code rather than in experiments: that
+its interface is **consistent** (D2) and **extensible** (D3).
+This walks through both against the real API.
+[`ARTIFACT.md`](ARTIFACT.md) covers the empirical claims (D4); this is its
+companion for the design ones.
 
-Every snippet below is lifted from a runnable example in `examples/` and uses
-the real API.
-The single executable proof that ties both claims together is the conformance
-test:
+Every snippet below comes from a runnable example under `examples/`.
+One command proves both claims at once, by checking every defense in the package
+against the shared interface:
 
 ```bash
 uv run pytest tests/test_api_conformance.py

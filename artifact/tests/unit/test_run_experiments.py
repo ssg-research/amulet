@@ -1,4 +1,4 @@
-"""Contract for the registry-driven experiment runner (plan §9, P5).
+"""Contract for the registry-driven experiment runner.
 
 `run_experiments.py` is the top of the wrapper hierarchy: it iterates the
 experiment registry and drives each experiment's uniform `run(level, seeds)`.

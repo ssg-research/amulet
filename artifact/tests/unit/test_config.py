@@ -1,6 +1,6 @@
 """Tests for common/config.py.
 
-The three verification levels are the artifact's cost dial (plan §8): `test` is
+The three verification levels are the artifact's cost dial: `test` is
 tiny-everything, `smoke` runs the real architectures for one epoch, `full` is
 paper settings. `full` deliberately leaves `epochs` unset because the paper
 epoch count is per-experiment, so the contract under test is: presets are

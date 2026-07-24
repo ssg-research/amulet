@@ -13,7 +13,7 @@ its own CSVs. A per-experiment pass/fail line and the output location are printe
 at the end.
 
 `full` is Level 3: paper settings, GPU-hours. This driver does not guard against
-it, but `run_all.sh` prints the warning banner before invoking it.
+it, but `run_full.sh` prints the warning banner before invoking it.
 """
 
 from __future__ import annotations
@@ -26,36 +26,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[0]))
 
+from common.cli import parse_seeds
 from common.config import LEVEL_NAMES
 from common.io import run_output_dir
 from common.registry import EXPERIMENT_IDS, load_experiment
-
-
-def parse_seeds(text: str) -> tuple[int, ...]:
-    """Parse a seed selection such as `0`, `0-4` or `0,2,3`.
-
-    Args:
-        text: Comma-separated seeds and inclusive `start-end` ranges.
-
-    Returns:
-        The seeds in the order given, without duplicates.
-
-    Raises:
-        ValueError: If a part is neither an integer nor an inclusive range.
-    """
-    seeds: list[int] = []
-    for part in text.split(","):
-        piece = part.strip()
-        if not piece:
-            continue
-        if "-" in piece.removeprefix("-"):
-            start, _, end = piece.partition("-")
-            seeds.extend(range(int(start), int(end) + 1))
-        else:
-            seeds.append(int(piece))
-    if not seeds:
-        raise ValueError(f"No seeds parsed from {text!r}.")
-    return tuple(dict.fromkeys(seeds))
 
 
 def parse_only(text: str) -> tuple[str, ...]:
@@ -121,9 +95,12 @@ def run_experiments(
         runner that raises is captured as an `error` rather than aborting the
         sweep, so one broken experiment does not block the others.
     """
+    from common import progress
+
     clock = (lambda: 0.0) if now is not None else time.monotonic
     results: list[ExperimentResult] = []
-    for experiment_id in only:
+    for index, experiment_id in enumerate(only, start=1):
+        progress.banner(f"[{index}/{len(only)}] {experiment_id} at level {level!r}")
         module = load_experiment(experiment_id)
         start = clock()
         try:

@@ -4,8 +4,7 @@
 
 Reads `artifact/runs/full/e1_attack_baselines/<attack>.csv` and writes
 `artifact/tables/generated/tab_attack_results.tex`. Rendering is a pure function
-of those files: no GPU, no model, no CelebA download, seconds (plan §13,
-decision 2).
+of those files: no GPU, no model, no CelebA download, seconds.
 
 **Seed-count agnostic.** A cell is aggregated over whatever seeds the CSVs
 contain: several seeds render as `mean ~$\\pm$~ standard error`, one seed as the
@@ -27,13 +26,13 @@ the paper itself (Table 5).
 from __future__ import annotations
 
 import argparse
-import statistics
 import sys
-from collections import defaultdict
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from make.tables_common import BLANK, format_cell, group_by, pooled_by_seed
 
 from common.io import default_results_dir, read_rows
 from common.paths import artifact_root
@@ -52,7 +51,6 @@ EXPERIMENT_ID = "e1_attack_baselines"
 TABLE_STEM = "tab_attack_results"
 
 _INDENT = " " * 8
-_BLANK = "-"
 
 _PREAMBLE = """\
 \\begin{table*}[htb]
@@ -147,72 +145,18 @@ _BLOCKS: list[tuple[str, list[MetricRow]]] = [
 # distinction is what would change were a metric ever reported differently.
 
 
-def mean_and_standard_error(values: Sequence[float]) -> tuple[float, float]:
-    """Return the mean of `values` and the standard error of that mean.
-
-    Args:
-        values: One measurement per seed. At least one.
-
-    Returns:
-        `(mean, standard_error)`. The standard error of a single measurement is
-        zero: there is no spread to report, and the caller renders the value on
-        its own rather than inventing an error bar.
-
-    Raises:
-        ValueError: If `values` is empty.
-    """
-    if not values:
-        raise ValueError("Cannot aggregate an empty cell.")
-    mean = statistics.fmean(values)
-    if len(values) == 1:
-        return mean, 0.0
-    return mean, statistics.stdev(values) / len(values) ** 0.5
-
-
-def format_cell(values: Sequence[float], precision: int = 2) -> str:
-    """Render one table cell from the per-seed measurements behind it.
-
-    Args:
-        values: One measurement per seed. At least one.
-        precision: Decimal places for the mean and the error.
-
-    Returns:
-        `"57.17~$\\pm$~0.15"` for several seeds, `"57.17"` for one.
-
-    Raises:
-        ValueError: If `values` is empty.
-    """
-    mean, standard_error = mean_and_standard_error(values)
-    if len(values) == 1:
-        return f"{mean:.{precision}f}"
-    return f"{mean:.{precision}f}~$\\pm$~{standard_error:.{precision}f}"
-
-
-def _by_capacity(
-    rows: Sequence[Mapping[str, str]],
-) -> dict[str, list[Mapping[str, str]]]:
-    """Group an attack's result rows by capacity column."""
-    grouped: dict[str, list[Mapping[str, str]]] = defaultdict(list)
-    for row in rows:
-        grouped[row["capacity"]].append(row)
-    return grouped
-
-
 def _values_by_capacity(
     rows: Sequence[Mapping[str, str]], column: str
 ) -> dict[str, list[float]]:
     """Collect one value per seed for a column, keyed by capacity.
 
-    The seed (`exp_id`) is the unit of replication, so a capacity that a seed
-    contributed several rows to (which the idempotent append prevents, but a
-    hand-edited CSV could hold) is de-duplicated to one value per seed.
+    Groups the rows by capacity, then pools each group's column to one value per
+    seed (`pooled_by_seed` de-duplicates a seed that contributed several rows and
+    skips any blank cell), so the table's aggregation matches E2-E4's.
     """
-    by_capacity: dict[str, dict[str, float]] = defaultdict(dict)
-    for row in rows:
-        by_capacity[row["capacity"]][row["exp_id"]] = float(row[column])
     return {
-        capacity: [seeds[seed] for seed in sorted(seeds)]
-        for capacity, seeds in by_capacity.items()
+        capacity: pooled_by_seed(group, column)
+        for capacity, group in group_by(rows, "capacity").items()
     }
 
 
@@ -250,7 +194,7 @@ def _cells(metric: MetricRow, values: Mapping[str, list[float]]) -> list[str]:
         if capacity in columns and seeds:
             cells.append(format_cell(seeds, metric.precision))
         else:
-            cells.append(_BLANK)
+            cells.append(BLANK)
     return cells
 
 
@@ -310,7 +254,7 @@ def coverage(results_dir: Path) -> list[str]:
     lines: list[str] = []
     for attack in SCHEMAS:
         rows = _rows_for(results_dir, attack)
-        by_capacity = _by_capacity(rows)
+        by_capacity = group_by(rows, "capacity")
         for capacity in _columns_for(attack):
             seeds = sorted({row["exp_id"] for row in by_capacity.get(capacity, [])})
             status = f"{len(seeds)} seed(s) {seeds}" if seeds else "MISSING"

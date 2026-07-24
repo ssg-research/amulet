@@ -3,10 +3,10 @@
 Kept in their own module, free of torch and Hugging Face imports, so the table
 renderer in `make/` can validate a CSV header without loading a 3B target.
 
-The headers are those the paper run wrote, column for column, so the committed
-CSVs under `artifact/results/e5_textbadnets/` are readable as-is. The key
+The headers are those the paper run wrote, column for column, so the
+CSVs a run writes under `artifact/runs/<level>/e5_textbadnets/` are readable as-is. The key
 columns identify an experiment *cell*: which measurement a row is, not what it
-measured. Re-running a completed sweep therefore appends nothing (plan §7.1).
+measured. Re-running a completed sweep therefore appends nothing.
 """
 
 from __future__ import annotations

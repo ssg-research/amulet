@@ -8,7 +8,7 @@ Dispatches to the two sub-experiments that share E5's target, dataset and caches
 `run(level, seeds, which)` is the same path under a callable name, used by the level
 sweepers and the tiny end-to-end test. Both sub-experiments accept their own knobs when
 driven directly (`onion.py --help`, `dp.py --help`); this runner exposes only what every
-experiment in the artifact exposes, so the sweepers can treat all five alike (plan §9).
+experiment exposes, so the sweepers treat all five alike.
 
 Requires the LLM extra: `uv sync --extra cu130 --extra llm` (or `--extra cpu` for
 `--level test`, which runs a tiny random-init target on CPU in seconds).
@@ -23,41 +23,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import argparse
 
+from common.cli import parse_seeds
 from common.config import LEVEL_NAMES, get_level
 
 EXPERIMENT_ID = "e5_textbadnets"
 
-# The paper's epoch count, which the `full` level defers to (plan §7.1).
+# The paper's epoch count, which the `full` level defers to.
 PAPER_EPOCHS = 3
 
 STUDIES = ("onion", "dp")
-
-
-def parse_seeds(text: str) -> tuple[int, ...]:
-    """Parse a seed selection such as `0`, `0-4` or `0,2,3`.
-
-    Args:
-        text: Comma-separated seeds and inclusive `start-end` ranges.
-
-    Returns:
-        The seeds in the order given, without duplicates.
-
-    Raises:
-        ValueError: If a part is neither an integer nor an inclusive range.
-    """
-    seeds: list[int] = []
-    for part in text.split(","):
-        piece = part.strip()
-        if not piece:
-            continue
-        if "-" in piece.removeprefix("-"):
-            start, _, end = piece.partition("-")
-            seeds.extend(range(int(start), int(end) + 1))
-        else:
-            seeds.append(int(piece))
-    if not seeds:
-        raise ValueError(f"No seeds parsed from {text!r}.")
-    return tuple(dict.fromkeys(seeds))
 
 
 def run(
@@ -73,11 +47,11 @@ def run(
         seeds: Seeds to sweep. None keeps the level's own seeds.
         which: `"onion"`, `"dp"` or `"both"`.
         output_dir: Directory the result CSVs go in. None keeps the per-level default
-            from `default_output_dir`: `runs/<level>/e5_textbadnets/`, never the
-            committed `results/` tree, so no run can overwrite the paper's shipped
-            data or have its reduced-budget numbers averaged into them. (The
-            throwaway temporary directory `test` uses is its model *cache*, not its
-            output; see `_cache_dir`.)
+            from `default_output_dir`: `runs/<level>/e5_textbadnets/`. Each level's
+            subtree is isolated, so a cheap run never overwrites a `full` run's
+            numbers, and no result data ships with the repository. (The throwaway
+            temporary directory `test` uses is its model *cache*, not its output;
+            see `_cache_dir`.)
 
     Returns:
         Every row appended by this call, across the seeds and studies requested. Cells
@@ -94,14 +68,20 @@ def run(
 
     # Imported here, not at module scope, so `--help` and the registry lookup do not pay
     # for torch and the Hugging Face stack.
+    from common import progress
     from experiments.e5_textbadnets import dp, onion
 
     modules = {"onion": onion, "dp": dp}
+    sweep = [
+        (seed, study)
+        for seed in config.seeds
+        for study in STUDIES
+        if which in (study, "both")
+    ]
     rows: list[dict[str, object]] = []
-    for seed in config.seeds:
-        for study in STUDIES:
-            if which in (study, "both"):
-                rows.extend(modules[study].run_level(config, seed, output_dir))
+    for seed, study in progress.cells(sweep, EXPERIMENT_ID):
+        progress.log(f"[{EXPERIMENT_ID}] {study} seed={seed}")
+        rows.extend(modules[study].run_level(config, seed, output_dir))
     return rows
 
 

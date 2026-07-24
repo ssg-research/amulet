@@ -1,4 +1,4 @@
-"""Contract for the E4 plot renderer (plan S8 Level 1, S7.1, S13.3).
+"""Contract for the E4 plot renderer.
 
 Both figures are a pure function of the result CSV, so every case is a
 hand-checked tiny CSV in, a figure (or a PNG file) out: no GPU, no model, no

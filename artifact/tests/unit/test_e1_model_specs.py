@@ -1,4 +1,4 @@
-"""Contract for E1's target-model sharing (plan §6, §7.1, §12 P2).
+"""Contract for E1's target-model sharing.
 
 The point of routing every E1 model through `common.models.ModelSpec` is that
 sharing becomes a property of the *recipe* rather than of which script ran
@@ -7,7 +7,7 @@ automatically, and two that need different models cannot collide however similar
 their code looks.
 
 E1 is the hard case for that claim, because its six sub-attacks deliberately
-diverge along three independent axes (plan §5):
+diverge along three independent axes:
 
 * optimizer recipe — evasion and poisoning train with SGD + StepLR, everything
   else with Adam;
@@ -27,10 +27,10 @@ import pytest
 
 from common.config import get_level
 from common.models import ModelSpec
-from experiments.e1_attack_baselines import shared
+from experiments.e1_attack_baselines import context, train_targets
 
 # The paper's full-level budget: 100 epochs, one seed, the whole training split.
-LEVEL = get_level("full").with_defaults(epochs=shared.PAPER_EPOCHS)
+LEVEL = get_level("full").with_defaults(epochs=context.PAPER_EPOCHS)
 
 # CelebA as `amulet.utils.load_data` reports it: 64x64 images, binary target.
 NUM_FEATURES = 64 * 64
@@ -39,7 +39,7 @@ NUM_CLASSES = 2
 
 def _spec(builder_name: str, seed: int = 0, capacity: str = "m1") -> ModelSpec:
     """Build one named target spec at the paper's settings."""
-    builder = getattr(shared, builder_name)
+    builder = getattr(train_targets, builder_name)
     return builder(LEVEL, seed, capacity, NUM_FEATURES, NUM_CLASSES)
 
 
@@ -74,7 +74,10 @@ def test_model_extraction_and_attribute_inference_share_one_target() -> None:
     same model, so it must be trained once and reused, saving a full 100-epoch
     VGG training per capacity per seed.
     """
-    from experiments.e1_attack_baselines import attribute_inference, model_extraction
+    from experiments.e1_attack_baselines.attacks import (
+        attribute_inference,
+        model_extraction,
+    )
 
     extraction = model_extraction.target_spec(LEVEL, 0, "m1", NUM_FEATURES, NUM_CLASSES)
     inference = attribute_inference.target_spec(
@@ -87,7 +90,7 @@ def test_model_extraction_and_attribute_inference_share_one_target() -> None:
 @pytest.mark.parametrize(
     ("first", "second", "field"),
     [
-        # SGD + StepLR versus Adam: the recipe divergence of plan §5.
+        # SGD + StepLR versus Adam: the recipe divergence.
         ("evasion_target_spec", "adversary_split_target_spec", "optimizer_recipe"),
         # `Smiling` versus `Wavy_Hair`: a different label is a different model.
         (
@@ -118,14 +121,14 @@ def test_diverging_recipes_differ_in_the_field_that_explains_why(
 def test_the_membership_inference_target_is_never_a_vgg() -> None:
     """The overfit target is a ResNet on a tenth of the data, as the paper says.
 
-    Plan §5 marks this an intentional special case that must never share a
-    target with anything else. Recording the architecture and the reduced
-    training fraction in the spec is what enforces that.
+    It is an intentional special case that must never share a target with
+    anything else. Recording the architecture and the reduced training fraction
+    in the spec is what enforces that.
     """
     spec = _spec("overfit_target_spec")
 
     assert spec.arch == "resnet"
-    assert spec.train_fraction == pytest.approx(shared.OVERFIT_TRAINING_SIZE)
+    assert spec.train_fraction == pytest.approx(context.OVERFIT_TRAINING_SIZE)
 
 
 @pytest.mark.parametrize("builder", TARGET_BUILDERS)
@@ -148,10 +151,12 @@ def test_the_tiny_test_level_model_cannot_reuse_a_paper_checkpoint() -> None:
     without this distinction it would hash to the same key as the real VGG and
     be loaded in its place on the next full run.
     """
-    tiny = get_level("test").with_defaults(epochs=shared.PAPER_EPOCHS)
+    tiny = get_level("test").with_defaults(epochs=context.PAPER_EPOCHS)
 
     paper_spec = _spec("evasion_target_spec")
-    tiny_spec = shared.evasion_target_spec(tiny, 0, "m1", NUM_FEATURES, NUM_CLASSES)
+    tiny_spec = train_targets.evasion_target_spec(
+        tiny, 0, "m1", NUM_FEATURES, NUM_CLASSES
+    )
 
     assert tiny_spec.arch != paper_spec.arch
     assert tiny_spec.key() != paper_spec.key()

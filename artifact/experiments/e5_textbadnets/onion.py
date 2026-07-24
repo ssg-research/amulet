@@ -3,22 +3,20 @@
 Same-risk composition: ONION (a poisoning defense) meets a poisoning attack. Three
 conditions per poison rate: a clean baseline, an undefended poisoned target, and an
 ONION-defended target that trains on ONION-purified poisoned data and is evaluated on
-ONION-purified inputs. Realizes H1 (attack) and H2 (intended interaction). See
-experiments/text_backdoor_experiments.md in the repository root.
+ONION-purified inputs.
 
 Per seed the clean baseline is trained once and whatever poison rates the level
 selects are swept internally; one row is appended per rate to
-`results/e5_textbadnets/onion.csv`. `exp_id` is the seed everywhere.
+`runs/<level>/e5_textbadnets/onion.csv`. `exp_id` is the seed everywhere.
 
     python artifact/experiments/e5_textbadnets/onion.py --level test
     python artifact/experiments/e5_textbadnets/onion.py --level full --seeds 0-4
 
-Levels come from `common.config` (plan §8). `test` is the old `--smoke` path: a tiny
-random-init target on CPU. `smoke` fine-tunes a real pretrained 1.1B Llama
-(`SMOKE_MODEL_NAME`) on a small fixed slice of the corpus (`SMOKE_MAX_TRAIN_SAMPLES`)
-for one epoch, and runs a single poison rate (see `apply_level` for the model swap,
-the data cap, and why the grid collapses to one cell). `full` is the paper run: the
-3B target over the whole poison-rate grid and the whole corpus. Requires the LLM extra: `uv sync --extra cu130
+`test` runs a tiny random-init target on CPU. `smoke` fine-tunes a real pretrained
+1.1B Llama (`SMOKE_MODEL_NAME`) on a small fixed slice of the corpus for one epoch
+and a single poison rate (see `apply_level` for the model swap, the data cap, and
+why the grid collapses to one cell). `full` is the paper run: the 3B target over
+the whole poison-rate grid and corpus. Needs the LLM extra: `uv sync --extra cu130
 --extra llm` (or `--extra cpu` for `--level test`).
 """
 
@@ -49,8 +47,8 @@ from experiments.e5_textbadnets.llm_backdoor_common import (
     accuracy,
     cached_purify,
     load_sst2_seeded,
-    make_smoke_setup,
     make_target_factory,
+    make_test_setup,
     onion_stats,
     train_target,
 )
@@ -154,6 +152,8 @@ def run_experiment(
     output: Path,
 ) -> list[dict[str, object]]:
     """Sweep the poison-rate grid for one seed, appending a row per rate."""
+    from common import progress
+
     device = args.device
     dtype = "float32"
     portions = [float(p) for p in str(args.poisoned_portions).split(",")]
@@ -161,6 +161,7 @@ def run_experiment(
     test_set = cast(TextTensorDataset, data.test_set)
 
     # Clean baseline (condition 1) — poison-rate-independent, trained once per seed.
+    progress.log(f"    onion seed={args.exp_id}: clean baseline fine-tune")
     clean_model, clean_runtime = train_target(
         factory,
         train_set,
@@ -196,8 +197,10 @@ def run_experiment(
         if row_exists(
             output, ONION_SCHEMA, {"exp_id": args.exp_id, "poisoned_portion": portion}
         ):
-            print(f"skip exp_id={args.exp_id} p={portion}")
+            progress.log(f"    onion seed={args.exp_id} p={portion}: already recorded")
             continue
+
+        progress.log(f"    onion seed={args.exp_id} p={portion}: undefended target")
 
         attack = TextBadNets(
             trigger=args.trigger,
@@ -228,6 +231,9 @@ def run_experiment(
             torch.cuda.empty_cache()
 
         # Condition 3 — ONION-defended: train on purified poison, eval on purified inputs.
+        progress.log(
+            f"    onion seed={args.exp_id} p={portion}: purify (perplexity scoring) + defended target"
+        )
         purify_start = time.perf_counter()
         purified_train = cached_purify(
             onion, poisoned_train, args.model_name, cache_dir
@@ -297,8 +303,8 @@ def run_experiment(
         }
         _ = append_row(output, ONION_SCHEMA, row)
         rows.append(row)
-        print(
-            f"exp_id={args.exp_id} p={portion} | clean {clean_baseline_test_acc:.1f} | "
+        progress.log(
+            f"    onion seed={args.exp_id} p={portion} | clean {clean_baseline_test_acc:.1f} | "
             f"undef acc {undef_test_acc:.1f} asr {undef_asr:.1f} | onion acc "
             f"{def_test_acc_purified:.1f} asr {def_asr:.1f} (removed {removal_rate:.2f})"
         )
@@ -377,7 +383,7 @@ def build_inputs(
         The dataset and a factory producing a fresh untrained target.
     """
     if config.tiny_model:
-        return make_smoke_setup()
+        return make_test_setup()
     data = load_sst2_seeded(
         args.exp_id,
         args.model_name,
@@ -412,13 +418,13 @@ def _cache_dir(args: argparse.Namespace, config: LevelConfig) -> Path:
 def default_output_dir(config: LevelConfig) -> Path:
     """Return the directory this level's result CSV belongs in.
 
-    Every level writes under `runs/<level>/<experiment_id>/`, never into the
-    committed `results/` tree: a `full` re-run must not clobber the shipped
-    ground truth, and a `smoke`/`test` run must not have its reduced-budget or
-    random-init numbers averaged into the paper's. The `runs/<level>/` tree
-    mirrors `results/` (E5's `onion.csv`/`dp.csv` live in a `<experiment_id>/`
-    subdirectory of both), so a `make_*` renderer reads either the same way.
-    Authors promote a completed `full` run by copying its CSVs into `results/`.
+    Every level writes under its own `runs/<level>/<experiment_id>/` subtree, so a
+    cheap `test` or `smoke` run never overwrites the `full` results a paper
+    comparison reads from, nor has its reduced-budget or random-init numbers
+    averaged into them. No result data ships with the repository; every number
+    comes from a run that lands here. E5's `onion.csv`/`dp.csv` live in a
+    `<experiment_id>/` subdirectory, the layout a `make_*` renderer reads with one
+    path rule at any level.
 
     Args:
         config: The level preset.
@@ -458,7 +464,7 @@ def run_level(
 
 def main(argv: list[str] | None = None) -> None:
     """Run the ONION study over the level's seeds from the command line."""
-    from experiments.e5_textbadnets.run import parse_seeds
+    from common.cli import parse_seeds
 
     arguments = sys.argv[1:] if argv is None else argv
     args = parse_args(arguments)

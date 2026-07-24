@@ -4,8 +4,7 @@
 
 Reads `artifact/runs/full/e5_textbadnets/{onion,dp}.csv` and writes
 `artifact/tables/generated/tab_textbadnets_interactions.tex`. Rendering is a
-pure function of those two files: no GPU, no model, no `llm` extra, seconds
-(plan §13, decision 2).
+pure function of those two files: no GPU, no model, no `llm` extra, seconds.
 
 **Seed-count agnostic.** A cell is aggregated over whatever seeds the CSVs
 contain: five seeds render as `mean ~$\\pm$~ standard error`, one seed renders
@@ -32,6 +31,8 @@ from typing import TYPE_CHECKING
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from make.tables_common import format_cell
+
 from common.io import read_rows, results_path
 from common.paths import artifact_root
 from experiments.e5_textbadnets.schemas import DP_SCHEMA, ONION_SCHEMA
@@ -47,7 +48,7 @@ TABLE_STEM = "tab_textbadnets_interactions"
 # A DP target model that predicts the target class for every input scores 100% ASR
 # alongside the class prior (444 of SST-2's 872 validation records are positive,
 # i.e. 50.9%). Such a cell measures the degenerate predictor rather than the
-# defense, so the paper marks it and excludes it (§5, "Unintended Interaction").
+# defense, so the paper marks it and excludes it.
 COLLAPSE_MARKER = "$^{*}$"
 _CHANCE_ACCURACY = 55.0
 
@@ -89,45 +90,6 @@ _EPILOGUE = """\
 """
 
 
-def mean_and_standard_error(values: Sequence[float]) -> tuple[float, float]:
-    """Return the mean of `values` and the standard error of that mean.
-
-    Args:
-        values: One measurement per seed. At least one.
-
-    Returns:
-        `(mean, standard_error)`. The standard error of a single measurement is
-        zero: there is no spread to report, and the caller renders the value on
-        its own rather than inventing an error bar.
-
-    Raises:
-        ValueError: If `values` is empty.
-    """
-    if not values:
-        raise ValueError("Cannot aggregate an empty cell.")
-    mean = statistics.fmean(values)
-    if len(values) == 1:
-        return mean, 0.0
-    return mean, statistics.stdev(values) / len(values) ** 0.5
-
-
-def format_cell(values: Sequence[float], marker: str = "") -> str:
-    """Render one table cell from the per-seed measurements behind it.
-
-    Args:
-        values: One measurement per seed.
-        marker: Footnote marker appended to the cell, e.g. the collapsed-cell
-            asterisk.
-
-    Returns:
-        `"93.51~$\\pm$~0.17"` for several seeds, `"93.51"` for one.
-    """
-    mean, standard_error = mean_and_standard_error(values)
-    if len(values) == 1:
-        return f"{mean:.2f}{marker}"
-    return f"{mean:.2f}~$\\pm$~{standard_error:.2f}{marker}"
-
-
 def is_collapsed(row: Mapping[str, str]) -> bool:
     """Report whether a DP row is the degenerate majority-class predictor.
 
@@ -167,8 +129,8 @@ def aggregate_dp_cell(rows: Sequence[Mapping[str, str]]) -> tuple[str, str]:
     marker = "" if healthy else COLLAPSE_MARKER
     used = healthy or list(rows)
     return (
-        format_cell([float(row["dp_test_acc"]) for row in used], marker),
-        format_cell([float(row["dp_asr"]) for row in used], marker),
+        format_cell([float(row["dp_test_acc"]) for row in used], marker=marker),
+        format_cell([float(row["dp_asr"]) for row in used], marker=marker),
     )
 
 

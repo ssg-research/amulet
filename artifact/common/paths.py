@@ -26,7 +26,7 @@ def artifact_root() -> Path:
     """Return the absolute path of the `artifact/` directory.
 
     Returns:
-        The directory holding `common/`, `experiments/`, `make/` and `results/`.
+        The directory holding `common/`, `experiments/`, `make/` and `runs/`.
     """
     return _THIS_FILE.parents[1]
 

@@ -1,10 +1,10 @@
-"""Contract for the E3 table renderer (plan S8 Level 1, S7.1 table contract).
+"""Contract for the E3 table renderer.
 
 A pure function of the result CSV: hand-checked tiny CSV in, exact `.tex`
 fragment out. Numbers are chosen so each mean and standard error is checkable by
 eye. The baseline measures attribute inference against the clean model and has
 no defended model to perturb, so its two robust-accuracy columns are always
-blank; the budget rows measure it against $\\modeldef$ and fill every column.
+blank; the budget rows measure it against the defended model and fill every column.
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ from __future__ import annotations
 import csv
 from typing import TYPE_CHECKING
 
-from make.make_tab_attinf_advrtr import coverage, render_table
+from make.make_tab_advtr_attrinf import coverage, render_table
 
 from experiments.e3_advtr_attrinf.schemas import SCHEMA
 
@@ -55,7 +55,7 @@ def _baseline(
     acc_att_sex: float,
     auc_sex: float,
 ) -> dict[str, object]:
-    """One baseline row: attribute inference against the clean $\\modelstd$."""
+    """One baseline row: attribute inference against the clean baseline."""
     return {
         "exp_id": seed,
         "dataset": dataset,
@@ -84,7 +84,7 @@ def _defended(
     acc_att_sex: float,
     auc_sex: float,
 ) -> dict[str, object]:
-    """One defended row: attribute inference against $\\modeldef$ at a budget."""
+    """One defended row: attribute inference against the defended model at a budget."""
     return {
         "exp_id": seed,
         "dataset": dataset,

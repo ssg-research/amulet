@@ -1,25 +1,17 @@
-"""E1-membership-inference: LiRA against an overfit target (row \\ref{meminf}).
+"""E1 membership inference: LiRA against an overfit target.
 
-Ports the old `experiments/attacks/run_membership_inference.py`. This is the
-deliberate special case (plan §5): the target is an intentionally overfit
-network trained on a tenth of the data against the `Wavy_Hair` label, never
-shared with any other sub-attack, and reported in the VGG11 column only.
+The target is intentionally overfit — trained on a tenth of the data against the
+`Wavy_Hair` label — never shared with another sub-attack, and reported in the
+VGG11 column only. `LiRA.attack()` trains a shadow bank and returns online and
+offline scores that `compute_mi_metrics` turns into the reported metrics.
 
-`LiRA` was refactored to the membership-inference lifecycle: the attack is driven
-by `attack()` (the old `run_membership_inference()`), which trains the shadow
-bank via `prepare_shadow_models()` and returns the online and offline score
-arrays scored by `compute_mi_metrics` (plan §5, confirmed against `lira.py`).
+The shadow bank is a directory of checkpoints `LiRA` manages itself, so
+`train_targets.shadow_bank_spec` content-addresses that directory: a bank trained
+at a different size or epoch count lands elsewhere rather than being reused.
 
-The shadow bank is a directory of checkpoints `LiRA` manages itself, so it is
-content-addressed by a `ModelSpec` (`shared.shadow_bank_spec`) naming that
-directory rather than a single file: a bank trained at a different size or
-epoch count lands elsewhere instead of being silently reused.
-
-Caveat carried from the library: `initialize_model("resnet", "m1", ...)` builds
-a ResNet-34 (the capacity map's `m1` ResNet), while the paper caption says
-ResNet-18. The exact depth is a property of the shared capacity map, which P2
-does not modify; the "intentionally overfit ResNet" behaviour the row measures
-is preserved either way.
+Caveat: `initialize_model("resnet", "m1", ...)` builds a ResNet-34, while the
+paper caption says ResNet-18. The depth is a property of the shared capacity map;
+the overfit-ResNet behaviour the row measures holds either way.
 """
 
 from __future__ import annotations
@@ -34,7 +26,8 @@ from torch.utils.data import Subset
 from amulet.membership_inference.attacks import LiRA
 from amulet.membership_inference.metrics import compute_mi_metrics
 from amulet.utils import get_accuracy
-from experiments.e1_attack_baselines import shared
+from common import training
+from experiments.e1_attack_baselines import context, train_targets
 from experiments.e1_attack_baselines.schemas import MEMBERSHIP_INFERENCE_SCHEMA
 
 if TYPE_CHECKING:
@@ -51,15 +44,16 @@ def target_spec(
     level: LevelConfig, seed: int, capacity: str, num_features: int, num_classes: int
 ) -> ModelSpec:
     """Return the spec of the overfit target attacked here, never shared."""
-    return shared.overfit_target_spec(level, seed, capacity, num_features, num_classes)
+    return train_targets.overfit_target_spec(
+        level, seed, capacity, num_features, num_classes
+    )
 
 
 def _keep_indices(dataset_size: int, seed: int) -> np.ndarray:
     """Choose which records the overfit target is trained on, reproducibly.
 
-    A dedicated generator, rather than NumPy's global one the old script drew
-    from, so the membership mask does not depend on how much other RNG the run
-    happened to consume first.
+    Uses a dedicated generator, so the membership mask depends only on the seed,
+    not on how much other RNG the run consumed first.
 
     Args:
         dataset_size: Number of records in the training split.
@@ -69,14 +63,14 @@ def _keep_indices(dataset_size: int, seed: int) -> np.ndarray:
         Sorted indices of the kept (member) records.
     """
     keep = np.random.default_rng(seed).choice(
-        dataset_size, size=int(shared.PKEEP * dataset_size), replace=False
+        dataset_size, size=int(context.PKEEP * dataset_size), replace=False
     )
     keep.sort()
     return keep
 
 
 def run_cell(
-    ctx: shared.RunContext, capacity: str, output_dir: Path
+    ctx: context.RunContext, capacity: str, output_dir: Path
 ) -> list[dict[str, object]]:
     """Train the overfit target, run LiRA, and append one result row.
 
@@ -90,13 +84,13 @@ def run_cell(
     """
     from common.io import append_row, row_exists
 
-    num_shadow = shared.shadow_count(ctx.level)
-    batch_size = shared.batch_for(ctx.level, shared.MEMBERSHIP_BATCH_SIZE)
+    num_shadow = context.shadow_count(ctx.level)
+    batch_size = context.batch_for(ctx.level, context.MEMBERSHIP_BATCH_SIZE)
     output = output_dir / f"{CSV_STEM}.csv"
     key = {
         "exp_id": ctx.seed,
         "capacity": capacity,
-        "pkeep": shared.PKEEP,
+        "pkeep": context.PKEEP,
         "num_shadow": num_shadow,
     }
     if row_exists(output, SCHEMA, key):
@@ -104,28 +98,26 @@ def run_cell(
 
     started = time.perf_counter()
 
-    overfit_fraction = ctx.level.train_fraction * shared.OVERFIT_TRAINING_SIZE
-    data = ctx.data(shared.PRIVACY_TARGET_ATTRIBUTE, overfit_fraction)
+    overfit_fraction = ctx.level.train_fraction * context.OVERFIT_TRAINING_SIZE
+    data = ctx.data(context.PRIVACY_TARGET_ATTRIBUTE, overfit_fraction)
     dataset_size = len(cast("Subset[object]", data.train_set))
     keep = _keep_indices(dataset_size, ctx.seed)
 
-    spec = shared.overfit_target_spec(
+    spec = train_targets.overfit_target_spec(
         ctx.level, ctx.seed, capacity, data.num_features, data.num_classes
     )
 
     def train_target(model: nn.Module) -> nn.Module:
         subset = Subset(data.train_set, list(keep))
-        loader = shared.loader_for(subset, batch_size)
-        return shared.train_with_adam(model, loader, ctx.device, spec.epochs)
+        loader = training.loader_for(subset, batch_size)
+        return training.train_with_adam(model, loader, ctx.device, spec.epochs)
 
-    target = shared.train_target_via_cache(
-        ctx, spec, data.num_features, data.num_classes, train_target
-    )
+    target = ctx.get_or_train(spec, data.num_features, data.num_classes, train_target)
 
-    train_loader = shared.loader_for(Subset(data.train_set, list(keep)), batch_size)
-    test_loader = shared.loader_for(data.test_set, batch_size)
+    train_loader = training.loader_for(Subset(data.train_set, list(keep)), batch_size)
+    test_loader = training.loader_for(data.test_set, batch_size)
 
-    bank_spec = shared.shadow_bank_spec(
+    bank_spec = train_targets.shadow_bank_spec(
         ctx.level, ctx.seed, capacity, data.num_features, data.num_classes
     )
     shadow_dir = ctx.cache_dir / f"lira_shadow_{bank_spec.key()}"
@@ -134,14 +126,14 @@ def run_cell(
     attack = LiRA(
         target,
         keep,
-        shared.shadow_architecture(ctx.level),
+        context.shadow_architecture(ctx.level),
         capacity,
         data.train_set,
-        f"{shared.DATASET}_{shared.PRIVACY_TARGET_ATTRIBUTE}",
+        f"{context.DATASET}_{context.PRIVACY_TARGET_ATTRIBUTE}",
         data.num_features,
         data.num_classes,
         batch_size,
-        shared.PKEEP,
+        context.PKEEP,
         nn.CrossEntropyLoss(),
         num_shadow,
         spec.epochs,
@@ -154,8 +146,8 @@ def run_cell(
     online = compute_mi_metrics(scores["lira_online_preds"], scores["true_labels"])
 
     row: dict[str, object] = {
-        **shared.leading_row(spec, shared.PRIVACY_TARGET_ATTRIBUTE),
-        "pkeep": shared.PKEEP,
+        **context.leading_row(spec, context.PRIVACY_TARGET_ATTRIBUTE),
+        "pkeep": context.PKEEP,
         "num_shadow": num_shadow,
         "target_train_acc": get_accuracy(target, train_loader, ctx.device),
         "target_test_acc": get_accuracy(target, test_loader, ctx.device),

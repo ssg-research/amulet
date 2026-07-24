@@ -1,30 +1,30 @@
-"""Contract for E4's model specs and the E2<->E4 baseline decision (plan S6, S13, P4).
+"""Contract for E4's outlier-removal model specs.
 
 E4 has no original script; it composes the outlier removal defense with model
 extraction. Its clean baseline is a clean model-extraction target on the same
-four datasets as E2, so the plan asks a deliberate question: does E4's baseline
-*share* E2's checkpoint, or is it a separate one?
+four datasets as E2, built through the shared `clean_target_spec` with the 50/50
+dataset-level split selector. Whether that baseline happens to land on the same
+cached checkpoint as E2's is an emergent property of the content hash, not a
+contract these tests enforce: E2 and E4 are independent experiments, and each is
+free to change a weight-affecting field without the other caring.
 
-**Decision: targets.** Both experiments describe the clean target with the
-identical spec (the 50/50 dataset-level split selector `DATASET_SPLIT_TARGET`,
-the Adam recipe, 100 epochs, batch 256), so their content hashes coincide and
-the cache stores one $\\modelstd$ serving both. These pure tests prove it, and
-prove the flip side: every outlier-removed model is its own checkpoint, distinct
-from the baseline, from every other removal percentage, and from any E2 defended
-model (which encodes an epsilon where E4 encodes a percentage).
+What these pure tests do pin is E4's own spec discipline: every outlier-removed
+model is its own checkpoint, distinct from the baseline and from every other
+removal percentage; the surrogate is distinct from both; and the removed-model
+recipe namespace stays disjoint from the adversarial-training recipe namespace,
+so an outlier-removed checkpoint can never be reused where a defended one is
+wanted.
 
 No data, no training, no GPU: functions of the spec builders alone.
 """
 
 from __future__ import annotations
 
-import pytest
-
 from common.config import LevelConfig, get_level
-from experiments import shared_targets as targets
-from experiments.e2_advtr_modext import run as e2
+from common.run_context import RunContext, default_cache_dir
+from experiments.e2_advtr_modext import train_targets as e2
 from experiments.e2_advtr_modext.schemas import EPSILONS as E2_EPSILONS
-from experiments.e4_outrem_modext import run as e4
+from experiments.e4_outrem_modext import train_targets as e4
 from experiments.e4_outrem_modext.schemas import PERCENTS
 
 # The paper full-level budget: one seed, whole split, 100 epochs.
@@ -36,31 +36,22 @@ NUM_FEATURES = 93
 NUM_CLASSES = 2
 CAPACITY = "m1"
 
+# The batch size an adversarial-training defended spec is built at, for the
+# recipe-namespace disjointness check. Not tied to E4's own batch: the point is
+# only that the two recipe families never collide.
+ADVTR_BATCH_SIZE = 256
 
-def _e4_context(level: LevelConfig = LEVEL, seed: int = 0) -> targets.RunContext:
+
+def _e4_context(level: LevelConfig = LEVEL, seed: int = 0) -> RunContext:
     # These tests only build specs, so the cache is named but never written to.
-    return targets.RunContext(
-        level=level, seed=seed, device="cpu", cache_dir=targets.default_cache_dir(level)
+    return RunContext(
+        level=level, seed=seed, device="cpu", cache_dir=default_cache_dir(level)
     )
 
 
 def _e4_clean(dataset: str, level: LevelConfig = LEVEL, seed: int = 0):
     return e4.clean_baseline_spec(
         _e4_context(level, seed), dataset, NUM_FEATURES, NUM_CLASSES, e4.BATCH_SIZE
-    )
-
-
-def _e2_clean(dataset: str, level: LevelConfig = LEVEL, seed: int = 0):
-    # Built exactly as E2's `build_models` builds its clean baseline.
-    return targets.clean_target_spec(
-        level,
-        dataset,
-        seed,
-        CAPACITY,
-        NUM_FEATURES,
-        NUM_CLASSES,
-        e2.BATCH_SIZE,
-        targets.DATASET_SPLIT_TARGET,
     )
 
 
@@ -74,34 +65,18 @@ def _e4_defended(dataset: str, percent: int, level: LevelConfig = LEVEL, seed: i
 def _e4_stolen(dataset: str, percent: int, level: LevelConfig = LEVEL, seed: int = 0):
     return _e4_clean(dataset, level, seed).replace(
         optimizer_recipe=e4.stolen_recipe(percent),
-        subset_selector=targets.DATASET_SPLIT_ADVERSARY,
+        subset_selector=e4.DATASET_SPLIT_ADVERSARY,
     )
 
 
-@pytest.mark.parametrize("dataset", ("census", "lfw", "fmnist", "cifar"))
-def test_e4_baseline_shares_e2s_clean_target_checkpoint(dataset: str) -> None:
-    """E4's clean baseline hashes identically to E2's, so one checkpoint serves both.
-
-    This is the E2<->E4 sharing decision (plan S6, S13) made concrete: same
-    dataset, arch, split selector, recipe, epochs and batch means the same
-    content hash. If either experiment changed any weight-affecting field, this
-    equality would break and they would (correctly) stop sharing.
-    """
-    e2_spec = _e2_clean(dataset)
-    e4_spec = _e4_clean(dataset)
-
-    assert e2_spec == e4_spec
-    assert e2_spec.key() == e4_spec.key()
-
-
-def test_the_shared_recipe_and_selector_are_the_reference_ones() -> None:
-    """The baseline uses the P3-recorded selector and recipe the sharing depends on."""
+def test_the_baseline_uses_the_reference_selector_and_recipe() -> None:
+    """E4's clean baseline uses the reference selector, recipe, epochs and batch."""
     spec = _e4_clean("census")
 
-    assert spec.subset_selector == targets.DATASET_SPLIT_TARGET
-    assert spec.optimizer_recipe == targets.ADAM_RECIPE
+    assert spec.subset_selector == e4.DATASET_SPLIT_TARGET
+    assert spec.optimizer_recipe == e4.ADAM_RECIPE
     assert spec.epochs == 100
-    assert e4.BATCH_SIZE == e2.BATCH_SIZE == 256
+    assert e4.BATCH_SIZE == 256
 
 
 def test_each_removal_percentage_is_its_own_defended_checkpoint() -> None:
@@ -117,10 +92,10 @@ def test_each_removal_percentage_is_its_own_defended_checkpoint() -> None:
 
 
 def test_a_removed_model_is_not_the_clean_baseline() -> None:
-    """Every outlier-removed $\\modeldef$ hashes apart from the clean baseline.
+    """Every outlier-removed defended model hashes apart from the clean baseline.
 
     Recording the removal percentage in the optimizer recipe is what makes a
-    removed model a distinct checkpoint rather than a reload of $\\modelstd$.
+    removed model a distinct checkpoint rather than a reload of the clean baseline.
     """
     clean = _e4_clean("census")
     for percent in PERCENTS:
@@ -140,16 +115,15 @@ def test_e4_removed_models_never_collide_with_e2_defended_models() -> None:
     """
     e4_keys = {_e4_defended("cifar", p).key() for p in PERCENTS if p != 0}
     e2_keys = {
-        targets.defended_target_spec(
+        e2.defended_target_spec(
             LEVEL,
             "cifar",
             0,
             CAPACITY,
             NUM_FEATURES,
             NUM_CLASSES,
-            e2.BATCH_SIZE,
+            ADVTR_BATCH_SIZE,
             eps,
-            targets.DATASET_SPLIT_TARGET,
         ).key()
         for eps in E2_EPSILONS
     }
@@ -158,7 +132,7 @@ def test_e4_removed_models_never_collide_with_e2_defended_models() -> None:
 
 
 def test_the_stolen_surrogate_is_its_own_checkpoint() -> None:
-    """$\\modelstol$ hashes apart from the clean target and every removed model.
+    """The surrogate hashes apart from the clean target and every removed model.
 
     It trains on the adversary's half with a distillation recipe naming its
     source removal percentage, so no clean target, removed target, or surrogate

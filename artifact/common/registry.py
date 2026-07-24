@@ -1,10 +1,8 @@
 """Single source of truth mapping experiment IDs to their runner modules.
 
 The level sweepers, the `make/` wrappers and the test suite all iterate this one
-list, so none of them can drift from the others (plan §9). The five IDs are the
-five experiments backing the paper's tables and plots; the two interaction
-studies found in the old repository but absent from the paper are deliberately
-not here (plan §3).
+list, so none of them can drift from the others. The five IDs are the five
+experiments backing the paper's tables and plots.
 
 Modules are named as strings and imported on demand. Importing this module must
 stay cheap: resolving all five eagerly would pull in torch, and for E5 the whole

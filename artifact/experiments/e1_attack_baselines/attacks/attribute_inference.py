@@ -1,18 +1,11 @@
-"""E1-attribute-inference: inferring CelebA's sensitive attribute (row \\ref{attinf}).
+"""E1 attribute inference: inferring CelebA's `Male` attribute.
 
-Ports the old `experiments/attacks/run_attribute_inference.py`. Half the training
-split is reserved for the adversary, who trains an MLP on the target's outputs to
-predict the `Male` attribute; `evaluate_attribute_inference` reports its balanced
-accuracy and AUC.
+Reserves half the training split for the adversary, who trains an MLP on the
+target's outputs to predict the sensitive attribute; `evaluate_attribute_inference`
+reports its balanced accuracy and AUC.
 
-Two fixes over the old script (plan §5, §6):
-
-* it called `attack_predictions()`, which no longer exists; the current API is
-  `attack()`, returning a per-attribute dict of predictions and confidences;
-* it split the adversary's data with an *unseeded* `train_test_split`, so its
-  target could never match model extraction's and its own numbers were not
-  reproducible. Both attacks now go through `shared.adversary_split`, and their
-  targets share one cached checkpoint.
+The target spec is identical to model extraction's, so the two share one cached
+checkpoint.
 """
 
 from __future__ import annotations
@@ -25,7 +18,8 @@ import torch.nn as nn
 from amulet.attribute_inference.attacks import DudduCIKM2022
 from amulet.attribute_inference.metrics import evaluate_attribute_inference
 from amulet.utils import get_accuracy
-from experiments.e1_attack_baselines import shared
+from common import training
+from experiments.e1_attack_baselines import context, train_targets
 from experiments.e1_attack_baselines.schemas import ATTRIBUTE_INFERENCE_SCHEMA
 
 if TYPE_CHECKING:
@@ -45,13 +39,13 @@ def target_spec(
     level: LevelConfig, seed: int, capacity: str, num_features: int, num_classes: int
 ) -> ModelSpec:
     """Return the spec of the target attacked here, shared with model extraction."""
-    return shared.adversary_split_target_spec(
+    return train_targets.adversary_split_target_spec(
         level, seed, capacity, num_features, num_classes
     )
 
 
 def run_cell(
-    ctx: shared.RunContext, capacity: str, output_dir: Path
+    ctx: context.RunContext, capacity: str, output_dir: Path
 ) -> list[dict[str, object]]:
     """Train (or reuse) the target, run the attack, and append one result row.
 
@@ -75,32 +69,30 @@ def run_cell(
         {
             "exp_id": ctx.seed,
             "capacity": capacity,
-            "adv_train_fraction": shared.ADVERSARY_FRACTION,
+            "adv_train_fraction": context.ADVERSARY_FRACTION,
         },
     ):
         return []
 
     started = time.perf_counter()
 
-    batch_size = shared.batch_for(ctx.level, shared.ADVERSARY_SPLIT_BATCH_SIZE)
-    data = ctx.data(shared.DEFAULT_TARGET_ATTRIBUTE, ctx.level.train_fraction)
+    batch_size = context.batch_for(ctx.level, context.ADVERSARY_SPLIT_BATCH_SIZE)
+    data = ctx.data(context.DEFAULT_TARGET_ATTRIBUTE, ctx.level.train_fraction)
     if data.x_test is None or data.z_test is None:
         raise ValueError("Attribute inference needs the test features and attributes.")
-    split = shared.adversary_split(data, ctx.seed)
+    split = training.adversary_split(data, ctx.seed)
 
-    spec = shared.adversary_split_target_spec(
+    spec = train_targets.adversary_split_target_spec(
         ctx.level, ctx.seed, capacity, data.num_features, data.num_classes
     )
 
     def train_target(model: nn.Module) -> nn.Module:
-        loader = shared.loader_for(split.target_set, batch_size)
-        return shared.train_with_adam(model, loader, ctx.device, spec.epochs)
+        loader = training.loader_for(split.target_set, batch_size)
+        return training.train_with_adam(model, loader, ctx.device, spec.epochs)
 
-    target = shared.train_target_via_cache(
-        ctx, spec, data.num_features, data.num_classes, train_target
-    )
+    target = ctx.get_or_train(spec, data.num_features, data.num_classes, train_target)
 
-    test_loader = shared.loader_for(data.test_set, batch_size)
+    test_loader = training.loader_for(data.test_set, batch_size)
     target_test_acc = get_accuracy(target, test_loader, ctx.device)
 
     attack = DudduCIKM2022(
@@ -114,9 +106,9 @@ def run_cell(
     metrics = evaluate_attribute_inference(data.z_test, attack.attack())
 
     row: dict[str, object] = {
-        **shared.leading_row(spec, shared.DEFAULT_TARGET_ATTRIBUTE),
-        "adv_train_fraction": shared.ADVERSARY_FRACTION,
-        "sensitive_attribute": shared.SENSITIVE_ATTRIBUTE,
+        **context.leading_row(spec, context.DEFAULT_TARGET_ATTRIBUTE),
+        "adv_train_fraction": context.ADVERSARY_FRACTION,
+        "sensitive_attribute": context.SENSITIVE_ATTRIBUTE,
         "target_test_acc": target_test_acc,
         "attack_bal_acc": metrics[_SENSITIVE_INDEX]["attack_accuracy"] * 100,
         "attack_auc": metrics[_SENSITIVE_INDEX]["auc_score"],

@@ -4,7 +4,7 @@
 
 Reads `artifact/runs/full/e2_advtr_modext.csv` and writes
 `artifact/tables/generated/tab_advtr_modext.tex`. Rendering is a pure function of
-the CSV: no GPU, no model, no download, seconds (plan S13, decision 2).
+the CSV: no GPU, no model, no download, seconds.
 
 **Multi-dataset blocks.** One `\\multicolumn` block per dataset (census, fmnist,
 lfw, cifar), each a `Baseline ($\\modelstd$)` row plus one row per budget.

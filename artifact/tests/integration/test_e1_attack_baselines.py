@@ -1,4 +1,4 @@
-"""Tiny end-to-end run of E1, the attack baselines (plan §8, Level 1).
+"""Tiny end-to-end run of E1, the attack baselines.
 
 The `test` level substitutes a three-layer VGG for VGG11/13/16/19 and a handful
 of synthetic 3x32x32 images for CelebA, so the whole pipeline — load, train the
@@ -94,17 +94,13 @@ def test_test_level_run_writes_an_in_range_row(tmp_path: Path, attack: str) -> N
 def test_same_seed_reproduces(tmp_path: Path, attack: str) -> None:
     """Two runs of one seed agree numerically, so a reviewer's re-run is comparable.
 
-    Reproducibility is the property the artifact is judged on, and the one the
-    old scripts did not have: three of them seeded only `torch`, leaving NumPy's
-    global generator to decide which records the adversary saw. Seeding every
-    generator (`shared.seed_everything`) is what makes this hold.
+    Reproducibility rests on `seed_everything` seeding every generator (`random`,
+    NumPy, torch), so which records the adversary saw does not vary between runs.
 
     Agreement is asserted to a numerical tolerance, not bitwise. On CPU a warm
     intra-op thread pool makes float reductions non-bit-reproducible regardless
-    of seeding (the training here agrees only after forcing a single thread, and
-    even then the pool may already be warm under pytest). The plan anticipates
-    exactly this: retraining legitimately yields numerically-close numbers, and
-    a bitwise assertion would flake on thread scheduling rather than catch a real
+    of seeding, so retraining legitimately yields numerically-close numbers and a
+    bitwise assertion would flake on thread scheduling rather than catch a real
     regression. A swapped or mis-scaled metric moves a cell by far more than the
     tolerance here.
     """
@@ -173,7 +169,7 @@ def test_extraction_and_attribute_inference_train_one_target_between_them(
 ) -> None:
     """The shared target is trained once and reloaded, not trained twice.
 
-    This is the payoff of the content-addressed cache (plan §6): the two
+    This is the payoff of the content-addressed cache: the two
     adversary-split attacks agree on a recipe, so the second one to run finds
     the first one's checkpoint. On the paper's settings that is a 100-epoch VGG
     training saved per capacity per seed.

@@ -1,12 +1,12 @@
 """Result-CSV schemas for E1's six sub-experiments.
 
 Kept in their own module, free of torch imports, so the table renderer in
-`make/` can validate a CSV header without loading a model (plan §7.1).
+`make/` can validate a CSV header without loading a model.
 
 Six schemas rather than one wide table: the risks measure genuinely different
 quantities, and a single header carrying every metric would leave most of each
 row empty. Each sub-experiment therefore writes
-`results/e1_attack_baselines/<attack>.csv`, the multi-CSV layout `common.io`
+`runs/<level>/e1_attack_baselines/<attack>.csv`, the multi-CSV layout `common.io`
 already supports for E5.
 
 Every schema opens with the same block of columns describing *which model* was

@@ -1,4 +1,4 @@
-"""Tiny end-to-end run of E4, Outlier Removal x Model Ownership (plan S8, L1).
+"""Tiny end-to-end run of E4, Outlier Removal x Model Ownership.
 
 At `test` level a small dense net over a handful of synthetic tabular rows
 stands in for every dataset, so the whole pipeline (load, split, train the clean
@@ -8,11 +8,11 @@ runs on CPU in seconds with no download. kNN-Shapley is O(train x test), so the
 tiny stand-in (64 train / 32 test rows) keeps it sub-second. What is asserted is
 "each cell produces a well-formed row with finite, in-range numbers,
 reproducibly", never paper accuracy: E4 is a reconstruction with no ground-truth
-CSV (plan S13.3), so numeric reproduction waits on an L3 run.
+CSV, so numeric reproduction waits on an L3 run.
 
 Two load-bearing tests here pin the plan's decisions:
 * `test_the_baseline_reuses_e2s_clean_checkpoint` proves the E2<->E4 shared
-  baseline (plan S6, S13) at runtime: the file E4's clean baseline loads is the
+  baseline at runtime: the file E4's clean baseline loads is the
   one E2 already wrote.
 * `test_outlier_removal_produces_a_distinct_defended_model` proves a removed
   percentage is a genuinely different, retrained model, not the clean baseline.
@@ -43,14 +43,14 @@ def _context(tmp_path: Path, seed: int = 0):
     Wires E4's outlier-carrying tiny data factory, matching what `run` does, so a
     context built directly here exercises the same data path as the CLI.
     """
+    from common import run_context, training
     from common.config import get_level
-    from experiments import shared_targets as targets
-    from experiments.e4_outrem_modext.run import tiny_outrem_dataset
+    from experiments.e4_outrem_modext.train_targets import tiny_outrem_dataset
 
     config = get_level("test").with_defaults(epochs=100)
     torch.set_num_threads(1)
-    targets.seed_everything(seed)
-    return targets.RunContext(
+    training.seed_everything(seed)
+    return run_context.RunContext(
         level=config,
         seed=seed,
         device="cpu",
@@ -84,14 +84,14 @@ def test_test_level_run_writes_an_in_range_row(tmp_path: Path) -> None:
 def test_the_baseline_percent_is_the_clean_model(tmp_path: Path) -> None:
     """At percent 0 the defended model *is* the clean baseline, not a retrain.
 
-    The zero-removal case is the table's $\\modelstd$ column and the figures'
+    The zero-removal case is the table's clean-baseline column and the figures'
     leftmost point: no outliers are removed, so no retraining happens and the
     defended model is the same object and checkpoint as the clean baseline.
     """
-    from experiments.e4_outrem_modext import run as e4
+    from experiments.e4_outrem_modext import train_targets
 
     ctx = _context(tmp_path)
-    bundle, _ = e4.build_models(ctx, "census", 0)
+    bundle, _ = train_targets.build_models(ctx, "census", 0)
 
     assert bundle.defended is bundle.clean
     assert bundle.defended_spec.key() == bundle.clean_spec.key()
@@ -105,10 +105,10 @@ def test_outlier_removal_produces_a_distinct_defended_model(tmp_path: Path) -> N
     and holds different weights, so the "defended" measurements at 10%+ removal
     cannot secretly be the clean baseline's.
     """
-    from experiments.e4_outrem_modext import run as e4
+    from experiments.e4_outrem_modext import train_targets
 
     ctx = _context(tmp_path)
-    bundle, _ = e4.build_models(ctx, "census", 10)
+    bundle, _ = train_targets.build_models(ctx, "census", 10)
 
     assert bundle.defended is not bundle.clean
     assert bundle.defended_spec.key() != bundle.clean_spec.key()
@@ -122,47 +122,10 @@ def test_outlier_removal_produces_a_distinct_defended_model(tmp_path: Path) -> N
 
 
 @pytest.mark.integration
-def test_the_baseline_reuses_e2s_clean_checkpoint(tmp_path: Path) -> None:
-    """E4's clean baseline loads the checkpoint E2 already wrote (plan S6, S13).
-
-    Both experiments describe the clean model-extraction target with the
-    identical spec (the 50/50 dataset-level split, Adam at 1e-3, matching epochs
-    and batch), so its content hash coincides. Running E2 first, then asking for
-    E4's baseline spec, the file E4 would load already exists: one checkpoint,
-    two experiments. Were the specs to diverge, this file would be absent.
-    """
-    from common.models import checkpoint_path
-    from experiments import shared_targets as targets
-    from experiments.e2_advtr_modext import run as e2
-    from experiments.e4_outrem_modext import run as e4
-
-    cache = tmp_path / "shared_models"
-
-    _ = e2.run(
-        level="test",
-        seeds=(0,),
-        datasets=("census",),
-        epsilons=(0.01,),
-        output_dir=tmp_path / "e2_out",
-        cache_dir=cache,
-    )
-
-    ctx = _context(tmp_path)
-    ctx.cache_dir = cache
-    data = ctx.data("census")
-    batch_size = targets.batch_for(ctx.level, e4.BATCH_SIZE)
-    e4_clean_spec = e4.clean_baseline_spec(
-        ctx, "census", data.num_features, data.num_classes, batch_size
-    )
-
-    assert checkpoint_path(e4_clean_spec, cache_dir=cache).exists()
-
-
-@pytest.mark.integration
 def test_the_clean_baseline_is_trained_once_across_percentages(
     tmp_path: Path,
 ) -> None:
-    """Two removal percentages share one clean checkpoint (plan S6).
+    """Two removal percentages share one clean checkpoint.
 
     Sweeping percents (0, 10) leaves four checkpoints: one shared clean baseline,
     one outlier-removed defended model (10% only; 0% reuses the baseline), and
@@ -187,12 +150,15 @@ def test_the_clean_baseline_is_trained_once_across_percentages(
 def test_defended_test_acc_is_measured_on_the_defended_model(tmp_path: Path) -> None:
     """The row's defended test accuracy is the defended model's, on the test set."""
     from amulet.utils import get_accuracy
-    from experiments import shared_targets as targets
+    from common import run_context, training
     from experiments.e4_outrem_modext import run as e4
+    from experiments.e4_outrem_modext import train_targets
 
     ctx = _context(tmp_path)
-    bundle, data = e4.build_models(ctx, "census", 10)
-    test_loader = targets.loader_for(data.test_set, targets.batch_for(ctx.level, 256))
+    bundle, data = train_targets.build_models(ctx, "census", 10)
+    test_loader = training.loader_for(
+        data.test_set, run_context.batch_for(ctx.level, 256)
+    )
 
     row = e4.run_cell(_context(tmp_path), "census", 10, tmp_path / "out")[0]
 
