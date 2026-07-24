@@ -38,6 +38,29 @@ class _BatchNormClassifier(nn.Module):
         return torch.relu(self.bn(self.fc1(x)))
 
 
+class _SingleChannelConvClassifier(nn.Module):
+    """Conv classifier over single-channel images, exposing get_hidden.
+
+    OutlierRemoval scores points from the model's penultimate features, so the
+    model must consume the [N, 1, H, W] image batch directly; a dense stand-in
+    would flatten the channel axis away and hide the squeeze bug this exercises.
+    The first Conv2d is fixed to one input channel, so a retrain batch that has
+    lost its channel axis reaches it as a many-channel image and crashes.
+    """
+
+    def __init__(self, num_classes: int = 2):
+        super().__init__()
+        self.conv = nn.Conv2d(1, 4, kernel_size=3, padding=1)
+        self.pool = nn.AdaptiveAvgPool2d(4)
+        self.fc = nn.Linear(4 * 4 * 4, num_classes)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.fc(self.get_hidden(x))
+
+    def get_hidden(self, x: torch.Tensor) -> torch.Tensor:
+        return torch.flatten(self.pool(torch.relu(self.conv(x))), 1)
+
+
 def _assert_state_dicts_equal(
     model_a: torch.nn.Module, model_b: torch.nn.Module
 ) -> None:
@@ -176,6 +199,111 @@ def test_train_robust_survives_a_single_sample_final_batch(cpu_device):
     trained = defense.train_robust()
 
     assert isinstance(trained, nn.Module)
+
+
+@pytest.mark.integration
+@pytest.mark.timeout(60)
+def test_train_robust_preserves_single_channel_image_shape(cpu_device):
+    """Retraining data must keep the [N, 1, H, W] channel axis of image inputs.
+
+    `np.argwhere` returns a column of kept indices, so `train_inputs[mask]` gains
+    a spurious leading axis. Squeezing that axis away also removed the size-1
+    channel axis of single-channel images, collapsing each [1, H, W] sample to
+    [H, W]; the retrain DataLoader then yields [B, H, W] batches that the first
+    Conv2d reads as one B-channel image and rejects ("expected input to have 1
+    channels"). fmnist and mnist take this path; three-channel and tabular
+    inputs do not, which is why only the grayscale-image datasets crashed.
+    Capturing the shape the retrain step receives pins the channel axis directly,
+    independent of the downstream conv.
+    """
+    torch.manual_seed(0)
+    images = torch.rand(8, 1, 8, 8)
+    labels = torch.tensor([0, 1] * 4)
+    loader = DataLoader(TensorDataset(images, labels), batch_size=4, shuffle=False)
+
+    captured: dict[str, torch.Size] = {}
+
+    def record_shape(model, train_loader, criterion, optimizer, epochs, device):
+        captured["shape"] = train_loader.dataset.tensors[0].shape
+        return model
+
+    model = _SingleChannelConvClassifier().to(cpu_device)
+    defense = OutlierRemoval(
+        model=model,
+        criterion=nn.CrossEntropyLoss(),
+        optimizer=torch.optim.Adam(model.parameters(), lr=1e-3),
+        train_loader=loader,
+        test_loader=loader,
+        device=cpu_device,
+        train_function=record_shape,
+        percent=25,
+        epochs=1,
+        batch_size=4,
+    )
+
+    defense.train_robust()
+
+    retained = captured["shape"]
+    assert tuple(retained[1:]) == (1, 8, 8), (
+        f"channel axis lost: retrain saw {tuple(retained)}, expected (*, 1, 8, 8)"
+    )
+
+
+@pytest.mark.integration
+@pytest.mark.timeout(60)
+def test_train_robust_keeps_every_point_when_no_outlier_signal_exists(cpu_device):
+    """Tied Shapley scores must leave the training set intact, not empty it.
+
+    kNN-Shapley scores a train point by how much it helps predict the test
+    labels, so when every train point and every test point carry the same label
+    the recursion assigns all of them the identical value 1/n. Normalizing by
+    `(max - min)` is then a division by zero: every score becomes NaN, the
+    percentile threshold becomes NaN, and `scores >= NaN` is False everywhere,
+    so the retrain set comes out empty and the defense silently trains on
+    nothing.
+
+    Tied scores mean no point is an outlier relative to any other, so the
+    correct response is to keep the whole split. This is reachable in practice
+    whenever the test split is small enough to draw a single class, which is
+    what a reduced `test_size` makes likely on an imbalanced dataset.
+    """
+    torch.manual_seed(0)
+    n_train = 8
+    single_class = torch.zeros(n_train, dtype=torch.long)
+    train_loader = DataLoader(
+        TensorDataset(torch.rand(n_train, 4), single_class), batch_size=4
+    )
+    test_loader = DataLoader(
+        TensorDataset(torch.rand(4, 4), torch.zeros(4, dtype=torch.long)), batch_size=4
+    )
+
+    captured: dict[str, int] = {}
+
+    def record_train(model, train_loader, criterion, optimizer, epochs, device):
+        captured["n"] = len(train_loader.dataset)
+        return model
+
+    model = _BatchNormClassifier().to(cpu_device)
+    defense = OutlierRemoval(
+        model=model,
+        criterion=nn.CrossEntropyLoss(),
+        optimizer=torch.optim.Adam(model.parameters(), lr=1e-3),
+        train_loader=train_loader,
+        test_loader=test_loader,
+        device=cpu_device,
+        train_function=record_train,
+        percent=25,
+        epochs=1,
+        batch_size=4,
+    )
+
+    trained = defense.train_robust()
+
+    assert isinstance(trained, nn.Module)
+    assert captured["n"] == n_train, (
+        f"no outlier signal exists, so all {n_train} points should survive; "
+        f"retrain saw {captured['n']}"
+    )
 
 
 def test_knn_shapley_returns_finite_score_per_train_point(
