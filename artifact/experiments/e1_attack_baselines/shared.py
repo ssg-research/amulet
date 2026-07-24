@@ -19,11 +19,14 @@ Model extraction and attribute inference agree on every field, so they share one
 checkpoint automatically. Nothing else does, and nothing else can: a divergence
 in any field produces a different cache key.
 
-Levels (plan §8) are handled in two places only. `architecture` swaps a tiny
-three-layer VGG in at `test` level — recorded in the spec as a distinct
-architecture, so a tiny checkpoint can never be loaded in place of a real one.
-`tiny_dataset` stands in for CelebA, which is a multi-gigabyte download the fast
-verification tier must not require.
+Levels (plan §8) act in several places. At `test` level `architecture` swaps a
+tiny VGG in — recorded in the spec as a distinct architecture, so a tiny
+checkpoint can never be loaded in place of a real one — and `tiny_dataset` stands
+in for CelebA, which is a multi-gigabyte download the fast verification tier must
+not require. Any level below `full` also shrinks the repeated-work loops:
+`shadow_count` and `evasion_iterations_for` here, `data_reconstruction._alpha`,
+and `shared_targets.pgd_iterations_for`, each gated on `train_fraction < 1.0` so
+they fire at `smoke` too, not only at `test`.
 """
 
 from __future__ import annotations
@@ -46,7 +49,7 @@ from amulet.models import VGG
 from amulet.utils import initialize_model, load_data, train_classifier
 from common.config import LevelConfig
 from common.io import run_output_dir
-from common.models import ModelSpec
+from common.models import ModelSpec, model_cache_root
 from common.paths import repo_root
 
 if TYPE_CHECKING:
@@ -82,11 +85,34 @@ TRIGGER_LABEL = 1
 # from the script's own 0.01 default, which the paper run never used.
 EVASION_EPSILON = 0.03
 EVASION_ITERATIONS = 40
+# What the reduced levels run instead. This loop runs per batch over the whole
+# test split, which made evasion E1's most expensive sub-attack; each step is
+# the same forward, backward and clip, so the count sharpens the perturbation
+# without reaching new code. Seven matches `shared_targets.SMOKE_PGD_ITERATIONS`
+# and the standard PGD-7 configuration, so the two studies that both run PGD
+# agree on what a reduced chain means.
+SMOKE_EVASION_ITERATIONS = 7
+# `test` level runs the same short chain: until now this count was read straight
+# from `EVASION_ITERATIONS`, so even the CPU tier took all 40 steps.
+TINY_EVASION_ITERATIONS = 7
 
 # LiRA's knobs. The target is intentionally overfit: a tenth of the training
 # data for half the epochs, which is what makes the attack measurable at all.
 PKEEP = 0.5
 NUM_SHADOW = 64
+# The bank a reduced-budget level trains instead. Every shadow model is a full
+# training run, and the bank is the single largest cost in E1: at 64 it is most
+# of membership inference's wall clock. The models are all the same architecture
+# on the same data, so a larger bank buys no code coverage; it only sharpens the
+# per-example Gaussian fit, which is attack quality, and no reduced-budget level
+# measures attack quality. `prepare_shadow_models` ranks each example's random
+# draws across the bank rather than flipping independent coins, so every example
+# lands IN exactly `int(PKEEP * n)` shadows and OUT of the rest. A smaller bank
+# therefore stays balanced instead of leaving some example IN none of them,
+# which would empty `dat_in` and turn every LiRA score into a NaN. That balance
+# is what sets the floor: `int(PKEEP * n)` must be at least 2 for the fit to
+# have a median and a standard deviation, so 8 leaves 4 a side.
+SMOKE_NUM_SHADOW = 8
 OVERFIT_TRAINING_SIZE = 0.1
 
 # Data reconstruction's gradient-descent budget.
@@ -238,9 +264,44 @@ def architecture(level: LevelConfig, real: str) -> str:
     return TINY_ARCH if level.tiny_model else real
 
 
+def evasion_iterations_for(level: LevelConfig) -> int:
+    """Return how many PGD iterations E1's evasion attack takes.
+
+    Only `full` runs the paper's chain; see `SMOKE_EVASION_ITERATIONS`. The
+    count is a CSV column, so a reduced run is recorded rather than implied.
+
+    Args:
+        level: The level preset.
+
+    Returns:
+        The number of PGD steps per batch.
+    """
+    if level.tiny_model:
+        return TINY_EVASION_ITERATIONS
+    if level.train_fraction < 1.0:
+        return SMOKE_EVASION_ITERATIONS
+    return EVASION_ITERATIONS
+
+
 def shadow_count(level: LevelConfig) -> int:
-    """Return how many shadow models LiRA trains at this level."""
-    return TINY_NUM_SHADOW if level.tiny_model else NUM_SHADOW
+    """Return how many shadow models LiRA trains at this level.
+
+    Only `full` trains the paper's bank; see `SMOKE_NUM_SHADOW` for why a
+    reduced-budget level trains fewer. The count is a spec field and a CSV
+    column, so a smaller bank lands in its own cache slot and is visible in the
+    results rather than silently substituted.
+
+    Args:
+        level: The level preset.
+
+    Returns:
+        The number of shadow models to train.
+    """
+    if level.tiny_model:
+        return TINY_NUM_SHADOW
+    if level.train_fraction < 1.0:
+        return SMOKE_NUM_SHADOW
+    return NUM_SHADOW
 
 
 def shadow_architecture(level: LevelConfig) -> str:
@@ -248,7 +309,7 @@ def shadow_architecture(level: LevelConfig) -> str:
 
     `LiRA` constructs shadow models internally via `initialize_model` with the
     default capacity map, so the tiny stand-in cannot reach them. At `test`
-    level the bank is a handful of real VGG11s over 64 synthetic images, which
+    level the bank is a handful of real VGG11s over 48 synthetic images, which
     is cheap for a different reason.
 
     Args:
@@ -355,15 +416,19 @@ class RunContext:
         level: The verification-level preset, already carrying `epochs`.
         seed: The experiment seed, recorded as `exp_id`.
         device: Device to train and evaluate on. Example: `"cuda:0"`.
-        cache_dir: Directory for the content-addressed checkpoint cache. None
-            uses the shared default.
+        cache_dir: Directory for the content-addressed checkpoint cache, from
+            `default_cache_dir(level)`. Required rather than defaulted, so a
+            context can never silently write a level's checkpoints into another
+            level's cache.
     """
 
     level: LevelConfig
     seed: int
     device: str
-    cache_dir: Path | None = None
-    _datasets: dict[tuple[str, float], AmuletDataset] = field(default_factory=dict)
+    cache_dir: Path
+    _datasets: dict[tuple[str, float, float], AmuletDataset] = field(
+        default_factory=dict
+    )
 
     def data(self, celeba_target: str, training_size: float) -> AmuletDataset:
         """Load the dataset a sub-attack needs, once per distinct request.
@@ -371,6 +436,11 @@ class RunContext:
         CelebA takes tens of seconds to read even from its processed cache, and
         a full sweep asks for the same two variants repeatedly, so results are
         memoised for the lifetime of this context.
+
+        The training fraction is a parameter because membership inference wants
+        a tenth of what its siblings train on (`OVERFIT_TRAINING_SIZE`); the
+        test fraction is not, because every sub-attack evaluates on the same
+        split and the level alone decides how much of it to keep.
 
         Args:
             celeba_target: The attribute used as the classification label.
@@ -380,7 +450,7 @@ class RunContext:
             The dataset. Callers must treat it as read-only: the memo hands the
             same object to every sub-attack that asks for it.
         """
-        key = (celeba_target, training_size)
+        key = (celeba_target, training_size, self.level.test_fraction)
         if key not in self._datasets:
             self._datasets[key] = (
                 tiny_dataset(self.seed)
@@ -392,6 +462,7 @@ class RunContext:
                     LOGGER,
                     exp_id=self.seed,
                     celeba_target=celeba_target,
+                    test_size=self.level.test_fraction,
                 )
             )
         return self._datasets[key]
@@ -778,11 +849,12 @@ def adversary_split(
     *unseeded* `sklearn.train_test_split` — so their targets could never have
     matched, and attribute inference's was not reproducible at all.
 
-    Indexing the NumPy arrays rather than the `train_set` also sidesteps a
-    library trap: when `load_data` is asked for a fraction of the split it
-    subsamples the arrays and the `train_set` through independent generators,
-    leaving the two no longer index-aligned. Deriving everything from the arrays
-    keeps the target's data and the adversary's provably disjoint at any level.
+    Both halves are derived from the same NumPy arrays and the same index split,
+    so the target's data and the adversary's are provably disjoint at any level.
+    (`load_data` now keeps its `train_set` and its NumPy views index-aligned when
+    it subsets a fraction of the split, so this no longer works around a
+    misalignment; it simply builds both forms the two attacks consume from one
+    source.)
 
     Args:
         data: The loaded dataset; must carry its NumPy views.
@@ -886,19 +958,20 @@ def train_target_via_cache(
     ).to(ctx.device)
 
 
-def default_cache_dir(level: LevelConfig) -> Path | None:
+def default_cache_dir(level: LevelConfig) -> Path:
     """Return the checkpoint cache this level should write to.
 
     Args:
         level: The level preset.
 
     Returns:
-        None for the shared default, or a throwaway directory for `test`, whose
-        three-layer stand-ins have no business outliving the test that made them.
+        This level's own subdirectory of `.model_cache/`, or a throwaway
+        directory for `test`, whose tiny stand-ins have no business
+        outliving the test that made them.
     """
     if level.tiny_model:
         return Path(tempfile.mkdtemp(prefix="e1_test_models_"))
-    return None
+    return model_cache_root(level.name)
 
 
 def default_output_dir(level: LevelConfig) -> Path:

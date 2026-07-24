@@ -1,12 +1,26 @@
-"""Shared machinery for the two adversarial-training interaction studies.
+"""The target models, splits and training helpers E2, E3 and E4 share.
 
-E2 (`e2_advtr_modext`, Adversarial Training x Unauthorized Model Ownership) and
-E3 (`e3_advtr_attrinf`, Adversarial Training x Attribute Inference) study the
-*same* defense against two different risks, so everything the defense touches
-lives here: the 50/50 adversary split, the clean and adversarially-trained model
-specs, the PGD training and evasion helpers, and the per-modality architecture
-choice. Each experiment's `run.py` supplies only the risk-specific attack and
-its own CSV schema.
+Three experiments over the same four datasets, bound together by one thing: they
+describe the *same clean target* $\\modelstd$. Everything needed to build that
+target, and to divide its training data, lives here.
+
+* E2 (`e2_advtr_modext`, Adversarial Training x Unauthorized Model Ownership)
+* E3 (`e3_advtr_attrinf`, Adversarial Training x Attribute Inference)
+* E4 (`e4_outrem_modext`, Outlier Removal x Unauthorized Model Ownership)
+
+E2 and E3 study one defense against two risks, so the PGD training and evasion
+helpers below serve both. E4's defense is outlier removal instead, and it is
+here for the other half of the module: it builds its clean baseline through
+`clean_target_spec` with the same `DATASET_SPLIT_TARGET` selector E2 uses, so
+the two specs hash identically and one checkpoint serves both experiments
+(`tests/unit/test_e4_model_specs.py` proves the equality). E4 shares the
+adversary split and the model-extraction surrogate with E2 for the same reason:
+the attack is E2's attack, and only the defense differs.
+
+The module was called `advtr_common` while E2 and E3 were its only clients. The
+name outlived that: adversarial training is what two of the three do, not what
+binds them. Each experiment's `run.py` supplies only its own defense, its
+risk-specific attack and its CSV schema.
 
 Three facts anchor the design, each confirmed against the committed CSVs the old
 scripts left behind (plan S3-S5):
@@ -26,10 +40,12 @@ scripts left behind (plan S3-S5):
   fmnist and cifar are image `VisionDataset`s with no NumPy views, so E2 splits
   the adversary's half at the dataset level rather than by array index.
 
-Levels (plan S8) collapse to one substitution: at `test` level a tiny dense net
-over a handful of synthetic tabular rows stands in for every real
-(architecture, dataset) pair, recorded in the spec as a distinct architecture so
-a tiny checkpoint can never be loaded in place of a real one.
+Levels (plan S8) act in two ways here. At `test` level a tiny dense net over a
+handful of synthetic tabular rows stands in for every real (architecture,
+dataset) pair, recorded in the spec as a distinct architecture so a tiny
+checkpoint can never be loaded in place of a real one. And any level below `full`
+shrinks the PGD chain both studies run, via `pgd_iterations_for` (gated on
+`train_fraction < 1.0`, so `smoke` gets the reduced chain too, not only `test`).
 """
 
 from __future__ import annotations
@@ -51,7 +67,7 @@ from amulet.evasion.defenses import AdversarialTrainingPGD
 from amulet.models import LinearNet
 from amulet.utils import get_accuracy, initialize_model, load_data
 from common.io import run_output_dir
-from common.models import ModelSpec
+from common.models import ModelSpec, model_cache_root
 from common.paths import repo_root
 
 # Reused verbatim from E1 rather than re-ported (plan P3 brief): the seeded
@@ -98,7 +114,7 @@ __all__ = [
     "train_with_adam",
 ]
 
-LOGGER = logging.getLogger("advtr_interactions")
+LOGGER = logging.getLogger("shared_targets")
 
 # Half the training split is reserved for the adversary in both studies, the
 # `--adv_train_fraction 0.5` the old scripts defaulted to.
@@ -118,23 +134,53 @@ ADAM_RECIPE = "adam_lr1e-3"
 # NumPy arrays to index), E3 splits the NumPy arrays by index (attribute
 # inference reads them). Encoding the method keeps a census target trained one
 # way from ever loading a census target trained the other way from the cache.
+#
+# These three strings keep their `advtr_` prefix after the module was renamed,
+# and must keep it. They are `subset_selector` values, which feed the ModelSpec
+# content hash: editing one renames every checkpoint keyed by it and silently
+# orphans a cache. The prefix is an opaque identifier here, not a description.
 DATASET_SPLIT_TARGET = f"advtr_dsplit_target_{1 - ADVERSARY_FRACTION:g}_seeded"
 DATASET_SPLIT_ADVERSARY = f"advtr_dsplit_adversary_{ADVERSARY_FRACTION:g}_seeded"
 ARRAY_SPLIT_TARGET = f"advtr_npsplit_target_{1 - ADVERSARY_FRACTION:g}_seeded"
 
-# The real architecture each dataset trains, chosen for its modality. census and
-# lfw are tabular (lfw's images are flattened by its loader), so a dense net;
-# fmnist is single-channel 28x28, which the BadNets-style `cnn` takes and `vgg`
-# (hard-wired to three input channels) cannot; cifar is three-channel 32x32, the
-# `vgg` case. The paper reports these under one "VGG" heading, but VGG cannot run
-# on the tabular or single-channel inputs, so the per-modality choice is what the
-# library actually admits.
+# The real architecture each dataset trains, matching the pairing the paper ran.
+# census and lfw are tabular (lfw's images are flattened by its loader), so a
+# dense net. fmnist is a dense net too: `LinearNet` opens with `nn.Flatten`, and
+# `load_fmnist` reports `num_features=784`, which is exactly its flattened 28x28
+# size, so the dense path consumes it unchanged. That match is what identifies
+# the intended model: `num_features` counts H*W and ignores channels, so it
+# agrees with the flattened size only for single-channel data. cifar (1024 vs a
+# flattened 3072) and celeba (4096 vs 12288) disagree, which is why those need a
+# conv net, and cifar is the `vgg` case here. VGG is hard-wired to three input
+# channels and so could never have taken fmnist; the paper's single "VGG"
+# heading covers the conv datasets, not this one.
 REAL_ARCH: dict[str, str] = {
     "census": "linearnet",
     "lfw": "linearnet",
-    "fmnist": "cnn",
+    "fmnist": "linearnet",
     "cifar": "vgg",
 }
+
+# The name `amulet.utils.load_data` knows a dataset by, where that differs from
+# the label the experiments use. The experiments say `cifar`, which is what the
+# paper's tables and figures label the column and what the CSV `dataset` column
+# and the model-spec cache keys carry; the library only answers to `cifar10`.
+# Translating here, at the one call site, keeps the artifact's label stable.
+LOADER_NAMES: dict[str, str] = {"cifar": "cifar10"}
+
+
+def loader_name(dataset: str) -> str:
+    """Return the name `load_data` knows `dataset` by.
+
+    Args:
+        dataset: The experiment's dataset label, as it appears in `DATASETS`.
+
+    Returns:
+        The library's name for the same dataset, which is the label itself
+        unless `LOADER_NAMES` overrides it.
+    """
+    return LOADER_NAMES.get(dataset, dataset)
+
 
 # The tiny stand-in recorded at `test` level: a dense net, distinct from every
 # real architecture name so its checkpoint can never collide with a paper one.
@@ -155,6 +201,15 @@ TINY_BATCH = 16
 # A short PGD chain at `test` level: enough iterations for the perturbed loader
 # to visibly differ from the clean one, few enough to stay sub-second on CPU.
 TINY_PGD_ITERATIONS = 7
+# What `smoke` runs instead of the paper's 40. PGD's iteration count is the
+# innermost loop in the artifact: adversarial training pays it on every batch of
+# every epoch, and evasion pays it again over the test split, so it multiplies
+# with everything else the level already reduced. Each step is the same forward,
+# backward and clip, so the count only tightens the perturbation rather than
+# reaching new code. Seven is not an arbitrary shrink: PGD-7 is the standard
+# adversarial-training configuration from Madry et al., so a smoke run is still
+# doing a recognised attack rather than a token pass.
+SMOKE_PGD_ITERATIONS = 7
 # A larger budget at `test` level so PGD moves the wide-margin tiny model and the
 # evasion degradation is a real check rather than a tie.
 TINY_EPSILON = 0.3
@@ -226,8 +281,22 @@ def batch_for(level: LevelConfig, paper_batch: int) -> int:
 
 
 def pgd_iterations_for(level: LevelConfig) -> int:
-    """Return how many PGD iterations both training and evasion take."""
-    return TINY_PGD_ITERATIONS if level.tiny_model else PGD_ITERATIONS
+    """Return how many PGD iterations both training and evasion take.
+
+    Only `full` runs the paper's chain; see `SMOKE_PGD_ITERATIONS` for why. The
+    count is written to every E2/E3 row, so a reduced run is legible as one.
+
+    Args:
+        level: The level preset.
+
+    Returns:
+        The number of PGD steps per batch.
+    """
+    if level.tiny_model:
+        return TINY_PGD_ITERATIONS
+    if level.train_fraction < 1.0:
+        return SMOKE_PGD_ITERATIONS
+    return PGD_ITERATIONS
 
 
 def epsilon_for(level: LevelConfig, epsilon: float) -> float:
@@ -594,8 +663,10 @@ class RunContext:
         level: The verification-level preset, already carrying `epochs`.
         seed: The experiment seed, recorded as `exp_id`.
         device: Device to train and evaluate on. Example: `"cuda:0"`.
-        cache_dir: Directory for the content-addressed checkpoint cache. None
-            uses the shared default.
+        cache_dir: Directory for the content-addressed checkpoint cache, from
+            `default_cache_dir(level)`. Required rather than defaulted, so a
+            context can never silently write a level's checkpoints into another
+            level's cache.
         tiny_data_factory: Optional builder for the `test`-level stand-in,
             taking the seed and returning an `AmuletDataset`. None uses the
             shared `tiny_tabular_dataset` (E2/E3). E4 overrides it with a
@@ -607,9 +678,11 @@ class RunContext:
     level: LevelConfig
     seed: int
     device: str
-    cache_dir: Path | None = None
+    cache_dir: Path
     tiny_data_factory: Callable[[int], AmuletDataset] | None = None
-    _datasets: dict[tuple[str, float], AmuletDataset] = field(default_factory=dict)
+    _datasets: dict[tuple[str, float, float], AmuletDataset] = field(
+        default_factory=dict
+    )
 
     def data(self, dataset: str) -> AmuletDataset:
         """Load a dataset once per distinct request, memoised for this context.
@@ -624,7 +697,7 @@ class RunContext:
             The dataset. Callers must treat it as read-only: the memo hands the
             same object to every attack that asks for it.
         """
-        key = (dataset, self.level.train_fraction)
+        key = (dataset, self.level.train_fraction, self.level.test_fraction)
         if key not in self._datasets:
             if self.level.tiny_model:
                 factory = self.tiny_data_factory or tiny_tabular_dataset
@@ -632,10 +705,11 @@ class RunContext:
             else:
                 self._datasets[key] = load_data(
                     repo_root(),
-                    dataset,
+                    loader_name(dataset),
                     self.level.train_fraction,
                     LOGGER,
                     exp_id=self.seed,
+                    test_size=self.level.test_fraction,
                 )
         return self._datasets[key]
 
@@ -684,16 +758,17 @@ class RunContext:
         ).to(self.device)
 
 
-def default_cache_dir(level: LevelConfig) -> Path | None:
+def default_cache_dir(level: LevelConfig) -> Path:
     """Return the checkpoint cache this level should write to.
 
     Returns:
-        None for the shared default, or a throwaway directory for `test`, whose
-        tiny stand-ins have no business outliving the test that made them.
+        This level's own subdirectory of `.model_cache/`, or a throwaway
+        directory for `test`, whose tiny stand-ins have no business outliving
+        the test that made them.
     """
     if level.tiny_model:
         return Path(tempfile.mkdtemp(prefix="advtr_test_models_"))
-    return None
+    return model_cache_root(level.name)
 
 
 def default_output_dir(level: LevelConfig, experiment_id: str) -> Path:

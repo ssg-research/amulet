@@ -135,11 +135,12 @@ def run(
         attacks: Sub-attacks to run, a subset of `schemas.ATTACKS`.
         capacities: VGG capacities to sweep, a subset of `schemas.CAPACITIES`.
         output_dir: Directory the result CSVs go in. None keeps the per-level
-            default: the committed results directory for `full`, a level-scoped
-            subdirectory for `smoke`, a temporary one for `test`, whose tiny
-            models must not touch the paper's data.
-        cache_dir: Checkpoint cache directory. None keeps the per-level default:
-            the shared cache for `smoke`/`full`, a temporary one for `test`.
+            default from `default_output_dir`: `runs/<level>/` for every level,
+            never the committed `results/` tree, so no run overwrites the paper's
+            shipped data.
+        cache_dir: Checkpoint cache directory. None keeps the per-level default
+            from `default_cache_dir`: this level's own `.model_cache/<level>/`
+            for `smoke`/`full`, a temporary one for `test`.
         device: Torch device. None picks CUDA when available, else CPU.
 
     Returns:

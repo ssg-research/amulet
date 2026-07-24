@@ -36,12 +36,12 @@ _PERCENT_COLUMNS = (
 def _context(tmp_path: Path, seed: int = 0):
     """Build a `test`-level run context over a throwaway cache."""
     from common.config import get_level
-    from experiments import advtr_common as advtr
+    from experiments import shared_targets as targets
 
     config = get_level("test").with_defaults(epochs=100)
     torch.set_num_threads(1)
-    advtr.seed_everything(seed)
-    return advtr.RunContext(
+    targets.seed_everything(seed)
+    return targets.RunContext(
         level=config, seed=seed, device="cpu", cache_dir=tmp_path / "models"
     )
 
@@ -104,12 +104,12 @@ def test_the_defended_metrics_are_measured_on_the_defended_model(
     model whenever the two accuracies differ.
     """
     from amulet.utils import get_accuracy
-    from experiments import advtr_common as advtr
+    from experiments import shared_targets as targets
     from experiments.e2_advtr_modext import run as e2
 
     ctx = _context(tmp_path)
     bundle, data = e2.build_models(ctx, "census", 0.01)
-    test_loader = advtr.loader_for(data.test_set, advtr.batch_for(ctx.level, 256))
+    test_loader = targets.loader_for(data.test_set, targets.batch_for(ctx.level, 256))
 
     row = e2.run_cell(_context(tmp_path), "census", 0.01, tmp_path / "out")[0]
 

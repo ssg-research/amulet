@@ -56,6 +56,7 @@ def run_cell(
         shared.TINY_EVASION_EPSILON if ctx.level.tiny_model else shared.EVASION_EPSILON
     )
     batch_size = shared.batch_for(ctx.level, shared.EVASION_BATCH_SIZE)
+    iterations = shared.evasion_iterations_for(ctx.level)
 
     output = output_dir / f"{CSV_STEM}.csv"
     if row_exists(
@@ -64,6 +65,8 @@ def run_cell(
         {"exp_id": ctx.seed, "capacity": capacity, "epsilon": epsilon},
     ):
         return []
+
+    started = time.perf_counter()
 
     data = ctx.data(shared.DEFAULT_TARGET_ATTRIBUTE, ctx.level.train_fraction)
     spec = shared.evasion_target_spec(
@@ -96,7 +99,7 @@ def run_cell(
         ctx.device,
         batch_size,
         epsilon,
-        iterations=shared.EVASION_ITERATIONS,
+        iterations=iterations,
         step_size=step_size,
     )
     robust_acc = get_accuracy(target, evasion.attack(), ctx.device)
@@ -105,9 +108,10 @@ def run_cell(
         **shared.leading_row(spec, shared.DEFAULT_TARGET_ATTRIBUTE),
         "epsilon": epsilon,
         "step_size": step_size,
-        "iterations": shared.EVASION_ITERATIONS,
+        "iterations": iterations,
         "target_test_acc": target_test_acc,
         "robust_acc": robust_acc,
+        "runtime_sec": round(time.perf_counter() - started, 2),
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
     }
     _ = append_row(output, SCHEMA, row)

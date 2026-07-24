@@ -36,12 +36,12 @@ _UNIT_COLUMNS = ("auc_race", "auc_sex")
 def _context(tmp_path: Path, seed: int = 0):
     """Build a `test`-level run context over a throwaway cache."""
     from common.config import get_level
-    from experiments import advtr_common as advtr
+    from experiments import shared_targets as targets
 
     config = get_level("test").with_defaults(epochs=100)
     torch.set_num_threads(1)
-    advtr.seed_everything(seed)
-    return advtr.RunContext(
+    targets.seed_everything(seed)
+    return targets.RunContext(
         level=config, seed=seed, device="cpu", cache_dir=tmp_path / "models"
     )
 

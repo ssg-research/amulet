@@ -5,7 +5,7 @@ extraction. Its clean baseline is a clean model-extraction target on the same
 four datasets as E2, so the plan asks a deliberate question: does E4's baseline
 *share* E2's checkpoint, or is it a separate one?
 
-**Decision: shared.** Both experiments describe the clean target with the
+**Decision: targets.** Both experiments describe the clean target with the
 identical spec (the 50/50 dataset-level split selector `DATASET_SPLIT_TARGET`,
 the Adam recipe, 100 epochs, batch 256), so their content hashes coincide and
 the cache stores one $\\modelstd$ serving both. These pure tests prove it, and
@@ -21,7 +21,7 @@ from __future__ import annotations
 import pytest
 
 from common.config import LevelConfig, get_level
-from experiments import advtr_common as advtr
+from experiments import shared_targets as targets
 from experiments.e2_advtr_modext import run as e2
 from experiments.e2_advtr_modext.schemas import EPSILONS as E2_EPSILONS
 from experiments.e4_outrem_modext import run as e4
@@ -37,8 +37,11 @@ NUM_CLASSES = 2
 CAPACITY = "m1"
 
 
-def _e4_context(level: LevelConfig = LEVEL, seed: int = 0) -> advtr.RunContext:
-    return advtr.RunContext(level=level, seed=seed, device="cpu")
+def _e4_context(level: LevelConfig = LEVEL, seed: int = 0) -> targets.RunContext:
+    # These tests only build specs, so the cache is named but never written to.
+    return targets.RunContext(
+        level=level, seed=seed, device="cpu", cache_dir=targets.default_cache_dir(level)
+    )
 
 
 def _e4_clean(dataset: str, level: LevelConfig = LEVEL, seed: int = 0):
@@ -49,7 +52,7 @@ def _e4_clean(dataset: str, level: LevelConfig = LEVEL, seed: int = 0):
 
 def _e2_clean(dataset: str, level: LevelConfig = LEVEL, seed: int = 0):
     # Built exactly as E2's `build_models` builds its clean baseline.
-    return advtr.clean_target_spec(
+    return targets.clean_target_spec(
         level,
         dataset,
         seed,
@@ -57,7 +60,7 @@ def _e2_clean(dataset: str, level: LevelConfig = LEVEL, seed: int = 0):
         NUM_FEATURES,
         NUM_CLASSES,
         e2.BATCH_SIZE,
-        advtr.DATASET_SPLIT_TARGET,
+        targets.DATASET_SPLIT_TARGET,
     )
 
 
@@ -71,7 +74,7 @@ def _e4_defended(dataset: str, percent: int, level: LevelConfig = LEVEL, seed: i
 def _e4_stolen(dataset: str, percent: int, level: LevelConfig = LEVEL, seed: int = 0):
     return _e4_clean(dataset, level, seed).replace(
         optimizer_recipe=e4.stolen_recipe(percent),
-        subset_selector=advtr.DATASET_SPLIT_ADVERSARY,
+        subset_selector=targets.DATASET_SPLIT_ADVERSARY,
     )
 
 
@@ -95,8 +98,8 @@ def test_the_shared_recipe_and_selector_are_the_reference_ones() -> None:
     """The baseline uses the P3-recorded selector and recipe the sharing depends on."""
     spec = _e4_clean("census")
 
-    assert spec.subset_selector == advtr.DATASET_SPLIT_TARGET
-    assert spec.optimizer_recipe == advtr.ADAM_RECIPE
+    assert spec.subset_selector == targets.DATASET_SPLIT_TARGET
+    assert spec.optimizer_recipe == targets.ADAM_RECIPE
     assert spec.epochs == 100
     assert e4.BATCH_SIZE == e2.BATCH_SIZE == 256
 
@@ -137,7 +140,7 @@ def test_e4_removed_models_never_collide_with_e2_defended_models() -> None:
     """
     e4_keys = {_e4_defended("cifar", p).key() for p in PERCENTS if p != 0}
     e2_keys = {
-        advtr.defended_target_spec(
+        targets.defended_target_spec(
             LEVEL,
             "cifar",
             0,
@@ -146,7 +149,7 @@ def test_e4_removed_models_never_collide_with_e2_defended_models() -> None:
             NUM_CLASSES,
             e2.BATCH_SIZE,
             eps,
-            advtr.DATASET_SPLIT_TARGET,
+            targets.DATASET_SPLIT_TARGET,
         ).key()
         for eps in E2_EPSILONS
     }

@@ -38,9 +38,45 @@ TargetFactory = Callable[[], HFCausalLM]
 
 # Shared across both experiments so an attack-independent purified clean test computed by
 # Experiment 1 is reused by Experiment 2, etc. Content-addressed by input text + ONION params.
-_DEFAULT_ONION_CACHE = Path(__file__).resolve().parent / ".onion_cache"
+# Split by level like the checkpoint caches: a smoke run reads a tenth of SST-2, so its
+# purified corpus is a different object from the full run's despite the same ONION params.
+_ONION_CACHE_BASE = Path(__file__).resolve().parent / ".onion_cache"
 
+
+def default_onion_cache(level: str) -> Path:
+    """Return E5's ONION purification cache for one verification level.
+
+    Args:
+        level: Level name, one of `common.config.LEVEL_NAMES`.
+
+    Returns:
+        `experiments/e5_textbadnets/.onion_cache/<level>/`, git-ignored.
+    """
+    return _ONION_CACHE_BASE / level
+
+
+# The random-init tokenizer the `test` level builds its synthetic stand-in from.
 _SMOKE_TOKENIZER = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+
+# The real, pretrained causal LM the `smoke` level fine-tunes, in place of the
+# paper's `meta-llama/Llama-3.2-3B` (which `full` keeps). It is a genuine
+# LoRA-adaptable Llama-architecture model, so smoke exercises every code path the
+# full run does — HFCausalLM, LoRA, TextBadNets, ONION perplexity scoring, and
+# DP-SGD — at roughly a third of the parameters and cost. Smoke's job is proving
+# the pipeline sound, not reproducing the paper's numbers, so the smaller real
+# model is enough; only `full` needs the 3B target. Same checkpoint as the test
+# tokenizer's base, and already on disk after `setup_assets.py`.
+SMOKE_MODEL_NAME = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+
+# How many SST-2 records `smoke` fine-tunes and evaluates on. A small fixed slice,
+# NOT the level's 10% fraction: 10% of the 67,349-record train split is ~6735
+# sentences, ~420 fine-tune steps on the real LM per condition and a perplexity
+# pass over all 6735 for ONION — minutes per fine-tune, and there are several.
+# The point of smoke is that every path runs, so a few hundred records suffice:
+# 256 train is 16 steps at batch 16, and 5% of it still inserts ~13 triggers for
+# the attack and the defense to act on. `full` reads the whole corpus (max = -1).
+SMOKE_MAX_TRAIN_SAMPLES = 256
+SMOKE_MAX_TEST_SAMPLES = 64
 
 
 def seed_all(seed: int) -> None:
@@ -127,7 +163,13 @@ def make_target_factory(
 
 
 def make_smoke_setup(max_len: int = 16) -> tuple[AmuletDataset, TargetFactory]:
-    """A tiny random-init Llama target + synthetic SST-2-shaped data, all on CPU."""
+    """A tiny random-init Llama target + synthetic SST-2-shaped data, all on CPU.
+
+    Despite the name, this builds the **`test`**-level stand-in (`tiny_model`),
+    not the `smoke` one: `smoke` keeps the real Llama and a tenth of SST-2. The
+    name is from when `test` was called `--smoke`; the callers gate it on
+    `config.tiny_model`. Renaming it is left to the coming refactor.
+    """
     from transformers import LlamaConfig
 
     tokenizer = _load_tokenizer(_SMOKE_TOKENIZER)
@@ -220,7 +262,25 @@ def accuracy(
 # fully trained", so a run that finds it can trust the checkpoint (exactly what the sweep
 # wants — never pick up a half-trained shared model). Writes go through a per-process temp
 # then ``os.replace``, so overlapping nodes can never read a torn file.
-DEFAULT_MODEL_CACHE = Path(__file__).resolve().parent / ".model_cache"
+_MODEL_CACHE_BASE = Path(__file__).resolve().parent / ".model_cache"
+
+
+def default_model_cache(level: str) -> Path:
+    """Return E5's shared-checkpoint cache for one verification level.
+
+    Per-level, for the same reason `common.models.model_cache_root` is: a
+    `smoke` sweep's one-epoch LoRA adapters must never be served to a `full`
+    one, and a reviewer must be able to discard one level's checkpoints without
+    disturbing the other's.
+
+    Args:
+        level: Level name, one of `common.config.LEVEL_NAMES`.
+
+    Returns:
+        `experiments/e5_textbadnets/.model_cache/<level>/`, git-ignored.
+    """
+    return _MODEL_CACHE_BASE / level
+
 
 Metrics = dict[str, float]
 TrainAndMeasure = Callable[[], "tuple[torch.nn.Module, Metrics]"]
@@ -316,7 +376,7 @@ def cached_purify(
     onion: ONION,
     dataset: TextTensorDataset,
     reference_model_name: str,
-    cache_dir: Path = _DEFAULT_ONION_CACHE,
+    cache_dir: Path,
 ) -> TextTensorDataset:
     """ONION-purify ``dataset``, loading from a content-addressed disk cache on a hit.
 

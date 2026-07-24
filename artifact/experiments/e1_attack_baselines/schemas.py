@@ -41,7 +41,13 @@ _LEADING: tuple[str, ...] = (
     "batch_size",
 )
 
-_TRAILING: tuple[str, ...] = ("timestamp",)
+# `runtime_sec` is the wall-clock cost of the row, measured from just after the
+# resume check to just before the row is written. It is what `RUNTIME.md` is
+# built from. Read it with the shared model cache in mind: several attacks reuse
+# one target per (seed, capacity), so whichever row trains it pays for it and the
+# rows that follow load a checkpoint instead. The per-row times are therefore
+# order-dependent, and only their sum over a seed is a stable quantity.
+_TRAILING: tuple[str, ...] = ("runtime_sec", "timestamp")
 
 EVASION_SCHEMA = CsvSchema(
     header=(

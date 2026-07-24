@@ -44,13 +44,13 @@ def _context(tmp_path: Path, seed: int = 0):
     context built directly here exercises the same data path as the CLI.
     """
     from common.config import get_level
-    from experiments import advtr_common as advtr
+    from experiments import shared_targets as targets
     from experiments.e4_outrem_modext.run import tiny_outrem_dataset
 
     config = get_level("test").with_defaults(epochs=100)
     torch.set_num_threads(1)
-    advtr.seed_everything(seed)
-    return advtr.RunContext(
+    targets.seed_everything(seed)
+    return targets.RunContext(
         level=config,
         seed=seed,
         device="cpu",
@@ -132,7 +132,7 @@ def test_the_baseline_reuses_e2s_clean_checkpoint(tmp_path: Path) -> None:
     two experiments. Were the specs to diverge, this file would be absent.
     """
     from common.models import checkpoint_path
-    from experiments import advtr_common as advtr
+    from experiments import shared_targets as targets
     from experiments.e2_advtr_modext import run as e2
     from experiments.e4_outrem_modext import run as e4
 
@@ -150,7 +150,7 @@ def test_the_baseline_reuses_e2s_clean_checkpoint(tmp_path: Path) -> None:
     ctx = _context(tmp_path)
     ctx.cache_dir = cache
     data = ctx.data("census")
-    batch_size = advtr.batch_for(ctx.level, e4.BATCH_SIZE)
+    batch_size = targets.batch_for(ctx.level, e4.BATCH_SIZE)
     e4_clean_spec = e4.clean_baseline_spec(
         ctx, "census", data.num_features, data.num_classes, batch_size
     )
@@ -187,12 +187,12 @@ def test_the_clean_baseline_is_trained_once_across_percentages(
 def test_defended_test_acc_is_measured_on_the_defended_model(tmp_path: Path) -> None:
     """The row's defended test accuracy is the defended model's, on the test set."""
     from amulet.utils import get_accuracy
-    from experiments import advtr_common as advtr
+    from experiments import shared_targets as targets
     from experiments.e4_outrem_modext import run as e4
 
     ctx = _context(tmp_path)
     bundle, data = e4.build_models(ctx, "census", 10)
-    test_loader = advtr.loader_for(data.test_set, advtr.batch_for(ctx.level, 256))
+    test_loader = targets.loader_for(data.test_set, targets.batch_for(ctx.level, 256))
 
     row = e4.run_cell(_context(tmp_path), "census", 10, tmp_path / "out")[0]
 

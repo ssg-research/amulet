@@ -27,6 +27,25 @@ Do not request more than one torch extra at once: `cpu`, `cu128`, and `cu130`
 are declared conflicting and requesting several errors.
 Training at smoke or full scale requires a GPU.
 
+Then download the datasets and model weights every experiment reads:
+
+```bash
+uv run python artifact/setup_assets.py           # fetch everything this install can
+uv run python artifact/setup_assets.py --list    # what it will fetch, and how large
+```
+
+This is a required step, not an optimisation.
+Every runtime quoted in this document and in [`RUNTIME.md`](RUNTIME.md) is
+compute time and assumes the downloads are already complete.
+Doing it up front also keeps parallel runs from racing each other into the same
+`data/` cache, and surfaces a gated model repository or an expired token in
+minutes rather than hours into a sweep.
+
+The script skips E5's assets when the `llm` extra is absent, so an E1-E4
+reviewer needs nothing extra.
+E5's Llama weights are gated on the Hugging Face hub: accept the licence and
+run `hf auth login` before fetching them.
+
 ## Reproducing the paper
 
 Three steps: run an experiment, find its CSV, render the table or plot.
@@ -132,21 +151,36 @@ This is Step 1 for all five experiments followed by Step 3, writing to
 
 ### Expected runtime
 
-Rough estimates for **one seed at `--level full` on a single modern GPU**
-(A100-class).
-The paper's five-seed means multiply the training cost by five, minus the
-baselines that are cached and shared across seeds.
+**L3 (`--level full`) is a single seed, seed 0 — not the paper's five-seed run.**
+A reviewer runs each experiment once and checks whether their one number lands
+within the paper's reported mean ± standard error; reproducing the exact means is
+neither expected nor the point of the standard error. The five-seed column below
+is the paper's own cost, shown only for context.
 
-| Experiment | Estimate    | What dominates                                                                                                                                                   |
-| ---------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| E1         | 1 to 2 days | Membership inference trains a population of shadow models on CelebA; the other five attacks share one target each.                                               |
-| E2         | 12 to 24 h  | Adversarial training runs a PGD inner loop per batch (several times the cost of standard training), across 4 datasets x 4 budgets, plus a distillation per cell. |
-| E3         | 4 to 8 h    | Same adversarial training, but only 2 datasets (census, lfw) and no surrogate to distil.                                                                         |
-| E4         | 12 to 24 h  | kNN-Shapley scores the whole training set per cell, then the target is retrained and a surrogate distilled, across 4 datasets x 5 removal levels.                |
-| E5         | 1 to 2 days | Every cell fine-tunes LoRA adapters on a 3B-parameter Llama over SST-2; ONION additionally scores perplexity for the whole training corpus.                      |
+Costs are for a single NVIDIA A100, the reference host throughout (some E5
+figures were originally measured on a slower A40; quoting them as A100 means a
+real A100 run comes in at or under these numbers).
 
-E1 through E4 download their vision datasets on first use.
-E5 needs the `llm` extra and downloads the Llama weights.
+E5's row is measured, from the per-phase runtime columns in the paper's own
+result CSVs.
+The other four are estimates for one L3 seed: their `runtime_sec` column was
+added after the paper run, so the first L3 run is what will replace these with
+measurements.
+The `--level smoke` sweep, by contrast, is already measured end to end (~12
+minutes for all five experiments on one GPU: ~9 for E1-E4, ~2.5 for E5).
+[`RUNTIME.md`](RUNTIME.md) holds the measured smoke breakdown, the per-phase
+breakdown behind E5's number, and the method for regenerating the L3 figures.
+
+| Experiment | L3: one seed (`--level full`) | Paper: 5 seeds        | What dominates                                                                                                                                                   |
+| ---------- | ----------------------------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| E1         | 1 to 2 days (est)             | —                     | Membership inference trains a population of shadow models on CelebA; the other five attacks share one target each.                                               |
+| E2         | 12 to 24 h (est)              | —                     | Adversarial training runs a PGD inner loop per batch (several times the cost of standard training), across 4 datasets x 4 budgets, plus a distillation per cell. |
+| E3         | 4 to 8 h (est)                | —                     | Same adversarial training, but only 2 datasets (census, lfw) and no surrogate to distil.                                                                         |
+| E4         | 12 to 24 h (est)              | —                     | kNN-Shapley scores the whole training set per cell, then the target is retrained and a surrogate distilled, across 4 datasets x 5 removal levels.                |
+| E5         | 68 h ONION, 31 h DP-SGD       | ~495 h (~21 GPU-days) | Every cell fine-tunes LoRA adapters on a 3B-parameter Llama over SST-2 at a flat ~5 h; ONION adds 2.1 h scoring perplexity for the whole training corpus.        |
+
+Every figure above is compute time on a host whose `artifact/setup_assets.py`
+run has already completed; downloads are not included.
 
 ## Three verification levels
 
@@ -156,7 +190,7 @@ committing to a full run.
 | Level        | Question                    | Command                                                                                       | Cost                              |
 | ------------ | --------------------------- | --------------------------------------------------------------------------------------------- | --------------------------------- |
 | **L1 tests** | Does every script work?     | `uv run pytest artifact/tests` then `uv run pytest -m integration artifact/tests/integration` | seconds to minutes, CPU           |
-| **L2 smoke** | Is the real pipeline sound? | `artifact/run_smoke.sh`                                                                       | minutes to hours, one GPU         |
+| **L2 smoke** | Is the real pipeline sound? | `artifact/run_smoke.sh`                                                                       | ~12 min all five, one GPU         |
 | **L3 full**  | Do we reproduce the paper?  | `artifact/run_all.sh`                                                                         | GPU-hours to GPU-days (see above) |
 
 - **L1** runs the pure-logic unit tests (table formatting, spec hashing, CSV
@@ -164,11 +198,17 @@ committing to a full run.
   synthetic data. No GPU, no dataset download. This checks the code runs, not
   the paper's numbers.
 - **L2** drives the same `run.py` scripts on real architectures (real VGG, real
-  LoRA Llama) for a one-epoch budget, writing to `artifact/runs/smoke/`. It
-  proves the pipeline end to end. Its numbers are **not** the paper's: one epoch
-  on a fraction of the data does not reproduce a trained model.
-- **L3** is the reproduction, at the paper's settings, writing to
-  `artifact/runs/full/`. Only L3 numbers are comparable with the paper.
+  LoRA Llama), writing to `artifact/runs/smoke/`. It proves the pipeline end to
+  end. Every repeated-work loop is shrunk to its floor: one epoch, a tenth of
+  both the train and test splits, and reduced shadow-bank, inversion, and PGD
+  counts (see [`RUNTIME.md`](RUNTIME.md)). Its numbers are therefore **not** the
+  paper's; a reduced-budget run does not reproduce a trained model.
+- **L3** is the reproduction, at the paper's per-experiment settings but for a
+  **single seed (seed 0)**, writing to `artifact/runs/full/`. It is not the
+  paper's five-seed sweep: a reviewer runs each experiment once and checks that
+  their number falls within the paper's reported mean ± standard error. Only L3
+  numbers are comparable with the paper at all. (`--seeds 0-4` reproduces the
+  full five-seed means, but that is the authors' cost, not a reviewer's task.)
 
 Each level writes to its own `artifact/runs/<level>/` tree, so a cheap check
 never overwrites a full run's results.
@@ -190,6 +230,7 @@ Each paper desideratum maps to a concrete command, test, or file in this tree.
 artifact/
   ARTIFACT.md              # this file: start here
   CLAIMS.md                # design-claim demonstration (consistency, extensibility)
+  RUNTIME.md               # per-phase runtime breakdown behind the estimates above
   common/                  # shared helpers: paths, config, models, io, registries
   experiments/             # one package per experiment; each has a run.py
     e1_attack_baselines/   #   baseline attack per risk
@@ -202,6 +243,7 @@ artifact/
   tables/generated/        # rendered .tex (gitignored)
   plots/generated/         # rendered .png and .pdf (gitignored)
   tests/                   # unit/ (pure logic) and integration/ (tiny end-to-end)
+  setup_assets.py          # download every dataset and model weight; run this first
   run_experiments.py       # run every experiment at one level
   run_smoke.sh             # Level 2: all five at smoke, then render
   run_all.sh               # Level 3: all five at full, then render

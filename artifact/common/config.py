@@ -3,8 +3,12 @@
 The artifact is verifiable at three escalating levels (plan §8):
 
 * `test` — does the script *work*? Tiny data, tiny model, one epoch, CPU.
-* `smoke` — is the experiment *sound*? Real architectures, one epoch, small
-  data fraction; minutes on one GPU.
+* `smoke` — is the experiment *sound*? Real architectures, one epoch, a small
+  fraction of *both* splits, and every repeated-work loop shrunk to its floor
+  (shadow bank, inversion steps, PGD chain, E5's poison-rate grid); minutes on
+  one GPU. Only `full` reads a whole split or runs a paper-sized loop, so a knob
+  that reduces a level's cost is gated on `train_fraction < 1.0`, not on
+  `tiny_model` (which fires only at `test`).
 * `full` — do we reproduce the paper? Paper settings, one seed by default.
 
 `full` deliberately leaves `epochs` unset: the paper epoch count differs per
@@ -32,6 +36,12 @@ class LevelConfig:
             experiment's own paper setting.
         train_fraction: Fraction of the training split to use, passed through to
             `amulet.utils.load_data(training_size=...)`.
+        test_fraction: Fraction of the test split to use, passed through to
+            `amulet.utils.load_data(test_size=...)`. Shrinking the training
+            split alone does not make a level cheap: evaluation walks the test
+            split on every cell, and kNN-Shapley outlier removal (E4) costs
+            `O(train x test)`, so a full test split pins its cost near the
+            paper's however small the training budget gets.
         tiny_model: Whether to substitute a micro-architecture for the real one.
     """
 
@@ -39,6 +49,7 @@ class LevelConfig:
     seeds: tuple[int, ...]
     epochs: int | None
     train_fraction: float
+    test_fraction: float
     tiny_model: bool
 
     def with_defaults(self, *, epochs: int) -> LevelConfig:
@@ -62,6 +73,7 @@ class LevelConfig:
         seeds: tuple[int, ...] | None = None,
         epochs: int | None = None,
         train_fraction: float | None = None,
+        test_fraction: float | None = None,
         tiny_model: bool | None = None,
     ) -> LevelConfig:
         """Return a copy with the supplied fields forced, preset value or not.
@@ -73,6 +85,7 @@ class LevelConfig:
             seeds: Replacement seed tuple.
             epochs: Replacement epoch count.
             train_fraction: Replacement training-split fraction.
+            test_fraction: Replacement test-split fraction.
             tiny_model: Replacement micro-architecture flag.
 
         Returns:
@@ -85,6 +98,9 @@ class LevelConfig:
             train_fraction=(
                 self.train_fraction if train_fraction is None else train_fraction
             ),
+            test_fraction=(
+                self.test_fraction if test_fraction is None else test_fraction
+            ),
             tiny_model=self.tiny_model if tiny_model is None else tiny_model,
         )
 
@@ -95,6 +111,7 @@ LEVELS: dict[str, LevelConfig] = {
         seeds=(0,),
         epochs=1,
         train_fraction=0.01,
+        test_fraction=0.01,
         tiny_model=True,
     ),
     "smoke": LevelConfig(
@@ -102,6 +119,7 @@ LEVELS: dict[str, LevelConfig] = {
         seeds=(0,),
         epochs=1,
         train_fraction=0.1,
+        test_fraction=0.1,
         tiny_model=False,
     ),
     "full": LevelConfig(
@@ -109,6 +127,7 @@ LEVELS: dict[str, LevelConfig] = {
         seeds=(0,),
         epochs=None,
         train_fraction=1.0,
+        test_fraction=1.0,
         tiny_model=False,
     ),
 }

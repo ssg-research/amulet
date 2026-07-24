@@ -80,6 +80,8 @@ def run_cell(
     ):
         return []
 
+    started = time.perf_counter()
+
     batch_size = shared.batch_for(ctx.level, shared.ADVERSARY_SPLIT_BATCH_SIZE)
     data = ctx.data(shared.DEFAULT_TARGET_ATTRIBUTE, ctx.level.train_fraction)
     if data.x_test is None or data.z_test is None:
@@ -118,6 +120,7 @@ def run_cell(
         "target_test_acc": target_test_acc,
         "attack_bal_acc": metrics[_SENSITIVE_INDEX]["attack_accuracy"] * 100,
         "attack_auc": metrics[_SENSITIVE_INDEX]["auc_score"],
+        "runtime_sec": round(time.perf_counter() - started, 2),
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
     }
     _ = append_row(output, SCHEMA, row)

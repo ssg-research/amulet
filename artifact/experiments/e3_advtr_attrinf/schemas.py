@@ -67,6 +67,14 @@ SCHEMA = CsvSchema(
         # The dataset's two sensitive-column names, for provenance.
         "sensitive_attr_1",
         "sensitive_attr_2",
+        # Wall-clock cost of this row, measured from just after the resume check
+        # to just before the row is written. What `RUNTIME.md` is built from.
+        # A dataset writes one baseline row and one row per budget. The baseline
+        # row carries the shared $\\modelstd$ training the budget rows reuse, and
+        # each budget row carries only its own work, so the rows are disjoint and
+        # sum to the dataset's cost. A resume that skips the baseline row does
+        # not re-attribute that shared training, and so undercounts.
+        "runtime_sec",
         "timestamp",
     ),
     key_columns=("exp_id", "dataset", "capacity", "epsilon"),

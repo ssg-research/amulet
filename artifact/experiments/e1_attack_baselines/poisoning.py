@@ -55,6 +55,8 @@ def run_cell(
     ):
         return []
 
+    started = time.perf_counter()
+
     data = ctx.data(shared.DEFAULT_TARGET_ATTRIBUTE, ctx.level.train_fraction)
     clean_spec = shared.poisoning_clean_spec(
         ctx.level, ctx.seed, capacity, data.num_features, data.num_classes
@@ -116,6 +118,7 @@ def run_cell(
         "std_poison_acc": get_accuracy(clean_model, poison_loader, ctx.device),
         "pois_test_acc": get_accuracy(backdoored_model, test_loader, ctx.device),
         "pois_poison_acc": get_accuracy(backdoored_model, poison_loader, ctx.device),
+        "runtime_sec": round(time.perf_counter() - started, 2),
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
     }
     _ = append_row(output, SCHEMA, row)

@@ -59,6 +59,13 @@ SCHEMA = CsvSchema(
         "stolen_test_acc",
         "fidelity",
         "correct_fidelity",
+        # Wall-clock cost of the cell, measured from just after the resume check
+        # to just before the row is written. What `RUNTIME.md` is built from.
+        # This is real work only when the checkpoint cache is cold: the CSV
+        # resume check and `.model_cache/` are independent, so a row absent from
+        # the CSV is still written after merely *loading* models it has trained
+        # before, and records seconds instead of hours.
+        "runtime_sec",
         "timestamp",
     ),
     key_columns=("exp_id", "dataset", "capacity", "percent"),

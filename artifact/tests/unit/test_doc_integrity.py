@@ -30,7 +30,7 @@ from common.paths import artifact_root, repo_root
 from common.registry import EXPERIMENT_IDS
 
 # Docs under test, relative to the artifact root.
-DOC_NAMES: tuple[str, ...] = ("ARTIFACT.md", "CLAIMS.md")
+DOC_NAMES: tuple[str, ...] = ("ARTIFACT.md", "CLAIMS.md", "RUNTIME.md")
 
 # A backtick token is treated as a repository path only when its first segment
 # is one of these. This excludes API snippets (`Attack(model).attack()`) and

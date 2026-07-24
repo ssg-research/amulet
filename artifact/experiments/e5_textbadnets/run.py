@@ -72,9 +72,12 @@ def run(
         level: One of `common.config.LEVEL_NAMES`.
         seeds: Seeds to sweep. None keeps the level's own seeds.
         which: `"onion"`, `"dp"` or `"both"`.
-        output_dir: Directory the result CSVs go in. None keeps the per-level default:
-            the committed results directory for `smoke` and `full`, a temporary one for
-            `test`, whose tiny random-init target must not touch the paper's data.
+        output_dir: Directory the result CSVs go in. None keeps the per-level default
+            from `default_output_dir`: `runs/<level>/e5_textbadnets/`, never the
+            committed `results/` tree, so no run can overwrite the paper's shipped
+            data or have its reduced-budget numbers averaged into them. (The
+            throwaway temporary directory `test` uses is its model *cache*, not its
+            output; see `_cache_dir`.)
 
     Returns:
         Every row appended by this call, across the seeds and studies requested. Cells

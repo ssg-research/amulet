@@ -74,6 +74,8 @@ def run_cell(
     ):
         return []
 
+    started = time.perf_counter()
+
     batch_size = shared.batch_for(ctx.level, shared.ADVERSARY_SPLIT_BATCH_SIZE)
     data = ctx.data(shared.DEFAULT_TARGET_ATTRIBUTE, ctx.level.train_fraction)
     split = shared.adversary_split(data, ctx.seed)
@@ -121,6 +123,7 @@ def run_cell(
         "stolen_test_acc": scores["stolen_accuracy"],
         "fidelity": scores["fidelity"],
         "correct_fidelity": scores["correct_fidelity"],
+        "runtime_sec": round(time.perf_counter() - started, 2),
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
     }
     _ = append_row(output, SCHEMA, row)

@@ -6,16 +6,19 @@ ONION-defended target that trains on ONION-purified poisoned data and is evaluat
 ONION-purified inputs. Realizes H1 (attack) and H2 (intended interaction). See
 experiments/text_backdoor_experiments.md in the repository root.
 
-Per seed the clean baseline is trained once and the poison-rate grid is swept internally;
-one row is appended per rate to `results/e5_textbadnets/onion.csv`. `exp_id` is the seed
-everywhere.
+Per seed the clean baseline is trained once and whatever poison rates the level
+selects are swept internally; one row is appended per rate to
+`results/e5_textbadnets/onion.csv`. `exp_id` is the seed everywhere.
 
     python artifact/experiments/e5_textbadnets/onion.py --level test
     python artifact/experiments/e5_textbadnets/onion.py --level full --seeds 0-4
 
 Levels come from `common.config` (plan §8). `test` is the old `--smoke` path: a tiny
-random-init target on CPU. `smoke` keeps the real Llama but reads a tenth of the corpus
-for one epoch. `full` is the paper run. Requires the LLM extra: `uv sync --extra cu130
+random-init target on CPU. `smoke` fine-tunes a real pretrained 1.1B Llama
+(`SMOKE_MODEL_NAME`) on a small fixed slice of the corpus (`SMOKE_MAX_TRAIN_SAMPLES`)
+for one epoch, and runs a single poison rate (see `apply_level` for the model swap,
+the data cap, and why the grid collapses to one cell). `full` is the paper run: the
+3B target over the whole poison-rate grid and the whole corpus. Requires the LLM extra: `uv sync --extra cu130
 --extra llm` (or `--extra cpu` for `--level test`).
 """
 
@@ -39,6 +42,9 @@ from amulet.poisoning.defenses import ONION
 from common.config import LEVEL_NAMES, get_level
 from common.io import append_row, row_exists, run_output_dir
 from experiments.e5_textbadnets.llm_backdoor_common import (
+    SMOKE_MAX_TEST_SAMPLES,
+    SMOKE_MAX_TRAIN_SAMPLES,
+    SMOKE_MODEL_NAME,
     TargetFactory,
     accuracy,
     cached_purify,
@@ -61,6 +67,11 @@ CSV_STEM = "onion"
 # is what fills it; `test` and `smoke` keep their own one-epoch budget.
 PAPER_EPOCHS = 3
 SST2_TRAIN_SIZE = 67349
+SST2_TEST_SIZE = 872
+
+# The single poison rate `smoke` runs, the largest of the paper's grid. See
+# `apply_level` for why the level runs one cell rather than the whole sweep.
+SMOKE_POISONED_PORTION = "0.05"
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -299,8 +310,37 @@ def apply_level(args: argparse.Namespace, config: LevelConfig, seed: int) -> Non
 
     `test` is the old `--smoke` path: a tiny random-init target on eight synthetic
     sentences, so the poison rate rises to one half (eight sentences cannot carry a
-    0.01% rate) and the device is forced to CPU. `smoke` and `full` keep the real target
-    and the paper's poison-rate grid, differing in epochs and how much of SST-2 they read.
+    0.01% rate) and the device is forced to CPU. `smoke` runs a real pretrained
+    causal LM (`SMOKE_MODEL_NAME`, a 1.1B Llama) over one representative cell.
+    `full` is the paper's grid on the 3B target.
+
+    Three smoke reductions beyond the shared one-epoch budget, each because smoke
+    proves the pipeline sound rather than reproducing numbers:
+
+    Data. `smoke` reads `SMOKE_MAX_TRAIN_SAMPLES` records, not the level's 10%
+    fraction. Ten percent of the 67k-record corpus is ~6735 sentences, ~420
+    fine-tune steps on the real LM per condition plus a perplexity pass over all
+    6735 for ONION; a few hundred records exercise every path in a fraction of
+    that. This is why E5 caps by an absolute count where E1-E4 scale by the
+    fraction: their splits are already small, SST-2's is not.
+
+    Grid. Only `full` sweeps every poison rate. Each rate costs a fine-tune of the
+    undefended target, a fine-tune of the defended one and a purification pass,
+    and they all drive the identical code path over the identical dataset and
+    model: the rate is a scalar, not a new branch. Running five of them proves
+    nothing the first one did not. E1-E4's sweeps, by contrast, span different
+    datasets and architectures (dense versus convolutional, one channel versus
+    three) and so buy real path coverage. The rate kept is the paper's largest,
+    because on smoke's few-hundred-record slice a small rate would poison almost
+    no sentences, so only the strongest rate demonstrates the attack at all.
+
+    Model. `smoke` swaps the 3B paper target for a 1.1B real Llama. Every code
+    path (HFCausalLM, LoRA, TextBadNets, ONION perplexity, the metrics) is
+    exercised the same way; only the parameter count, and so the cost, drops.
+    `full` keeps the 3B model, the only place the paper's numbers can come from.
+    Both the target and ONION's reference LM are set here, because
+    `reference_model` otherwise defaulted to the paper target in `parse_args`,
+    before this runs.
 
     Args:
         args: Namespace mutated in place.
@@ -314,8 +354,14 @@ def apply_level(args: argparse.Namespace, config: LevelConfig, seed: int) -> Non
         args.batch_size = 4
         args.poisoned_portions = "0.5"
         args.onion_threshold = 0.0
-    elif config.train_fraction < 1.0:
-        args.max_train_samples = round(config.train_fraction * SST2_TRAIN_SIZE)
+    else:
+        if config.train_fraction < 1.0:
+            args.max_train_samples = SMOKE_MAX_TRAIN_SAMPLES
+            args.poisoned_portions = SMOKE_POISONED_PORTION
+            args.model_name = SMOKE_MODEL_NAME
+            args.reference_model = SMOKE_MODEL_NAME
+        if config.test_fraction < 1.0:
+            args.max_test_samples = SMOKE_MAX_TEST_SAMPLES
 
 
 def build_inputs(
@@ -358,9 +404,9 @@ def _cache_dir(args: argparse.Namespace, config: LevelConfig) -> Path:
         # A tiny random-init target's perplexities have nothing to do with the paper
         # run's, and `--level test` should leave no trace in the shared cache.
         return Path(tempfile.mkdtemp(prefix="e5_onion_test_cache_"))
-    from experiments.e5_textbadnets.llm_backdoor_common import _DEFAULT_ONION_CACHE
+    from experiments.e5_textbadnets.llm_backdoor_common import default_onion_cache
 
-    return _DEFAULT_ONION_CACHE
+    return default_onion_cache(config.name)
 
 
 def default_output_dir(config: LevelConfig) -> Path:

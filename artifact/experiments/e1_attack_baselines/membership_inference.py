@@ -89,7 +89,6 @@ def run_cell(
         The single row appended, or an empty list if the cell was already recorded.
     """
     from common.io import append_row, row_exists
-    from common.models import model_cache_root
 
     num_shadow = shared.shadow_count(ctx.level)
     batch_size = shared.batch_for(ctx.level, shared.MEMBERSHIP_BATCH_SIZE)
@@ -102,6 +101,8 @@ def run_cell(
     }
     if row_exists(output, SCHEMA, key):
         return []
+
+    started = time.perf_counter()
 
     overfit_fraction = ctx.level.train_fraction * shared.OVERFIT_TRAINING_SIZE
     data = ctx.data(shared.PRIVACY_TARGET_ATTRIBUTE, overfit_fraction)
@@ -127,8 +128,7 @@ def run_cell(
     bank_spec = shared.shadow_bank_spec(
         ctx.level, ctx.seed, capacity, data.num_features, data.num_classes
     )
-    cache_root = ctx.cache_dir if ctx.cache_dir is not None else model_cache_root()
-    shadow_dir = cache_root / f"lira_shadow_{bank_spec.key()}"
+    shadow_dir = ctx.cache_dir / f"lira_shadow_{bank_spec.key()}"
     shadow_dir.mkdir(parents=True, exist_ok=True)
 
     attack = LiRA(
@@ -165,6 +165,7 @@ def run_cell(
         "online_bal_acc": online["balanced_acc"] * 100,
         "online_auc": online["auc"],
         "online_tpr_at_1fpr": online["tpr_at_fpr"] * 100,
+        "runtime_sec": round(time.perf_counter() - started, 2),
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
     }
     _ = append_row(output, SCHEMA, row)

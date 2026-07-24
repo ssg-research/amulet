@@ -35,7 +35,7 @@ import torch
 import torch.nn as nn
 
 from common.config import LEVEL_NAMES, get_level
-from experiments import advtr_common as advtr
+from experiments import shared_targets as targets
 from experiments.e1_attack_baselines.run import parse_seeds
 from experiments.e3_advtr_attrinf.schemas import (
     BASELINE_EPSILON,
@@ -48,7 +48,7 @@ from experiments.e3_advtr_attrinf.schemas import (
 if TYPE_CHECKING:
     from amulet.datasets import AmuletDataset
     from common.models import ModelSpec
-    from experiments.advtr_common import AdversarySplit
+    from experiments.shared_targets import AdversarySplit
 
 EXPERIMENT_ID = "e3_advtr_attrinf"
 
@@ -78,7 +78,7 @@ class AttributeScores:
 
 
 def clean_target(
-    ctx: advtr.RunContext, dataset: str, capacity: str = CAPACITY
+    ctx: targets.RunContext, dataset: str, capacity: str = CAPACITY
 ) -> tuple[nn.Module, AdversarySplit, AmuletDataset, ModelSpec]:
     """Train (or load) the clean baseline $\\modelstd$ and the adversary split.
 
@@ -92,9 +92,9 @@ def clean_target(
         that keyed the model.
     """
     data = ctx.data(dataset)
-    split = advtr.adversary_split(data, ctx.seed)
-    batch_size = advtr.batch_for(ctx.level, BATCH_SIZE)
-    spec = advtr.clean_target_spec(
+    split = targets.adversary_split(data, ctx.seed)
+    batch_size = targets.batch_for(ctx.level, BATCH_SIZE)
+    spec = targets.clean_target_spec(
         ctx.level,
         dataset,
         ctx.seed,
@@ -102,20 +102,20 @@ def clean_target(
         data.num_features,
         data.num_classes,
         batch_size,
-        advtr.ARRAY_SPLIT_TARGET,
+        targets.ARRAY_SPLIT_TARGET,
     )
-    loader = advtr.loader_for(split.target_set, batch_size)
+    loader = targets.loader_for(split.target_set, batch_size)
     model = ctx.get_or_train(
         spec,
         data.num_features,
         data.num_classes,
-        lambda m: advtr.train_clean(m, loader, ctx.device, spec.epochs),
+        lambda m: targets.train_clean(m, loader, ctx.device, spec.epochs),
     )
     return model, split, data, spec
 
 
 def defended_target(
-    ctx: advtr.RunContext,
+    ctx: targets.RunContext,
     dataset: str,
     epsilon: float,
     split: AdversarySplit,
@@ -123,10 +123,10 @@ def defended_target(
     capacity: str = CAPACITY,
 ) -> tuple[nn.Module, ModelSpec]:
     """Train (or load) the adversarially-trained $\\modeldef$ at one budget."""
-    batch_size = advtr.batch_for(ctx.level, BATCH_SIZE)
-    applied_epsilon = advtr.epsilon_for(ctx.level, epsilon)
-    iterations = advtr.pgd_iterations_for(ctx.level)
-    spec = advtr.defended_target_spec(
+    batch_size = targets.batch_for(ctx.level, BATCH_SIZE)
+    applied_epsilon = targets.epsilon_for(ctx.level, epsilon)
+    iterations = targets.pgd_iterations_for(ctx.level)
+    spec = targets.defended_target_spec(
         ctx.level,
         dataset,
         ctx.seed,
@@ -135,14 +135,14 @@ def defended_target(
         data.num_classes,
         batch_size,
         epsilon,
-        advtr.ARRAY_SPLIT_TARGET,
+        targets.ARRAY_SPLIT_TARGET,
     )
-    loader = advtr.loader_for(split.target_set, batch_size)
+    loader = targets.loader_for(split.target_set, batch_size)
     model = ctx.get_or_train(
         spec,
         data.num_features,
         data.num_classes,
-        lambda m: advtr.adversarially_train(
+        lambda m: targets.adversarially_train(
             m, loader, ctx.device, spec.epochs, applied_epsilon, iterations
         ),
     )
@@ -190,7 +190,7 @@ def infer_attributes(
 
 
 def _leading(
-    ctx: advtr.RunContext,
+    ctx: targets.RunContext,
     dataset: str,
     spec: ModelSpec,
     epsilon: float,
@@ -206,18 +206,18 @@ def _leading(
         "capacity": CAPACITY,
         "training_size": ctx.level.train_fraction,
         "epochs": spec.epochs,
-        "batch_size": advtr.batch_for(ctx.level, BATCH_SIZE),
-        "adv_train_fraction": advtr.ADVERSARY_FRACTION,
+        "batch_size": targets.batch_for(ctx.level, BATCH_SIZE),
+        "adv_train_fraction": targets.ADVERSARY_FRACTION,
         "epsilon": epsilon,
-        "step_size": advtr.step_size_for(applied_epsilon),
-        "iterations": advtr.pgd_iterations_for(ctx.level),
+        "step_size": targets.step_size_for(applied_epsilon),
+        "iterations": targets.pgd_iterations_for(ctx.level),
         "sensitive_attr_1": sensitive[0],
         "sensitive_attr_2": sensitive[1],
     }
 
 
 def run_dataset(
-    ctx: advtr.RunContext,
+    ctx: targets.RunContext,
     dataset: str,
     epsilons: tuple[float, ...],
     output_dir: Path,
@@ -240,7 +240,7 @@ def run_dataset(
     from common.io import append_row, row_exists
 
     output = output_dir / f"{EXPERIMENT_ID}.csv"
-    batch_size = advtr.batch_for(ctx.level, BATCH_SIZE)
+    batch_size = targets.batch_for(ctx.level, BATCH_SIZE)
     rows: list[dict[str, object]] = []
 
     needed = [BASELINE_EPSILON, *epsilons]
@@ -259,8 +259,12 @@ def run_dataset(
     ):
         return rows
 
+    # The baseline row carries the shared $\\modelstd$ training; each budget's
+    # row is timed from the top of its own iteration. The rows are therefore
+    # disjoint and sum to the dataset's cost.
+    started = time.perf_counter()
     clean, split, data, clean_spec = clean_target(ctx, dataset)
-    test_loader = advtr.loader_for(data.test_set, batch_size)
+    test_loader = targets.loader_for(data.test_set, batch_size)
 
     baseline_key = {
         "exp_id": ctx.seed,
@@ -283,6 +287,7 @@ def run_dataset(
             "auc_race": clean_scores.auc_race,
             "acc_att_sex": clean_scores.acc_sex,
             "auc_sex": clean_scores.auc_sex,
+            "runtime_sec": round(time.perf_counter() - started, 2),
             "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
         }
         _ = append_row(output, SCHEMA, row)
@@ -297,8 +302,9 @@ def run_dataset(
         }
         if row_exists(output, SCHEMA, key):
             continue
-        applied_epsilon = advtr.epsilon_for(ctx.level, epsilon)
-        iterations = advtr.pgd_iterations_for(ctx.level)
+        budget_started = time.perf_counter()
+        applied_epsilon = targets.epsilon_for(ctx.level, epsilon)
+        iterations = targets.pgd_iterations_for(ctx.level)
         defended, defended_spec = defended_target(ctx, dataset, epsilon, split, data)
         defended_scores = infer_attributes(
             defended, split, data, batch_size, ctx.device
@@ -307,10 +313,10 @@ def run_dataset(
             **_leading(ctx, dataset, defended_spec, epsilon, applied_epsilon, data),
             "model_role": "defended",
             "test_acc": get_accuracy(defended, test_loader, ctx.device),
-            "target_robust_acc": advtr.robust_accuracy(
+            "target_robust_acc": targets.robust_accuracy(
                 clean, test_loader, ctx.device, batch_size, applied_epsilon, iterations
             ),
-            "defended_robust_acc": advtr.robust_accuracy(
+            "defended_robust_acc": targets.robust_accuracy(
                 defended,
                 test_loader,
                 ctx.device,
@@ -322,6 +328,7 @@ def run_dataset(
             "auc_race": defended_scores.auc_race,
             "acc_att_sex": defended_scores.acc_sex,
             "auc_sex": defended_scores.auc_sex,
+            "runtime_sec": round(time.perf_counter() - budget_started, 2),
             "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
         }
         _ = append_row(output, SCHEMA, row)
@@ -368,17 +375,17 @@ def run(
     directory = (
         output_dir
         if output_dir is not None
-        else advtr.default_output_dir(config, EXPERIMENT_ID)
+        else targets.default_output_dir(config, EXPERIMENT_ID)
     )
     directory.mkdir(parents=True, exist_ok=True)
     resolved_cache = (
-        cache_dir if cache_dir is not None else advtr.default_cache_dir(config)
+        cache_dir if cache_dir is not None else targets.default_cache_dir(config)
     )
 
     rows: list[dict[str, object]] = []
     for seed in config.seeds:
-        advtr.seed_everything(seed)
-        ctx = advtr.RunContext(
+        targets.seed_everything(seed)
+        ctx = targets.RunContext(
             level=config, seed=seed, device=resolved_device, cache_dir=resolved_cache
         )
         for dataset in datasets:

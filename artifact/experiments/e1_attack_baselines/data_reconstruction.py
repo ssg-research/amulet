@@ -33,10 +33,35 @@ SCHEMA = DATA_RECONSTRUCTION_SCHEMA
 # for the loop to execute and score, not the 3000 the paper uses.
 _TINY_ALPHA = 5
 
+# What `smoke` inverts for instead. Alpha is a per-cell optimization budget, and
+# the inversion is the dominant cost of this sub-attack: every step is a forward
+# and backward pass through the target for each reconstructed class. The loop
+# body does not change with the count, so the extra steps sharpen the recovered
+# image rather than covering new code, and reconstruction quality is exactly
+# what a one-epoch target cannot produce anyway. Fifty is the floor rather than
+# a tenth of the paper: it is enough steps for the descent to move the image
+# measurably away from its initialization, so the MSE and SSIM columns record
+# an inversion that ran, which is all this level claims.
+_SMOKE_ALPHA = 50
+
 
 def _alpha(ctx: shared.RunContext) -> int:
-    """Return the inversion iteration count this level can afford."""
-    return _TINY_ALPHA if ctx.level.tiny_model else shared.RECONSTRUCTION_ALPHA
+    """Return the inversion iteration count this level can afford.
+
+    Only `full` runs the paper's budget. The count is a CSV key column, so a
+    reduced run is recorded as its own row rather than passing for a full one.
+
+    Args:
+        ctx: The run context, carrying the level.
+
+    Returns:
+        The number of gradient-descent steps the inversion may take.
+    """
+    if ctx.level.tiny_model:
+        return _TINY_ALPHA
+    if ctx.level.train_fraction < 1.0:
+        return _SMOKE_ALPHA
+    return shared.RECONSTRUCTION_ALPHA
 
 
 def run_cell(
@@ -61,6 +86,8 @@ def run_cell(
         output, SCHEMA, {"exp_id": ctx.seed, "capacity": capacity, "alpha": alpha}
     ):
         return []
+
+    started = time.perf_counter()
 
     data = ctx.data(shared.PRIVACY_TARGET_ATTRIBUTE, ctx.level.train_fraction)
     spec = shared.reconstruction_target_spec(
@@ -98,6 +125,7 @@ def run_cell(
         "ssim_avg": similarity["mean_ssim"],
         "ssim_0": similarity["class_ssim"][0],
         "ssim_1": similarity["class_ssim"][1],
+        "runtime_sec": round(time.perf_counter() - started, 2),
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
     }
     _ = append_row(output, SCHEMA, row)

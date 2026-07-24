@@ -35,7 +35,7 @@ import torch
 import torch.nn as nn
 
 from common.config import LEVEL_NAMES, get_level
-from experiments import advtr_common as advtr
+from experiments import shared_targets as targets
 from experiments.e1_attack_baselines.run import parse_seeds
 from experiments.e2_advtr_modext.schemas import CAPACITY, DATASETS, EPSILONS, SCHEMA
 
@@ -76,7 +76,7 @@ class ModelBundle:
 
 
 def build_models(
-    ctx: advtr.RunContext, dataset: str, epsilon: float, capacity: str = CAPACITY
+    ctx: targets.RunContext, dataset: str, epsilon: float, capacity: str = CAPACITY
 ) -> tuple[ModelBundle, AmuletDataset]:
     """Train (or load) the clean, defended and stolen models for one cell.
 
@@ -93,15 +93,17 @@ def build_models(
 
     data = ctx.data(dataset)
     num_features, num_classes = data.num_features, data.num_classes
-    batch_size = advtr.batch_for(ctx.level, BATCH_SIZE)
-    applied_epsilon = advtr.epsilon_for(ctx.level, epsilon)
-    iterations = advtr.pgd_iterations_for(ctx.level)
+    batch_size = targets.batch_for(ctx.level, BATCH_SIZE)
+    applied_epsilon = targets.epsilon_for(ctx.level, epsilon)
+    iterations = targets.pgd_iterations_for(ctx.level)
 
-    target_set, adversary_set = advtr.dataset_adversary_split(data.train_set, ctx.seed)
-    target_loader = advtr.loader_for(target_set, batch_size)
-    adversary_loader = advtr.loader_for(adversary_set, batch_size)
+    target_set, adversary_set = targets.dataset_adversary_split(
+        data.train_set, ctx.seed
+    )
+    target_loader = targets.loader_for(target_set, batch_size)
+    adversary_loader = targets.loader_for(adversary_set, batch_size)
 
-    clean_spec = advtr.clean_target_spec(
+    clean_spec = targets.clean_target_spec(
         ctx.level,
         dataset,
         ctx.seed,
@@ -109,9 +111,9 @@ def build_models(
         num_features,
         num_classes,
         batch_size,
-        advtr.DATASET_SPLIT_TARGET,
+        targets.DATASET_SPLIT_TARGET,
     )
-    defended_spec = advtr.defended_target_spec(
+    defended_spec = targets.defended_target_spec(
         ctx.level,
         dataset,
         ctx.seed,
@@ -120,9 +122,9 @@ def build_models(
         num_classes,
         batch_size,
         epsilon,
-        advtr.DATASET_SPLIT_TARGET,
+        targets.DATASET_SPLIT_TARGET,
     )
-    stolen_spec = advtr.stolen_model_spec(
+    stolen_spec = targets.stolen_model_spec(
         ctx.level,
         dataset,
         ctx.seed,
@@ -131,14 +133,14 @@ def build_models(
         num_classes,
         batch_size,
         epsilon,
-        advtr.DATASET_SPLIT_ADVERSARY,
+        targets.DATASET_SPLIT_ADVERSARY,
     )
 
     clean = ctx.get_or_train(
         clean_spec,
         num_features,
         num_classes,
-        lambda model: advtr.train_clean(
+        lambda model: targets.train_clean(
             model, target_loader, ctx.device, clean_spec.epochs
         ),
     )
@@ -146,7 +148,7 @@ def build_models(
         defended_spec,
         num_features,
         num_classes,
-        lambda model: advtr.adversarially_train(
+        lambda model: targets.adversarially_train(
             model,
             target_loader,
             ctx.device,
@@ -180,7 +182,7 @@ def build_models(
 
 
 def run_cell(
-    ctx: advtr.RunContext, dataset: str, epsilon: float, output_dir: Path
+    ctx: targets.RunContext, dataset: str, epsilon: float, output_dir: Path
 ) -> list[dict[str, object]]:
     """Run one (dataset, seed, epsilon) cell and append its result row.
 
@@ -206,11 +208,12 @@ def run_cell(
     if row_exists(output, SCHEMA, key):
         return []
 
+    started = time.perf_counter()
     bundle, data = build_models(ctx, dataset, epsilon)
-    batch_size = advtr.batch_for(ctx.level, BATCH_SIZE)
-    applied_epsilon = advtr.epsilon_for(ctx.level, epsilon)
-    iterations = advtr.pgd_iterations_for(ctx.level)
-    test_loader = advtr.loader_for(data.test_set, batch_size)
+    batch_size = targets.batch_for(ctx.level, BATCH_SIZE)
+    applied_epsilon = targets.epsilon_for(ctx.level, epsilon)
+    iterations = targets.pgd_iterations_for(ctx.level)
+    test_loader = targets.loader_for(data.test_set, batch_size)
 
     from amulet.utils import get_accuracy
 
@@ -219,10 +222,10 @@ def run_cell(
     # the two test accuracies would be identical by construction.
     target_test_acc = get_accuracy(bundle.clean, test_loader, ctx.device)
     defended_test_acc = get_accuracy(bundle.defended, test_loader, ctx.device)
-    target_robust_acc = advtr.robust_accuracy(
+    target_robust_acc = targets.robust_accuracy(
         bundle.clean, test_loader, ctx.device, batch_size, applied_epsilon, iterations
     )
-    defended_robust_acc = advtr.robust_accuracy(
+    defended_robust_acc = targets.robust_accuracy(
         bundle.defended,
         test_loader,
         ctx.device,
@@ -242,9 +245,9 @@ def run_cell(
         "training_size": ctx.level.train_fraction,
         "epochs": bundle.defended_spec.epochs,
         "batch_size": batch_size,
-        "adv_train_fraction": advtr.ADVERSARY_FRACTION,
+        "adv_train_fraction": targets.ADVERSARY_FRACTION,
         "epsilon": epsilon,
-        "step_size": advtr.step_size_for(applied_epsilon),
+        "step_size": targets.step_size_for(applied_epsilon),
         "iterations": iterations,
         "target_test_acc": target_test_acc,
         "defended_test_acc": defended_test_acc,
@@ -253,6 +256,7 @@ def run_cell(
         "stolen_test_acc": scores["stolen_accuracy"],
         "fidelity": scores["fidelity"],
         "correct_fidelity": scores["correct_fidelity"],
+        "runtime_sec": round(time.perf_counter() - started, 2),
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
     }
     _ = append_row(output, SCHEMA, row)
@@ -276,8 +280,8 @@ def run(
         datasets: Datasets to sweep, a subset of `schemas.DATASETS`.
         epsilons: Budgets to sweep, a subset of `schemas.EPSILONS`.
         output_dir: Directory the result CSV goes in. None keeps the per-level
-            default (committed results for `full`, a level subdir for `smoke`, a
-            temporary directory for `test`).
+            default from `default_output_dir`: `runs/<level>/` for every level,
+            never the committed `results/` tree.
         cache_dir: Checkpoint cache directory. None keeps the per-level default.
         device: Torch device. None picks CUDA when available, else CPU.
 
@@ -301,17 +305,17 @@ def run(
     directory = (
         output_dir
         if output_dir is not None
-        else advtr.default_output_dir(config, EXPERIMENT_ID)
+        else targets.default_output_dir(config, EXPERIMENT_ID)
     )
     directory.mkdir(parents=True, exist_ok=True)
     resolved_cache = (
-        cache_dir if cache_dir is not None else advtr.default_cache_dir(config)
+        cache_dir if cache_dir is not None else targets.default_cache_dir(config)
     )
 
     rows: list[dict[str, object]] = []
     for seed in config.seeds:
-        advtr.seed_everything(seed)
-        ctx = advtr.RunContext(
+        targets.seed_everything(seed)
+        ctx = targets.RunContext(
             level=config, seed=seed, device=resolved_device, cache_dir=resolved_cache
         )
         for dataset in datasets:

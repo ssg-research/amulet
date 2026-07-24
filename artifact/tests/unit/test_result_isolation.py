@@ -30,16 +30,16 @@ def _level(name: str) -> LevelConfig:
 
 def _all_default_dirs(name: str) -> dict[str, Path]:
     """Every experiment's default output dir at one level, keyed by a label."""
-    from experiments import advtr_common as advtr
+    from experiments import shared_targets as targets
     from experiments.e1_attack_baselines import shared
     from experiments.e5_textbadnets import dp, onion
 
     level = _level(name)
     return {
         "e1": shared.default_output_dir(level),
-        "e2": advtr.default_output_dir(level, "e2_advtr_modext"),
-        "e3": advtr.default_output_dir(level, "e3_advtr_attrinf"),
-        "e4": advtr.default_output_dir(level, "e4_outrem_modext"),
+        "e2": targets.default_output_dir(level, "e2_advtr_modext"),
+        "e3": targets.default_output_dir(level, "e3_advtr_attrinf"),
+        "e4": targets.default_output_dir(level, "e4_outrem_modext"),
         "e5_onion": onion.default_output_dir(level),
         "e5_dp": dp.default_output_dir(level),
     }

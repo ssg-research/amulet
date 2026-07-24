@@ -7,17 +7,20 @@ with per-example clipping and noise. The defense acts at training time only — 
 are unprocessed. Realizes H1 (attack) and H3 (unintended interaction). See
 experiments/text_backdoor_experiments.md in the repository root.
 
-Per seed the clean baseline is trained once and the poison-rate x target-epsilon grid is
-swept internally (the undefended target is trained once per poison rate and reused across
-that rate's epsilon rows); one row per cell lands in `results/e5_textbadnets/dp.csv`.
-`exp_id` is the seed everywhere.
+Per seed the clean baseline is trained once and whatever (poison rate, target epsilon)
+cells the level selects are swept internally (the undefended target is trained once per
+poison rate and reused across that rate's epsilon rows); one row per cell lands in
+`results/e5_textbadnets/dp.csv`. `exp_id` is the seed everywhere.
 
     python artifact/experiments/e5_textbadnets/dp.py --level test
     python artifact/experiments/e5_textbadnets/dp.py --level full --seeds 0-4
 
 Levels come from `common.config` (plan §8). `test` is the old `--smoke` path: a tiny
-random-init target on CPU. `smoke` keeps the real Llama but reads a tenth of the corpus
-for one epoch. `full` is the paper run. Requires the LLM extra: `uv sync --extra cu130
+random-init target on CPU. `smoke` fine-tunes a real pretrained 1.1B Llama
+(`SMOKE_MODEL_NAME`) on a small fixed slice of the corpus (`SMOKE_MAX_TRAIN_SAMPLES`)
+for one epoch, and runs a single (poison rate, epsilon) cell (see `apply_level` for the
+model swap, the data cap, and why the grid collapses). `full` is the paper run: the 3B
+target over the whole grid and the whole corpus. Requires the LLM extra: `uv sync --extra cu130
 --extra llm` (or `--extra cpu` for `--level test`).
 """
 
@@ -43,10 +46,13 @@ from amulet.poisoning.attacks import TextBadNets
 from common.config import LEVEL_NAMES, get_level
 from common.io import append_row, row_exists, run_output_dir
 from experiments.e5_textbadnets.llm_backdoor_common import (
-    DEFAULT_MODEL_CACHE,
+    SMOKE_MAX_TEST_SAMPLES,
+    SMOKE_MAX_TRAIN_SAMPLES,
+    SMOKE_MODEL_NAME,
     TargetFactory,
     accuracy,
     ckpt_key,
+    default_model_cache,
     get_or_train,
     load_sst2_seeded,
     make_smoke_setup,
@@ -71,6 +77,12 @@ _ACCOUNTANT = "prv"
 # is what fills it; `test` and `smoke` keep their own one-epoch budget.
 PAPER_EPOCHS = 3
 SST2_TRAIN_SIZE = 67349
+SST2_TEST_SIZE = 872
+
+# The single (poison rate, privacy budget) cell `smoke` runs, both from the
+# paper's grid. See `apply_level` for why the level runs one cell, not the sweep.
+SMOKE_POISONED_PORTION = "0.05"
+SMOKE_TARGET_EPSILON = "8.0"
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -375,6 +387,7 @@ def run_experiment(
                 "clean_test_size": len(test_set),
                 "asr_test_size": len(poisoned_test),
                 "batch_size": args.batch_size,
+                "max_physical_batch_size": args.max_physical_batch_size,
                 "epochs": args.epochs,
                 "lr": args.lr,
                 "dp_epochs": dp_epochs,
@@ -417,9 +430,25 @@ def apply_level(args: argparse.Namespace, config: LevelConfig, seed: int) -> Non
     """Point one seed's run at the budget its verification level allows.
 
     `test` is the old `--smoke` path: a tiny random-init target on eight synthetic
-    sentences, so the poison rate rises to one half and one epsilon is enough. `smoke`
-    and `full` keep the real target and the paper's grid, differing in epochs and how
-    much of SST-2 they read.
+    sentences, so the poison rate rises to one half and one epsilon is enough.
+    `smoke` runs a real pretrained 1.1B Llama (`SMOKE_MODEL_NAME`) over one
+    representative cell. `full` is the paper's grid on the 3B target.
+
+    Only `full` sweeps the grid, for the reason `onion.apply_level` gives: a
+    poison rate and a privacy budget are scalars over one dataset and one model,
+    so extra cells repeat a code path rather than covering a new one, at a
+    fine-tune apiece. The epsilon kept is the looser of the two, which adds the
+    least noise and so is the one that can still train a non-degenerate target
+    inside a one-epoch budget; a smoke run that collapsed to chance would not
+    show the DP path working.
+
+    `smoke` also caps the data at `SMOKE_MAX_TRAIN_SAMPLES` records (not the
+    level's 10% fraction, which is ~6735 of SST-2's 67k) and swaps the 3B paper
+    target for the 1.1B real Llama, exactly as `onion.apply_level` does and for
+    the same reasons: a few hundred records and a smaller model exercise every
+    code path (HFCausalLM, LoRA, TextBadNets, Opacus DP-SGD, the metrics) the same
+    way, at a fraction of the cost. `full` keeps the whole corpus and the 3B
+    model. DP has no reference LM, so only `model_name` is set.
 
     Args:
         args: Namespace mutated in place.
@@ -432,8 +461,14 @@ def apply_level(args: argparse.Namespace, config: LevelConfig, seed: int) -> Non
         args.device = "cpu"
         args.poisoned_portions = "0.5"
         args.target_epsilons = "8.0"
-    elif config.train_fraction < 1.0:
-        args.max_train_samples = round(config.train_fraction * SST2_TRAIN_SIZE)
+    else:
+        if config.train_fraction < 1.0:
+            args.max_train_samples = SMOKE_MAX_TRAIN_SAMPLES
+            args.poisoned_portions = SMOKE_POISONED_PORTION
+            args.target_epsilons = SMOKE_TARGET_EPSILON
+            args.model_name = SMOKE_MODEL_NAME
+        if config.test_fraction < 1.0:
+            args.max_test_samples = SMOKE_MAX_TEST_SAMPLES
 
 
 def build_inputs(
@@ -476,7 +511,7 @@ def _cache_dir(args: argparse.Namespace, config: LevelConfig) -> Path:
         # An isolated cache still exercises the shared-model path (a second run reloads
         # the first's clean and undefended checkpoints) without touching the real one.
         return Path(tempfile.mkdtemp(prefix="e5_dp_test_cache_"))
-    return DEFAULT_MODEL_CACHE
+    return default_model_cache(config.name)
 
 
 def default_output_dir(config: LevelConfig) -> Path:

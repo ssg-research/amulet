@@ -5,9 +5,10 @@
 # against the paper's tables and figures.
 #
 # WARNING: full is Level 3. It trains real models at paper scale and is
-# GPU-HOURS to GPU-DAYS on a single consumer GPU (see RUNTIME.md), needs the
-# dataset downloads, and E5 needs the `llm` extra. This is not a quick check;
-# use run_smoke.sh to validate the pipeline first.
+# GPU-HOURS to GPU-DAYS on a single GPU (see RUNTIME.md), and E5 needs the `llm`
+# extra. This is not a quick check. Run setup_assets.py first to fetch every
+# dataset and model (the runtimes in RUNTIME.md assume that is already done),
+# then run_smoke.sh to validate the pipeline before committing to this.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"

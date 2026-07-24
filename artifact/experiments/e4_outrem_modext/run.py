@@ -48,7 +48,7 @@ from torch.utils.data import TensorDataset
 
 from amulet.datasets import AmuletDataset
 from common.config import LEVEL_NAMES, get_level
-from experiments import advtr_common as advtr
+from experiments import shared_targets as targets
 from experiments.e1_attack_baselines.run import parse_seeds
 from experiments.e4_outrem_modext.schemas import CAPACITY, DATASETS, PERCENTS, SCHEMA
 
@@ -206,7 +206,7 @@ class ModelBundle:
 
 
 def clean_baseline_spec(
-    ctx: advtr.RunContext,
+    ctx: targets.RunContext,
     dataset: str,
     num_features: int,
     num_classes: int,
@@ -215,7 +215,7 @@ def clean_baseline_spec(
 ) -> ModelSpec:
     """Describe E4's clean baseline $\\modelstd$, identical to E2's.
 
-    Built through the shared `advtr.clean_target_spec` with the same 50/50
+    Built through the shared `targets.clean_target_spec` with the same 50/50
     dataset-level split selector, so the spec (and therefore the content hash)
     matches E2's clean baseline exactly and the two share one checkpoint.
 
@@ -230,7 +230,7 @@ def clean_baseline_spec(
     Returns:
         The clean-baseline spec.
     """
-    return advtr.clean_target_spec(
+    return targets.clean_target_spec(
         ctx.level,
         dataset,
         ctx.seed,
@@ -238,7 +238,7 @@ def clean_baseline_spec(
         num_features,
         num_classes,
         batch_size,
-        advtr.DATASET_SPLIT_TARGET,
+        targets.DATASET_SPLIT_TARGET,
     )
 
 
@@ -289,7 +289,7 @@ def retrain_after_outlier_removal(
 
 
 def build_models(
-    ctx: advtr.RunContext, dataset: str, percent: int, capacity: str = CAPACITY
+    ctx: targets.RunContext, dataset: str, percent: int, capacity: str = CAPACITY
 ) -> tuple[ModelBundle, AmuletDataset]:
     """Train (or load) the clean, defended and stolen models for one cell.
 
@@ -306,13 +306,15 @@ def build_models(
 
     data = ctx.data(dataset)
     num_features, num_classes = data.num_features, data.num_classes
-    batch_size = advtr.batch_for(ctx.level, BATCH_SIZE)
-    epochs = advtr.epochs_for(ctx.level)
+    batch_size = targets.batch_for(ctx.level, BATCH_SIZE)
+    epochs = targets.epochs_for(ctx.level)
 
-    target_set, adversary_set = advtr.dataset_adversary_split(data.train_set, ctx.seed)
-    target_loader = advtr.loader_for(target_set, batch_size)
-    adversary_loader = advtr.loader_for(adversary_set, batch_size)
-    test_loader = advtr.loader_for(data.test_set, batch_size)
+    target_set, adversary_set = targets.dataset_adversary_split(
+        data.train_set, ctx.seed
+    )
+    target_loader = targets.loader_for(target_set, batch_size)
+    adversary_loader = targets.loader_for(adversary_set, batch_size)
+    test_loader = targets.loader_for(data.test_set, batch_size)
 
     # The clean baseline, shared with E2: same spec, same content hash, one file.
     clean_spec = clean_baseline_spec(
@@ -322,7 +324,7 @@ def build_models(
         clean_spec,
         num_features,
         num_classes,
-        lambda model: advtr.train_clean(
+        lambda model: targets.train_clean(
             model, target_loader, ctx.device, clean_spec.epochs
         ),
     )
@@ -350,7 +352,7 @@ def build_models(
 
     stolen_spec = clean_spec.replace(
         optimizer_recipe=stolen_recipe(percent),
-        subset_selector=advtr.DATASET_SPLIT_ADVERSARY,
+        subset_selector=targets.DATASET_SPLIT_ADVERSARY,
     )
 
     def distil(model: nn.Module) -> nn.Module:
@@ -376,7 +378,7 @@ def build_models(
 
 
 def run_cell(
-    ctx: advtr.RunContext, dataset: str, percent: int, output_dir: Path
+    ctx: targets.RunContext, dataset: str, percent: int, output_dir: Path
 ) -> list[dict[str, object]]:
     """Run one (dataset, seed, percent) cell and append its result row.
 
@@ -402,9 +404,10 @@ def run_cell(
     if row_exists(output, SCHEMA, key):
         return []
 
+    started = time.perf_counter()
     bundle, data = build_models(ctx, dataset, percent)
-    batch_size = advtr.batch_for(ctx.level, BATCH_SIZE)
-    test_loader = advtr.loader_for(data.test_set, batch_size)
+    batch_size = targets.batch_for(ctx.level, BATCH_SIZE)
+    test_loader = targets.loader_for(data.test_set, batch_size)
 
     # `evaluate_extraction` scores the surrogate against `defended` as the
     # reference, so `target_accuracy` here is the defended model's test accuracy
@@ -421,12 +424,13 @@ def run_cell(
         "training_size": ctx.level.train_fraction,
         "epochs": bundle.defended_spec.epochs,
         "batch_size": batch_size,
-        "adv_train_fraction": advtr.ADVERSARY_FRACTION,
+        "adv_train_fraction": targets.ADVERSARY_FRACTION,
         "percent": percent,
         "defended_test_acc": scores["target_accuracy"],
         "stolen_test_acc": scores["stolen_accuracy"],
         "fidelity": scores["fidelity"],
         "correct_fidelity": scores["correct_fidelity"],
+        "runtime_sec": round(time.perf_counter() - started, 2),
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
     }
     _ = append_row(output, SCHEMA, row)
@@ -450,8 +454,8 @@ def run(
         datasets: Datasets to sweep, a subset of `schemas.DATASETS`.
         percents: Removal percentages to sweep, a subset of `schemas.PERCENTS`.
         output_dir: Directory the result CSV goes in. None keeps the per-level
-            default (committed results for `full`, a level subdir for `smoke`, a
-            temporary directory for `test`).
+            default from `default_output_dir`: `runs/<level>/` for every level,
+            never the committed `results/` tree.
         cache_dir: Checkpoint cache directory. None keeps the per-level default.
         device: Torch device. None picks CUDA when available, else CPU.
 
@@ -475,17 +479,17 @@ def run(
     directory = (
         output_dir
         if output_dir is not None
-        else advtr.default_output_dir(config, EXPERIMENT_ID)
+        else targets.default_output_dir(config, EXPERIMENT_ID)
     )
     directory.mkdir(parents=True, exist_ok=True)
     resolved_cache = (
-        cache_dir if cache_dir is not None else advtr.default_cache_dir(config)
+        cache_dir if cache_dir is not None else targets.default_cache_dir(config)
     )
 
     rows: list[dict[str, object]] = []
     for seed in config.seeds:
-        advtr.seed_everything(seed)
-        ctx = advtr.RunContext(
+        targets.seed_everything(seed)
+        ctx = targets.RunContext(
             level=config,
             seed=seed,
             device=resolved_device,

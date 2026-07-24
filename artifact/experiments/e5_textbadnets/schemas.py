@@ -71,6 +71,11 @@ DP_SCHEMA = CsvSchema(
         "clean_test_size",
         "asr_test_size",
         "batch_size",
+        # Opacus splits a logical batch into physical chunks to bound the memory
+        # the per-sample gradient hooks need. It changes only how the DP step is
+        # executed, never the result, but it is the knob that decides whether a
+        # cell fits in VRAM, so the run records it.
+        "max_physical_batch_size",
         "epochs",
         "lr",
         "dp_epochs",

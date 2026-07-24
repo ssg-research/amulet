@@ -1,6 +1,6 @@
 """Contract for the shared adversarial-training model specs (plan S5, S6, P3).
 
-E2 and E3 share one defense, so they share `advtr_common`'s spec builders. These
+E2 and E3 share one defense, so they share `shared_targets`'s spec builders. These
 pure tests pin the sharing rules the content-addressed cache depends on:
 
 * the clean baseline $\\modelstd$ is epsilon-independent, so one is trained per
@@ -21,7 +21,7 @@ import pytest
 
 from common.config import LevelConfig, get_level
 from common.models import ModelSpec
-from experiments import advtr_common as advtr
+from experiments import shared_targets as targets
 from experiments.e2_advtr_modext.schemas import EPSILONS as E2_EPSILONS
 from experiments.e3_advtr_attrinf.schemas import EPSILONS as E3_EPSILONS
 
@@ -39,7 +39,7 @@ BATCH = 256
 def _clean(
     dataset: str, selector: str, seed: int = 0, level: LevelConfig = LEVEL
 ) -> ModelSpec:
-    return advtr.clean_target_spec(
+    return targets.clean_target_spec(
         level, dataset, seed, CAPACITY, NUM_FEATURES, NUM_CLASSES, BATCH, selector
     )
 
@@ -51,7 +51,7 @@ def _defended(
     seed: int = 0,
     level: LevelConfig = LEVEL,
 ) -> ModelSpec:
-    return advtr.defended_target_spec(
+    return targets.defended_target_spec(
         level,
         dataset,
         seed,
@@ -70,8 +70,8 @@ def test_the_clean_baseline_is_epsilon_independent() -> None:
     This is what lets the sweep train the clean target once per (dataset, seed)
     and reuse it across all four budgets, saving three full trainings per cell.
     """
-    first = _clean("census", advtr.DATASET_SPLIT_TARGET)
-    second = _clean("census", advtr.DATASET_SPLIT_TARGET)
+    first = _clean("census", targets.DATASET_SPLIT_TARGET)
+    second = _clean("census", targets.DATASET_SPLIT_TARGET)
 
     assert first == second
     assert first.key() == second.key()
@@ -80,7 +80,7 @@ def test_the_clean_baseline_is_epsilon_independent() -> None:
 def test_each_budget_is_its_own_defended_checkpoint() -> None:
     """Two $\\modeldef$ specs differing only in epsilon get different keys."""
     keys = {
-        _defended("census", advtr.DATASET_SPLIT_TARGET, eps).key()
+        _defended("census", targets.DATASET_SPLIT_TARGET, eps).key()
         for eps in E2_EPSILONS
     }
 
@@ -94,9 +94,9 @@ def test_the_defended_model_is_not_the_clean_target() -> None:
     collapsing the two. Recording the optimizer recipe (Adam vs adversarial PGD)
     in the spec is what makes that collapse impossible here.
     """
-    clean = _clean("census", advtr.DATASET_SPLIT_TARGET)
+    clean = _clean("census", targets.DATASET_SPLIT_TARGET)
     for epsilon in E2_EPSILONS:
-        defended = _defended("census", advtr.DATASET_SPLIT_TARGET, epsilon)
+        defended = _defended("census", targets.DATASET_SPLIT_TARGET, epsilon)
         assert clean.key() != defended.key()
         assert clean.optimizer_recipe != defended.optimizer_recipe
 
@@ -108,8 +108,8 @@ def test_e2_and_e3_targets_do_not_collide_on_one_key() -> None:
     arrays by index. The two halves differ, so the subset selectors differ, so
     the keys differ: E3 can never load an E2 census target in its place.
     """
-    e2 = _clean("census", advtr.DATASET_SPLIT_TARGET)
-    e3 = _clean("census", advtr.ARRAY_SPLIT_TARGET)
+    e2 = _clean("census", targets.DATASET_SPLIT_TARGET)
+    e3 = _clean("census", targets.ARRAY_SPLIT_TARGET)
 
     assert e2.subset_selector != e3.subset_selector
     assert e2.key() != e3.key()
@@ -122,15 +122,16 @@ def test_the_stolen_surrogate_is_its_own_checkpoint() -> None:
     source budget, so no clean target, defended target, or surrogate of a
     different budget can be reused in its place.
     """
-    clean = _clean("cifar", advtr.DATASET_SPLIT_TARGET)
+    clean = _clean("cifar", targets.DATASET_SPLIT_TARGET)
     stolen = {
-        advtr.stolen_model_spec(
+        targets.stolen_model_spec(
             LEVEL, "cifar", 0, CAPACITY, NUM_FEATURES, NUM_CLASSES, BATCH, eps
         ).key()
         for eps in E2_EPSILONS
     }
     defended = {
-        _defended("cifar", advtr.DATASET_SPLIT_TARGET, eps).key() for eps in E2_EPSILONS
+        _defended("cifar", targets.DATASET_SPLIT_TARGET, eps).key()
+        for eps in E2_EPSILONS
     }
 
     assert len(stolen) == len(E2_EPSILONS)
@@ -143,28 +144,33 @@ def test_the_stolen_surrogate_is_its_own_checkpoint() -> None:
     [
         ("census", "linearnet"),
         ("lfw", "linearnet"),
-        ("fmnist", "cnn"),
+        ("fmnist", "linearnet"),
         ("cifar", "vgg"),
     ],
 )
 def test_each_dataset_trains_its_modality_appropriate_architecture(
     dataset: str, expected_arch: str
 ) -> None:
-    """Tabular datasets get a dense net, single-channel fmnist a CNN, cifar a VGG.
+    """Tabular datasets and fmnist get a dense net; cifar gets a VGG.
 
-    VGG cannot run on the tabular (census, lfw) or single-channel (fmnist)
-    inputs, so the per-modality choice is what the library actually admits, and
-    it is recorded in the spec so a cross-modality mix-up is a different key.
+    fmnist belongs on the dense net with census and lfw, the pairing the paper
+    ran: `LinearNet` opens with `nn.Flatten` and `load_fmnist` reports
+    `num_features=784`, its exact flattened 28x28 size. `num_features` counts
+    H*W and ignores channels, so it agrees with the flattened size only for
+    single-channel data; cifar's 1024 against a flattened 3072 disagrees, which
+    is what puts cifar on a conv net. VGG is hard-wired to three input channels
+    and cannot take the tabular or single-channel inputs at all. The choice is
+    recorded in the spec, so a cross-modality mix-up is a different cache key.
     """
-    spec = _clean(dataset, advtr.DATASET_SPLIT_TARGET)
+    spec = _clean(dataset, targets.DATASET_SPLIT_TARGET)
 
     assert spec.arch == expected_arch
 
 
 def test_the_tiny_test_level_target_cannot_reuse_a_paper_checkpoint() -> None:
     """A `test`-level run records a distinct architecture, so it cannot collide."""
-    paper = _clean("census", advtr.DATASET_SPLIT_TARGET)
-    tiny = _clean("census", advtr.DATASET_SPLIT_TARGET, level=TINY)
+    paper = _clean("census", targets.DATASET_SPLIT_TARGET)
+    tiny = _clean("census", targets.DATASET_SPLIT_TARGET, level=TINY)
 
     assert tiny.arch != paper.arch
     assert tiny.key() != paper.key()
@@ -173,7 +179,7 @@ def test_the_tiny_test_level_target_cannot_reuse_a_paper_checkpoint() -> None:
 @pytest.mark.parametrize("epsilon", E3_EPSILONS)
 def test_a_different_seed_is_a_different_defended_model(epsilon: float) -> None:
     """Sharing must not leak across seeds: seed 0 and seed 1 differ in key."""
-    first = _defended("lfw", advtr.ARRAY_SPLIT_TARGET, epsilon, seed=0)
-    second = _defended("lfw", advtr.ARRAY_SPLIT_TARGET, epsilon, seed=1)
+    first = _defended("lfw", targets.ARRAY_SPLIT_TARGET, epsilon, seed=0)
+    second = _defended("lfw", targets.ARRAY_SPLIT_TARGET, epsilon, seed=1)
 
     assert first.key() != second.key()
