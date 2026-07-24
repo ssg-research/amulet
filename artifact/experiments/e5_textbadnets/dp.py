@@ -98,10 +98,22 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--dataset", type=str, default="sst2", choices=["sst2"])
     parser.add_argument("--model_name", type=str, default="meta-llama/Llama-3.2-3B")
     parser.add_argument("--max_length", type=int, default=128)
-    parser.add_argument("--batch_size", type=int, default=16)
+    parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--lr", type=float, default=2e-4)
-    parser.add_argument("--dp_epochs", type=int, default=None, help="Default: epochs.")
-    parser.add_argument("--dp_lr", type=float, default=None, help="Default: lr.")
+    parser.add_argument(
+        "--dp_epochs",
+        type=int,
+        default=1,
+        help="DP-SGD training epochs. The paper's DP schedule is a single epoch "
+        "(the undefended and clean targets train for `epochs`, the paper's 3).",
+    )
+    parser.add_argument(
+        "--dp_lr",
+        type=float,
+        default=3e-4,
+        help="DP-SGD learning rate. The paper raises it above the standard "
+        "fine-tune's `lr` (2e-4) to offset the clipping and noise.",
+    )
     parser.add_argument("--lora_r", type=int, default=8)
     parser.add_argument("--lora_alpha", type=int, default=16)
     parser.add_argument("--lora_dropout", type=float, default=0.05)
@@ -116,8 +128,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--poisoned_portions",
         type=str,
-        default="0.001,0.01,0.05",
-        help="Comma-separated poison rates to sweep (attack strength).",
+        default="0.0001,0.001,0.01,0.05",
+        help="Comma-separated poison rates to sweep (attack strength). The paper's "
+        "grid reaches 0.01% (0.0001), where 6 poisoned sentences already suffice.",
     )
     parser.add_argument(
         "--target_epsilons",
@@ -130,9 +143,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--max_physical_batch_size",
         type=int,
-        default=None,
+        default=16,
         help="Cap physical micro-batch size (Opacus BatchMemoryManager) to bound "
-        "per-sample-gradient memory. Default None = no splitting; ε is unaffected.",
+        "per-sample-gradient memory. The paper caps it at 16 so a 3B target under "
+        "per-sample gradients fits a 40GB card; ε, learning and step count are "
+        "unaffected. Pass a value < batch_size to split, or leave the default.",
     )
     parser.add_argument(
         "--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu"
@@ -449,6 +464,13 @@ def apply_level(args: argparse.Namespace, config: LevelConfig, seed: int) -> Non
     code path (HFCausalLM, LoRA, TextBadNets, Opacus DP-SGD, the metrics) the same
     way, at a fraction of the cost. `full` keeps the whole corpus and the 3B
     model. DP has no reference LM, so only `model_name` is set.
+
+    What this does not touch is the DP training recipe itself: the batch size, the
+    physical-batch cap, the DP learning rate and the one-epoch DP schedule are
+    hyperparameters the paper fixes, not knobs that repeat a loop, so every level
+    inherits them from the defaults. `smoke` running the same recipe (batch 32,
+    physical cap 16, `dp_lr` 3e-4, one DP epoch) is what makes it exercise the
+    BatchMemoryManager path `full` relies on rather than a different code path.
 
     Args:
         args: Namespace mutated in place.

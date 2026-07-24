@@ -177,7 +177,7 @@ breakdown behind E5's number, and the method for regenerating the L3 figures.
 | E2         | 12 to 24 h (est)              | —                     | Adversarial training runs a PGD inner loop per batch (several times the cost of standard training), across 4 datasets x 4 budgets, plus a distillation per cell. |
 | E3         | 4 to 8 h (est)                | —                     | Same adversarial training, but only 2 datasets (census, lfw) and no surrogate to distil.                                                                         |
 | E4         | 12 to 24 h (est)              | —                     | kNN-Shapley scores the whole training set per cell, then the target is retrained and a surrogate distilled, across 4 datasets x 5 removal levels.                |
-| E5         | 68 h ONION, 31 h DP-SGD       | ~495 h (~21 GPU-days) | Every cell fine-tunes LoRA adapters on a 3B-parameter Llama over SST-2 at a flat ~5 h; ONION adds 2.1 h scoring perplexity for the whole training corpus.        |
+| E5         | 68 h ONION, 40 h DP-SGD       | ~540 h (~22 GPU-days) | Every cell fine-tunes LoRA adapters on a 3B-parameter Llama over SST-2 at a flat ~5 h; ONION adds 2.1 h scoring perplexity for the whole training corpus.        |
 
 Every figure above is compute time on a host whose `artifact/setup_assets.py`
 run has already completed; downloads are not included.

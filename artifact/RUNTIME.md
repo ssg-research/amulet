@@ -86,7 +86,7 @@ The knobs that make these numbers what they are, all recorded in the CSVs:
 | LiRA shadow models         |       64 |              8 |
 | data-reconstruction alpha  |     3000 |             50 |
 | PGD / evasion iterations   |       40 |              7 |
-| E5 poison rates x epsilons |  5 / 5x2 |        1 / 1x1 |
+| E5 poison rates x epsilons |  5 / 4x2 |        1 / 1x1 |
 | E5 target model            | 3B Llama | 1.1B TinyLlama |
 | E5 train records           |      67k |            256 |
 
@@ -127,7 +127,7 @@ and the image sets cost seconds rather than the minutes they would at full.
 
 Measured from the per-phase runtime columns in the paper's own result CSVs, on
 SST-2 with a LoRA-adapted Llama-3.2-3B target. The paper's run covered 25 ONION
-cells (5 seeds x 5 poison rates) and 30 DP-SGD cells (5 seeds x 3 poison rates x
+cells (5 seeds x 5 poison rates) and 40 DP-SGD cells (5 seeds x 4 poison rates x
 2 privacy budgets); an L3 reviewer runs one seed of that, and the per-cell phase
 costs below are what both are built from.
 
@@ -154,13 +154,13 @@ schedule runs fewer epochs than the standard fine-tune it is compared against.
 
 Derived from the per-phase means and the caching the runners do. One L3 seed of
 ONION is 5 cells (1 clean + 5 undefended + 5 defended + 5 purify) at ~68 h; one
-L3 seed of DP-SGD is 6 cells at ~31 h.
+L3 seed of DP-SGD is 8 cells at ~40 h.
 
-| Study (one seed) | Phase accounting                               |                   Total |
-| ---------------- | ---------------------------------------------- | ----------------------: |
-| ONION            | 1 clean + 5 undefended + 5 defended + 5 purify |                   ~68 h |
-| DP-SGD           | 1 clean + 3 undefended + 6 DP                  |                   ~31 h |
-| **E5 L3 total**  |                                                | **~99 h (~4 GPU-days)** |
+| Study (one seed) | Phase accounting                               |                      Total |
+| ---------------- | ---------------------------------------------- | -------------------------: |
+| ONION            | 1 clean + 5 undefended + 5 defended + 5 purify |                      ~68 h |
+| DP-SGD           | 1 clean + 4 undefended + 8 DP                  |                      ~40 h |
+| **E5 L3 total**  |                                                | **~108 h (~4.5 GPU-days)** |
 
 ### Paper five-seed cost (for context, not an L3 task)
 
@@ -171,8 +171,8 @@ a reviewer never runs it.
 | Sweep           | Phase accounting                                  |                     Total |
 | --------------- | ------------------------------------------------- | ------------------------: |
 | ONION           | 5 clean + 25 undefended + 25 defended + 25 purify |                    ~340 h |
-| DP-SGD          | 5 clean + 15 undefended + 30 DP                   |                    ~155 h |
-| **Paper total** |                                                   | **~495 h (~21 GPU-days)** |
+| DP-SGD          | 5 clean + 20 undefended + 40 DP                   |                    ~200 h |
+| **Paper total** |                                                   | **~540 h (~22 GPU-days)** |
 
 Seeds are independent and share no cache, so N nodes give close to an N-fold
 speedup when the authors do run the full sweep.

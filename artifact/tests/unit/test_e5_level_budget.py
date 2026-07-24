@@ -82,6 +82,29 @@ def test_full_keeps_both_privacy_budgets() -> None:
     assert len(str(_levelled(dp, "full").target_epsilons).split(",")) == 2
 
 
+def test_full_dp_recipe_matches_the_shipped_results() -> None:
+    """`full` must encode the exact DP settings the shipped `dp.csv` was run with.
+
+    These drifted once: the sweep that produced the paper's DP rows used a
+    four-rate grid reaching 0.01%, batch size 32 with a 16-sample physical cap,
+    and a one-epoch DP schedule at lr 3e-4, while the committed defaults still
+    read an earlier three-rate, batch-16, `dp_lr = lr` configuration. Pinning
+    every knob here turns a silent settings drift into a failed test, so a reader
+    running `--level full` reproduces the CSV rather than a different experiment.
+    """
+    full = _levelled(dp, "full")
+
+    assert _rates(full) == [0.0001, 0.001, 0.01, 0.05]
+    assert [float(e) for e in str(full.target_epsilons).split(",")] == [1.0, 8.0]
+    assert full.batch_size == 32
+    assert full.max_physical_batch_size == 16
+    assert full.dp_epochs == 1
+    assert full.dp_lr == pytest.approx(3e-4)
+    # The DP schedule is deliberately shorter than the 3-epoch standard fine-tune
+    # the undefended and clean targets get, so the two must not be conflated.
+    assert full.dp_epochs != full.epochs
+
+
 @pytest.mark.parametrize("module", (onion, dp), ids=("onion", "dp"))
 def test_smoke_caps_data_at_a_small_absolute_slice(module) -> None:
     """Smoke reads a few hundred records, not the level's 10% of a 67k corpus.

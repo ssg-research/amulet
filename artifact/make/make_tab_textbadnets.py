@@ -54,7 +54,7 @@ _CHANCE_ACCURACY = 55.0
 # Poison rates and privacy budgets the paper reports, used only to tell a reader
 # which cells the run's CSVs do and do not cover.
 PAPER_ONION_PORTIONS = (0.0001, 0.001, 0.01, 0.02, 0.05)
-PAPER_DP_PORTIONS = (0.001, 0.01, 0.05)
+PAPER_DP_PORTIONS = (0.0001, 0.001, 0.01, 0.05)
 PAPER_TARGET_EPSILONS = (1.0, 8.0)
 
 _INDENT = " " * 8
