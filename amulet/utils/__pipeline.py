@@ -4,11 +4,11 @@ Utilities to help build an ML pipeline.
 
 import logging
 from pathlib import Path
-from typing import TypedDict
+from typing import TypedDict, cast
 
-import torch
+import numpy as np
 from sklearn.model_selection import train_test_split
-from torch.utils.data import Dataset, Subset, random_split
+from torch.utils.data import Dataset, Subset
 
 from ..datasets import (
     AmuletDataset,
@@ -24,6 +24,37 @@ from ..datasets import (
 from ..models import VGG, AmuletModel, LinearNet, ResNet, SimpleCNN
 
 
+def _subset_indices(count: int, fraction: float, seed: int, label: str) -> np.ndarray:
+    """Choose which records of a split to keep, as one shared index array.
+
+    Every view of a split (the `Dataset` and the NumPy arrays beside it) is
+    indexed with the array returned here, which is what keeps them aligned:
+    subsampling them through independent generators leaves `x_train[i]` and
+    `train_set[i]` describing different records.
+
+    Args:
+        count: Number of records in the split.
+        fraction: Proportion of the split to keep.
+        seed: Random seed, so a given seed always selects the same records.
+        label: Name of the parameter being applied, for the error message.
+
+    Returns:
+        Indices of the kept records, in the order the subsample drew them.
+
+    Raises:
+        ValueError: If `fraction` is not in (0, 1] or would keep no records.
+    """
+    if not 0.0 < fraction <= 1.0:
+        raise ValueError(f"{label} must lie in (0, 1]; got {fraction}.")
+    if int(fraction * count) < 1:
+        raise ValueError(
+            f"{label}={fraction} keeps no records of a {count}-record split. "
+            f"Use at least {1 / count:.3g}."
+        )
+    keep, _ = train_test_split(np.arange(count), train_size=fraction, random_state=seed)
+    return cast(np.ndarray, keep)
+
+
 def load_data(
     root: Path | str,
     dataset: str,
@@ -31,9 +62,15 @@ def load_data(
     log: logging.Logger | None = None,
     exp_id: int = 0,
     celeba_target: str = "Smiling",
+    test_size: float = 1.0,
 ) -> AmuletDataset:
     """
     Load data given the dataset name and training size.
+
+    `training_size` and `test_size` are independent and shrink only the split
+    they name. Both matter for cost: an algorithm that walks the test split
+    (kNN-Shapley outlier removal, for one) is unaffected by `training_size`
+    alone, so a cheap run has to reduce both.
 
     Args:
         root: Root directory of the pipeline.
@@ -42,12 +79,14 @@ def load_data(
         log: Logging facility.
         exp_id: Used as a random seed.
         celeba_target: Target attribute for CelebA. Example: "Smiling".
+        test_size: Proportion of test data to use.
 
     Returns:
         Loaded dataset as an AmuletDataset.
 
     Raises:
-        ValueError: If dataset is not a recognized dataset name.
+        ValueError: If dataset is not a recognized dataset name, or if either
+            fraction is outside (0, 1] or would empty its split.
     """
 
     if isinstance(root, str):
@@ -77,23 +116,30 @@ def load_data(
         raise ValueError(f"Unknown dataset: {dataset!r}")
 
     if training_size < 1.0:
-        if data.x_train is not None:
-            data.x_train, _, data.y_train, _, data.z_train, _ = train_test_split(  # type: ignore[reportAttributeAccessIssue]
-                data.x_train,
-                data.y_train,
-                data.z_train,
-                train_size=training_size,
-                random_state=exp_id,
-            )
-
-        new_train_size = int(training_size * len(data.train_set))  # type: ignore[reportAttributeAccessIssue]
-        generator = torch.Generator().manual_seed(exp_id)
-        train_set, _ = random_split(
-            data.train_set,
-            [new_train_size, len(data.train_set) - new_train_size],  # type: ignore[reportAttributeAccessIssue]
-            generator=generator,
+        keep = _subset_indices(
+            len(data.train_set),  # type: ignore[reportArgumentType]
+            training_size,
+            exp_id,
+            "training_size",
         )
-        data.train_set = train_set
+        data.train_set = Subset(data.train_set, keep.tolist())
+        if data.x_train is not None:
+            data.x_train = data.x_train[keep]
+            data.y_train = None if data.y_train is None else data.y_train[keep]
+            data.z_train = None if data.z_train is None else data.z_train[keep]
+
+    if test_size < 1.0:
+        keep = _subset_indices(
+            len(data.test_set),  # type: ignore[reportArgumentType]
+            test_size,
+            exp_id,
+            "test_size",
+        )
+        data.test_set = Subset(data.test_set, keep.tolist())
+        if data.x_test is not None:
+            data.x_test = data.x_test[keep]
+            data.y_test = None if data.y_test is None else data.y_test[keep]
+            data.z_test = None if data.z_test is None else data.z_test[keep]
 
     return data
 
