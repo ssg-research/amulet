@@ -130,12 +130,13 @@ ignore = ["E501", "B903"]
 "__init__.py" = ["F401"]
 
 [tool.ruff.lint.isort]
-# `common` is the artifact's shared package (artifact/common). It is imported by
-# top-level name rather than as `artifact.common`, because artifact/ is put on
-# sys.path by each entry script instead of being an installed package (the
-# artifact must run from a checkout with no packaging step). Declare it so its
-# imports are grouped as first-party, not third-party.
-known-first-party = ["amulet", "common"]
+# `common` and `experiments` are the artifact's packages (artifact/common,
+# artifact/experiments). They are imported by top-level name rather than as
+# `artifact.common`, because artifact/ is put on sys.path by each entry script
+# instead of being an installed package (the artifact must run from a checkout
+# with no packaging step). Declare them so their imports are grouped as
+# first-party, not third-party.
+known-first-party = ["amulet", "common", "experiments"]
 
 [tool.ruff.format]
 quote-style = "double"
