@@ -16,7 +16,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 from torch.utils.data import TensorDataset
 
-from .__data import AmuletDataset
+from .__data import ScarabDataset
 
 _CENSUS_GDRIVE_ID = "1sk8q1DElWbeNfVq1Gi0mdqTyUf-I2vIS"
 
@@ -39,7 +39,7 @@ def load_census(
     path: str | Path = Path("./data/census"),
     random_seed: int = 7,
     test_size: float = 0.5,
-) -> AmuletDataset:
+) -> ScarabDataset:
     """
     Load the Census Income dataset with cleaning, one-hot encoding, and sensitive attribute separation.
 
@@ -49,7 +49,7 @@ def load_census(
         test_size: Proportion of data used for testing.
 
     Returns:
-        AmuletDataset with train_set, test_set, x_*, y_*, and z_* arrays populated.
+        ScarabDataset with train_set, test_set, x_*, y_*, and z_* arrays populated.
     """
     dtypes = {
         "age": int,
@@ -124,7 +124,7 @@ def load_census(
         torch.from_numpy(np.array(y_test)).type(torch.long),
     )
 
-    return AmuletDataset(
+    return ScarabDataset(
         train_set=train_set,
         test_set=test_set,
         num_features=93,
@@ -241,7 +241,7 @@ def load_lfw(
     attribute_2: str = "gender",
     test_size: float = 0.3,
     random_seed: int = 7,
-) -> AmuletDataset:
+) -> ScarabDataset:
     """
     Load the LFW dataset combined with face attributes for property inference.
 
@@ -265,7 +265,7 @@ def load_lfw(
         random_seed: Random seed for reproducible train/test splitting.
 
     Returns:
-        AmuletDataset with train_set, test_set, x_*, y_*, and z_* arrays populated.
+        ScarabDataset with train_set, test_set, x_*, y_*, and z_* arrays populated.
     """
     if isinstance(path, str):
         path = Path(path)
@@ -329,7 +329,7 @@ def load_lfw(
         torch.from_numpy(np.array(y_test)).long().squeeze(1),
     )
 
-    return AmuletDataset(
+    return ScarabDataset(
         train_set=train_set,
         test_set=test_set,
         num_features=x.shape[1],

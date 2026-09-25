@@ -34,9 +34,9 @@ class LevelConfig:
         epochs: Training epochs, or None when the level defers to the
             experiment's own paper setting.
         train_fraction: Fraction of the training split to use, passed through to
-            `amulet.utils.load_data(training_size=...)`.
+            `scarab.utils.load_data(training_size=...)`.
         test_fraction: Fraction of the test split to use, passed through to
-            `amulet.utils.load_data(test_size=...)`. Shrinking the training
+            `scarab.utils.load_data(test_size=...)`. Shrinking the training
             split alone does not make a level cheap: evaluation walks the test
             split on every cell, and kNN-Shapley outlier removal (E4) costs
             `O(train x test)`, so a full test split pins its cost near the

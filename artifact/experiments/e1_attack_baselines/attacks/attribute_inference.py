@@ -15,12 +15,12 @@ from typing import TYPE_CHECKING
 
 import torch.nn as nn
 
-from amulet.attribute_inference.attacks import DudduCIKM2022
-from amulet.attribute_inference.metrics import evaluate_attribute_inference
-from amulet.utils import get_accuracy
 from common import training
 from experiments.e1_attack_baselines import context, train_targets
 from experiments.e1_attack_baselines.schemas import ATTRIBUTE_INFERENCE_SCHEMA
+from scarab.attribute_inference.attacks import DudduCIKM2022
+from scarab.attribute_inference.metrics import evaluate_attribute_inference
+from scarab.utils import get_accuracy
 
 if TYPE_CHECKING:
     from pathlib import Path

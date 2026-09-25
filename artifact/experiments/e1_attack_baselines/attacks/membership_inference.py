@@ -23,12 +23,12 @@ import numpy as np
 import torch.nn as nn
 from torch.utils.data import Subset
 
-from amulet.membership_inference.attacks import LiRA
-from amulet.membership_inference.metrics import compute_mi_metrics
-from amulet.utils import get_accuracy
 from common import training
 from experiments.e1_attack_baselines import context, train_targets
 from experiments.e1_attack_baselines.schemas import MEMBERSHIP_INFERENCE_SCHEMA
+from scarab.membership_inference.attacks import LiRA
+from scarab.membership_inference.metrics import compute_mi_metrics
+from scarab.utils import get_accuracy
 
 if TYPE_CHECKING:
     from pathlib import Path

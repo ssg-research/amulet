@@ -1,6 +1,6 @@
 # Design Claims: Consistency and Extensibility
 
-Two of Amulet's design claims are argued in code rather than in experiments: that
+Two of Scarab's design claims are argued in code rather than in experiments: that
 its interface is **consistent** (D2) and **extensible** (D3).
 This walks through both against the real API.
 [`ARTIFACT.md`](ARTIFACT.md) covers the empirical claims (D4); this is its
@@ -16,11 +16,11 @@ uv run pytest tests/test_api_conformance.py
 
 ## Consistency (D2)
 
-Each risk in Amulet follows one interface.
+Each risk in Scarab follows one interface.
 An attack or defense takes a PyTorch `nn.Module` and hyperparameters (poisoning
 attacks take a dataset instead), and its output feeds the matching metric.
-Modules sit at a predictable path: `amulet.<risk>.attacks.<attack>`,
-`amulet.<risk>.defenses.<defense>`, and `amulet.<risk>.metrics.<metric>`.
+Modules sit at a predictable path: `scarab.<risk>.attacks.<attack>`,
+`scarab.<risk>.defenses.<defense>`, and `scarab.<risk>.metrics.<metric>`.
 
 ### Every algorithm is an object you instantiate, then a call you make
 
@@ -29,7 +29,7 @@ never the shape of the code.
 Both of these come from `examples/get_started.py`:
 
 ```python
-from amulet.evasion.attacks import EvasionPGD
+from scarab.evasion.attacks import EvasionPGD
 
 # Instantiate the attack around the model, then run it.
 evasion = EvasionPGD(target_model, test_loader, device, batch_size=256, epsilon=0.1)
@@ -40,7 +40,7 @@ A defense for the same risk exposes its risk's training entry point,
 `train_robust`, and returns a defended `nn.Module`:
 
 ```python
-from amulet.evasion.defenses import AdversarialTrainingPGD
+from scarab.evasion.defenses import AdversarialTrainingPGD
 
 adv_training = AdversarialTrainingPGD(
     target_model, criterion, optimizer, train_loader, device, epochs, epsilon=0.1
@@ -68,9 +68,9 @@ and `examples/attack_pipelines/run_model_extraction.py`, and lives in
 `artifact/experiments/e2_advtr_modext/run.py`:
 
 ```python
-from amulet.evasion.defenses import AdversarialTrainingPGD
-from amulet.unauth_model_ownership.attacks import ModelExtraction
-from amulet.unauth_model_ownership.metrics import evaluate_extraction
+from scarab.evasion.defenses import AdversarialTrainingPGD
+from scarab.unauth_model_ownership.attacks import ModelExtraction
+from scarab.unauth_model_ownership.metrics import evaluate_extraction
 
 # Defense from the evasion risk.
 defended = AdversarialTrainingPGD(
@@ -94,7 +94,7 @@ Experiment E4 composes the same ownership attack with a **poisoning** defense
 
 ## Extensibility (D3)
 
-The paper extends Amulet to text, a modality it did not previously support, and
+The paper extends Scarab to text, a modality it did not previously support, and
 measures what that cost.
 The answer is four new modules and one widened type, with every existing risk,
 attack, defense, and metric left intact.
@@ -106,18 +106,18 @@ All four are exercised together in
 
 | Module              | Import path                            | Role                                                                                                                                     |
 | ------------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `TextTensorDataset` | `amulet.datasets.TextTensorDataset`    | A tokenized text dataset, subclassing PyTorch's `TensorDataset` so existing consumers receive the type they already expect.              |
-| `HFCausalLM`        | `amulet.models.HFCausalLM`             | A pretrained causal LM with LoRA adapters and a linear classification head, subclassing `AmuletModel` (`amulet/models/hf_causal_lm.py`). |
-| `TextBadNets`       | `amulet.poisoning.attacks.TextBadNets` | The textual BadNets attack: insert a trigger word and relabel to the target.                                                             |
-| `ONION`             | `amulet.poisoning.defenses.ONION`      | A perplexity-based input-purification defense against poisoning.                                                                         |
+| `TextTensorDataset` | `scarab.datasets.TextTensorDataset`    | A tokenized text dataset, subclassing PyTorch's `TensorDataset` so existing consumers receive the type they already expect.              |
+| `HFCausalLM`        | `scarab.models.HFCausalLM`             | A pretrained causal LM with LoRA adapters and a linear classification head, subclassing `ScarabModel` (`scarab/models/hf_causal_lm.py`). |
+| `TextBadNets`       | `scarab.poisoning.attacks.TextBadNets` | The textual BadNets attack: insert a trigger word and relabel to the target.                                                             |
+| `ONION`             | `scarab.poisoning.defenses.ONION`      | A perplexity-based input-purification defense against poisoning.                                                                         |
 
 Each implements the abstract base class for its risk, so the metrics already
 implemented for poisoning consume their outputs without modification:
 
 ```python
-from amulet.datasets import TextTensorDataset, load_sst2
-from amulet.models import HFCausalLM
-from amulet.poisoning.attacks import TextBadNets
+from scarab.datasets import TextTensorDataset, load_sst2
+from scarab.models import HFCausalLM
+from scarab.poisoning.attacks import TextBadNets
 
 data = load_sst2(path=data_path, tokenizer_name=model_name, max_length=128)
 attack = TextBadNets(trigger="cf", trigger_label=1, portion=0.1, random_seed=0)
@@ -128,9 +128,9 @@ poisoned_test = attack.poison_test(data.test_set)
 ### One widened type
 
 Beyond the package export lists, the extension modified one existing file.
-It added the text dataset class and widened the `AmuletDataset.modality` field
+It added the text dataset class and widened the `ScarabDataset.modality` field
 to admit text alongside images and tabular records
-(`amulet/datasets/__data.py`):
+(`scarab/datasets/__data.py`):
 
 ```python
 modality: Literal["image", "tabular", "text"]
@@ -141,7 +141,7 @@ No existing risk, attack, defense, or metric changed to make text work.
 ### A privacy defense, reused unmodified, measures a poisoning attack on an LLM
 
 The second study added no module at all.
-Amulet already implements DP-SGD as a defense against membership inference, and
+Scarab already implements DP-SGD as a defense against membership inference, and
 it applies to the LoRA-adapted target untouched.
 A privacy defense written and tested against vision and tabular targets now
 measures a poisoning attack on a three-billion-parameter LLM
@@ -150,7 +150,7 @@ were touched.
 From `examples/attack_pipelines/run_text_backdoor.py`:
 
 ```python
-from amulet.membership_inference.defenses import DPSGD
+from scarab.membership_inference.defenses import DPSGD
 
 dp_training = DPSGD(
     model=dp_target,               # a HFCausalLM, the same class the backdoor attacked
@@ -176,7 +176,7 @@ retrains the target on purified data through `train_robust`, and a user
 substitutes one poisoning defense for another without changing the surrounding
 pipeline.
 ONION keeps `purify` as an extra public helper for test-time cleaning; it
-exposes `train_robust` **in addition**, never instead (`amulet/poisoning/defenses/onion.py`).
+exposes `train_robust` **in addition**, never instead (`scarab/poisoning/defenses/onion.py`).
 This is the check that turns the design rule into a build failure: a defense
 shipping only a bespoke method fails CI.
 
@@ -185,7 +185,7 @@ shipping only a bespoke method fails CI.
 The steps for extending the library along each axis are worked out in the
 contribution examples:
 
-- `examples/extending_amulet/custom_risk.md` adds a new risk and its attack.
-- `examples/extending_amulet/custom_metric.md` adds a metric.
-- `examples/extending_amulet/custom_architecture.md` adds a model architecture
-  that subclasses `AmuletModel` and implements `get_hidden`.
+- `examples/extending_scarab/custom_risk.md` adds a new risk and its attack.
+- `examples/extending_scarab/custom_metric.md` adds a metric.
+- `examples/extending_scarab/custom_architecture.md` adds a model architecture
+  that subclasses `ScarabModel` and implements `get_hidden`.

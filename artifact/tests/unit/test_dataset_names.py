@@ -2,7 +2,7 @@
 
 The experiments carry their own dataset labels: `cifar` is what the paper's
 tables and figures label the column, what the result CSVs record, and what the
-model-spec cache keys are built from. `amulet.utils.load_data` knows the same
+model-spec cache keys are built from. `scarab.utils.load_data` knows the same
 dataset as `cifar10` and raises `ValueError: Unknown dataset` for anything else,
 so the two vocabularies are bridged by `common.run_context.loader_name`.
 
@@ -26,7 +26,7 @@ from experiments.e4_outrem_modext.schemas import DATASETS as E4_DATASETS
 
 
 def library_dataset_names() -> frozenset[str]:
-    """Return the dataset names `amulet.utils.load_data` dispatches on.
+    """Return the dataset names `scarab.utils.load_data` dispatches on.
 
     Read out of the function's own source rather than duplicated here, so a
     loader added or renamed in the library is reflected without editing a list
@@ -35,7 +35,7 @@ def library_dataset_names() -> frozenset[str]:
     Returns:
         Every literal `name` in a `dataset == "name"` branch of `load_data`.
     """
-    from amulet.utils import load_data
+    from scarab.utils import load_data
 
     names: set[str] = set()
     for line in inspect.getsource(load_data).splitlines():

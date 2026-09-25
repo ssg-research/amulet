@@ -44,7 +44,7 @@ jobs:
         uses: googleapis/release-please-action@v4
         with:
           release-type: python
-          package-name: amuletml
+          package-name: scarabml
 
   publish:
     name: Publish to PyPI
@@ -53,7 +53,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/project/amuletml/${{ needs.release-please.outputs.version }}/
+      url: https://pypi.org/project/scarabml/${{ needs.release-please.outputs.version }}/
     permissions:
       id-token: write
     steps:

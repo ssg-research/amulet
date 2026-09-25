@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from amulet.datasets import load_celeba, load_lfw, load_utkface
+from scarab.datasets import load_celeba, load_lfw, load_utkface
 
 
 def _assert_well_formed_image_bundle(data, z_columns: int) -> None:

@@ -34,12 +34,12 @@ import torch
 import torch.nn as nn
 from torch.utils.data import TensorDataset
 
-from amulet.datasets import AmuletDataset
-from amulet.models import LinearNet
-from amulet.utils import initialize_model, load_data
 from common.io import run_output_dir
 from common.models import ModelSpec, get_or_train, model_cache_root
 from common.paths import repo_root
+from scarab.datasets import ScarabDataset
+from scarab.models import LinearNet
+from scarab.utils import initialize_model, load_data
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -78,7 +78,7 @@ REAL_ARCH: dict[str, str] = {
     "cifar": "vgg",
 }
 
-# The name `amulet.utils.load_data` knows a dataset by, where that differs from
+# The name `scarab.utils.load_data` knows a dataset by, where that differs from
 # the label the experiments use. The experiments say `cifar`, which is what the
 # paper's tables and figures label the column and what the CSV `dataset` column
 # and the model-spec cache keys carry; the library only answers to `cifar10`.
@@ -240,7 +240,7 @@ def tiny_tabular_dataset(
     seed: int,
     num_features: int = TINY_NUM_FEATURES,
     num_classes: int = TINY_NUM_CLASSES,
-) -> AmuletDataset:
+) -> ScarabDataset:
     """Build the synthetic tabular stand-in used at `test` level.
 
     Real census/lfw/fmnist/cifar are downloads Level 1 must not require, so a
@@ -280,7 +280,7 @@ def tiny_tabular_dataset(
     x_train, y_train, z_train = split(TINY_TRAIN_SIZE)
     x_test, y_test, z_test = split(TINY_TEST_SIZE)
 
-    return AmuletDataset(
+    return ScarabDataset(
         train_set=TensorDataset(torch.from_numpy(x_train), torch.from_numpy(y_train)),
         test_set=TensorDataset(torch.from_numpy(x_test), torch.from_numpy(y_test)),
         num_features=num_features,
@@ -309,7 +309,7 @@ class RunContext:
             context can never silently write a level's checkpoints into another
             level's cache.
         tiny_data_factory: Optional builder for the `test`-level stand-in, taking
-            the seed and returning an `AmuletDataset`. None uses the shared
+            the seed and returning a `ScarabDataset`. None uses the shared
             `tiny_tabular_dataset` (E2/E3). E4 overrides it with a variant
             carrying genuine outliers, because kNN-Shapley outlier removal has
             nothing to score on the perfectly separable default. Ignored at
@@ -320,12 +320,12 @@ class RunContext:
     seed: int
     device: str
     cache_dir: Path
-    tiny_data_factory: Callable[[int], AmuletDataset] | None = None
-    _datasets: dict[tuple[str, float, float], AmuletDataset] = field(
+    tiny_data_factory: Callable[[int], ScarabDataset] | None = None
+    _datasets: dict[tuple[str, float, float], ScarabDataset] = field(
         default_factory=dict
     )
 
-    def data(self, dataset: str) -> AmuletDataset:
+    def data(self, dataset: str) -> ScarabDataset:
         """Load a dataset once per distinct request, memoised for this context.
 
         At tiny level the synthetic tabular stand-in replaces every dataset, so

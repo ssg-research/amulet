@@ -1,4 +1,4 @@
-"""Unit tests for amulet/distribution_inference/dataset_utils.py.
+"""Unit tests for scarab/distribution_inference/dataset_utils.py.
 
 Tests cover the five public-facing helpers:
   _filter_by_ratio, _heuristic_sample, _build_tensor_dataset,
@@ -10,7 +10,7 @@ import pytest
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
-from amulet.distribution_inference.dataset_utils import (
+from scarab.distribution_inference.dataset_utils import (
     DistributionSplits,
     _build_tensor_dataset,
     _filter_by_ratio,

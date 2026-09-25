@@ -61,7 +61,7 @@ representative at an online or offline event.
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
 reported to the community leaders responsible for enforcement by opening an
 issue on the project repository at
-[ssg-research/amulet](https://github.com/ssg-research/amulet/issues).
+[ssg-research/scarab](https://github.com/ssg-research/scarab/issues).
 
 <!-- TODO: maintainers, replace with a private contact email -->
 

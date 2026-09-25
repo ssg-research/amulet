@@ -1,9 +1,9 @@
 """
-The module `amulet.datasets` includes utilities to load datasets,
+The module `scarab.datasets` includes utilities to load datasets,
 including methods to load and fetch popular reference datasets.
 """
 
-from .__data import AmuletDataset, CustomImageDataset, TextTensorDataset
+from .__data import CustomImageDataset, ScarabDataset, TextTensorDataset
 from .__image_datasets import (
     load_celeba,
     load_cifar10,
@@ -16,8 +16,8 @@ from .__tabular_datasets import load_census, load_lfw
 from .__text_datasets import load_agnews, load_imdb, load_sst2
 
 __all__ = [
-    "AmuletDataset",
     "CustomImageDataset",
+    "ScarabDataset",
     "TextTensorDataset",
     "load_agnews",
     "load_celeba",

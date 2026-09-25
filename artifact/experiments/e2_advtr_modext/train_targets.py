@@ -41,8 +41,8 @@ from common.training import train_with_adam as train_clean
 from experiments.e2_advtr_modext.schemas import CAPACITY
 
 if TYPE_CHECKING:
-    from amulet.datasets import AmuletDataset
     from common.config import LevelConfig
+    from scarab.datasets import ScarabDataset
 
 # The paper trains the E2 targets for 100 epochs; `full` defers to this.
 PAPER_EPOCHS = 100
@@ -211,7 +211,7 @@ class ModelBundle:
 
 def build_models(
     ctx: RunContext, dataset: str, epsilon: float, capacity: str = CAPACITY
-) -> tuple[ModelBundle, AmuletDataset]:
+) -> tuple[ModelBundle, ScarabDataset]:
     """Train (or load) the clean, defended and stolen models for one cell.
 
     Args:
@@ -223,7 +223,7 @@ def build_models(
     Returns:
         The three models with their specs, and the loaded dataset.
     """
-    from amulet.unauth_model_ownership.attacks import ModelExtraction
+    from scarab.unauth_model_ownership.attacks import ModelExtraction
 
     data = ctx.data(dataset)
     num_features, num_classes = data.num_features, data.num_classes

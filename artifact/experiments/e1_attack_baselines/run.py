@@ -12,7 +12,7 @@ under a callable name, used by the level sweepers and the tiny end-to-end test.
 This runner exposes only what every experiment exposes, so the sweepers treat all
 five alike.
 
-CelebA is a large download `amulet.utils.load_data` handles on first use;
+CelebA is a large download `scarab.utils.load_data` handles on first use;
 `--level test` never touches it, substituting tiny synthetic tensors so the fast
 tier runs anywhere.
 """

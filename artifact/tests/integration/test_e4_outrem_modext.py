@@ -149,10 +149,10 @@ def test_the_clean_baseline_is_trained_once_across_percentages(
 @pytest.mark.integration
 def test_defended_test_acc_is_measured_on_the_defended_model(tmp_path: Path) -> None:
     """The row's defended test accuracy is the defended model's, on the test set."""
-    from amulet.utils import get_accuracy
     from common import run_context, training
     from experiments.e4_outrem_modext import run as e4
     from experiments.e4_outrem_modext import train_targets
+    from scarab.utils import get_accuracy
 
     ctx = _context(tmp_path)
     bundle, data = train_targets.build_models(ctx, "census", 10)

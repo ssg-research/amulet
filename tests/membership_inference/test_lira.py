@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 import torch
 
-from amulet.membership_inference.attacks.lira import LiRA
+from scarab.membership_inference.attacks.lira import LiRA
 
 
 @pytest.mark.integration

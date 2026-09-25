@@ -1,8 +1,8 @@
 """Textual backdoor poisoning on a LoRA-tuned decoder LLM, with two defenses.
 
 This is the runnable efficacy surface for the LLM backdoor work and doubles as the
-"how to extend Amulet to an LLM" example. It flows the standard pipeline shape
-(AmuletDataset -> attack -> train -> metric) with a genuine decoder LLM target:
+"how to extend Scarab to an LLM" example. It flows the standard pipeline shape
+(ScarabDataset -> attack -> train -> metric) with a genuine decoder LLM target:
 
   1. Load a text dataset (SST-2 / AG News / IMDB) as token-id tensors.
   2. TextBadNets stamps a trigger into a fraction of training rows and flips their
@@ -34,18 +34,18 @@ from typing import cast
 import torch
 from torch.utils.data import DataLoader
 
-from amulet.datasets import (
-    AmuletDataset,
+from scarab.datasets import (
+    ScarabDataset,
     TextTensorDataset,
     load_agnews,
     load_imdb,
     load_sst2,
 )
-from amulet.membership_inference.defenses import DPSGD
-from amulet.models import HFCausalLM
-from amulet.poisoning.attacks import TextBadNets
-from amulet.poisoning.defenses import ONION
-from amulet.utils import create_dir, get_accuracy, train_classifier
+from scarab.membership_inference.defenses import DPSGD
+from scarab.models import HFCausalLM
+from scarab.poisoning.attacks import TextBadNets
+from scarab.poisoning.defenses import ONION
+from scarab.utils import create_dir, get_accuracy, train_classifier
 
 _LOADERS = {"sst2": load_sst2, "agnews": load_agnews, "imdb": load_imdb}
 
@@ -160,7 +160,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def load_text_dataset(args: argparse.Namespace) -> AmuletDataset:
+def load_text_dataset(args: argparse.Namespace) -> ScarabDataset:
     """Load the requested text dataset, tokenized with the target's tokenizer."""
     max_train = None if args.max_train_samples < 0 else args.max_train_samples
     max_test = None if args.max_test_samples < 0 else args.max_test_samples

@@ -17,11 +17,11 @@ from typing import TYPE_CHECKING
 import torch
 import torch.nn as nn
 
-from amulet.unauth_model_ownership.attacks import ModelExtraction
-from amulet.unauth_model_ownership.metrics import evaluate_extraction
 from common import training
 from experiments.e1_attack_baselines import context, train_targets
 from experiments.e1_attack_baselines.schemas import MODEL_EXTRACTION_SCHEMA
+from scarab.unauth_model_ownership.attacks import ModelExtraction
+from scarab.unauth_model_ownership.metrics import evaluate_extraction
 
 if TYPE_CHECKING:
     from pathlib import Path

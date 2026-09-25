@@ -87,7 +87,7 @@ class ONION(PoisoningDefense):
             epochs: Number of retraining epochs in ``train_robust``.
             batch_size: Batch size used to rebuild the purified training loader.
             train_function: Function used to retrain the target. Defaults to
-                ``train_classifier`` from ``amulet.utils``.
+                ``train_classifier`` from ``scarab.utils``.
         """
         super().__init__(
             model,

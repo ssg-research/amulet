@@ -1,10 +1,10 @@
 import torch
 import torch.nn as nn
 
-from .base import AmuletModel
+from .base import ScarabModel
 
 
-class SimpleCNN(AmuletModel):
+class SimpleCNN(ScarabModel):
     """
     Parameterized CNN for MNIST, similar to the one used in the BadNets paper.
 

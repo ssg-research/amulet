@@ -10,8 +10,8 @@ a trigger phrase in string space and flips labels to trigger_label. The string-s
 import pytest
 import torch
 
-from amulet.datasets import TextTensorDataset
-from amulet.poisoning.attacks import TextBadNets
+from scarab.datasets import TextTensorDataset
+from scarab.poisoning.attacks import TextBadNets
 
 
 def _attack(insert_position: str = "start", **kwargs) -> TextBadNets:

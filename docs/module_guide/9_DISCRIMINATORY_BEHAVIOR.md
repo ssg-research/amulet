@@ -1,17 +1,17 @@
 # Discriminatory Behavior
 
-Discriminatory behavior evaluations focus on assessing model bias and group fairness across sensitive attributes like gender, race, or age. Amulet implements an **Adversarial Debiasing** defense to mitigate these biases.
+Discriminatory behavior evaluations focus on assessing model bias and group fairness across sensitive attributes like gender, race, or age. Scarab implements an **Adversarial Debiasing** defense to mitigate these biases.
 
 ## Adversarial Debiasing Defense
 
-To reduce bias in a model, use `amulet.discriminatory_behavior.defenses.AdversarialDebiasing`. This defense jointly trains the main classifier and a discriminator (adversary) that attempts to predict the sensitive attributes from the classifier's outputs. The classifier is trained to perform its task while making it impossible for the adversary to infer sensitive attributes.
+To reduce bias in a model, use `scarab.discriminatory_behavior.defenses.AdversarialDebiasing`. This defense jointly trains the main classifier and a discriminator (adversary) that attempts to predict the sensitive attributes from the classifier's outputs. The classifier is trained to perform its task while making it impossible for the adversary to infer sensitive attributes.
 
 ```python
 import torch
 from torch.utils.data import DataLoader, TensorDataset
-from amulet.discriminatory_behavior.defenses import AdversarialDebiasing
-from amulet.discriminatory_behavior.metrics import DiscriminatoryBehavior
-from amulet.utils import load_data, initialize_model, train_classifier
+from scarab.discriminatory_behavior.defenses import AdversarialDebiasing
+from scarab.discriminatory_behavior.metrics import DiscriminatoryBehavior
+from scarab.utils import load_data, initialize_model, train_classifier
 
 # 1. Load data with sensitive attributes
 data = load_data("./data", "celeba")
@@ -52,10 +52,10 @@ defended_model = debiasing.train_fair()
 
 ## Metrics
 
-Fairness is evaluated using subgroup metrics like **Equalized Odds** and **Demographic Parity**. Use the `amulet.discriminatory_behavior.metrics.DiscriminatoryBehavior` class to measure these values.
+Fairness is evaluated using subgroup metrics like **Equalized Odds** and **Demographic Parity**. Use the `scarab.discriminatory_behavior.metrics.DiscriminatoryBehavior` class to measure these values.
 
 ```python
-from amulet.discriminatory_behavior.metrics import DiscriminatoryBehavior
+from scarab.discriminatory_behavior.metrics import DiscriminatoryBehavior
 
 # Initialize metric calculator
 fairness_metrics = DiscriminatoryBehavior(defended_model, test_loader_z, device)

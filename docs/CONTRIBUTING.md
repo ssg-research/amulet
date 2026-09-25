@@ -1,6 +1,6 @@
-# Contributing to Amulet
+# Contributing to Scarab
 
-Thank you for your interest in contributing to Amulet! This guide will help you get started with the contribution process.
+Thank you for your interest in contributing to Scarab! This guide will help you get started with the contribution process.
 
 ## Reporting Issues
 
@@ -13,7 +13,7 @@ We use GitHub Issues to track bugs and feature requests.
 
 ### Environment Setup
 
-Amulet uses [uv](https://docs.astral.sh/uv/) for dependency management.
+Scarab uses [uv](https://docs.astral.sh/uv/) for dependency management.
 
 1. **Install uv**:
 
@@ -26,8 +26,8 @@ Amulet uses [uv](https://docs.astral.sh/uv/) for dependency management.
    Pick one torch build extra matching your hardware (`cpu`, `cu128`, or `cu130`; check with `nvidia-smi`). They are mutually exclusive, so `uv sync --all-extras` is not valid.
 
    ```bash
-   git clone https://github.com/ssg-research/amulet.git
-   cd amulet
+   git clone https://github.com/ssg-research/scarab.git
+   cd scarab
    uv sync --extra cu128 --extra dev   # or --extra cpu / --extra cu130
    # add --extra llm for the text/LLM stack (transformers, peft, datasets)
    ```
@@ -48,7 +48,7 @@ Amulet uses [uv](https://docs.astral.sh/uv/) for dependency management.
 ### Adding a New Risk Module
 
 1. **Subclass the Base Class**: Each risk has a base class (e.g., `EvasionAttack`). Your new module must subclass this.
-2. **Implementation**: Place your file in the appropriate directory: `amulet/<risk>/<attacks|defenses|metrics>/new_module.py`.
+2. **Implementation**: Place your file in the appropriate directory: `scarab/<risk>/<attacks|defenses|metrics>/new_module.py`.
 3. **API Contract**:
    - **Attacks**: Implement an `attack()` method (except for poisoning, which uses `poison_train` and `poison_test`).
    - **Defenses**: Every defense **must** implement the training-shaped entry point for its risk: poisoning/evasion → `train_robust()`, membership inference → `train_private()`, fairness → `train_fair()`, ownership → `watermark()` / `fingerprint()`. This is enforced by `tests/test_api_conformance.py`: a defense that ships only a bespoke method (e.g. a `purify`-only input cleaner) fails the suite. A defense may expose extra public helpers **in addition to** its entry point, never instead of it, and should subclass its risk's existing defense base rather than introducing a new one.
@@ -58,11 +58,11 @@ Amulet uses [uv](https://docs.astral.sh/uv/) for dependency management.
 
 ### Adding a Dataset
 
-Datasets should return an `AmuletDataset` dataclass.
+Datasets should return a `ScarabDataset` dataclass.
 
 ```python
 @dataclass
-class AmuletDataset:
+class ScarabDataset:
     train_set: Dataset
     test_set: Dataset
     num_features: int
@@ -73,14 +73,14 @@ class AmuletDataset:
     ...
 ```
 
-1. Implement the loading logic in `amulet/datasets/__image_datasets.py`, `amulet/datasets/__tabular_datasets.py`, or `amulet/datasets/__text_datasets.py` (text corpora load from the Hugging Face hub and return `TextTensorDataset` instances with `modality="text"`).
-2. Update `load_data` in `amulet/utils/__pipeline.py` to support the new dataset.
+1. Implement the loading logic in `scarab/datasets/__image_datasets.py`, `scarab/datasets/__tabular_datasets.py`, or `scarab/datasets/__text_datasets.py` (text corpora load from the Hugging Face hub and return `TextTensorDataset` instances with `modality="text"`).
+2. Update `load_data` in `scarab/utils/__pipeline.py` to support the new dataset.
 
 ### Adding a Model Architecture
 
-1. Define your architecture in a new file under `amulet/models/`.
+1. Define your architecture in a new file under `scarab/models/`.
 2. Ensure it implements a `get_hidden(self, x)` method.
-3. Update `initialize_model` in `amulet/utils/__pipeline.py` to include the new architecture.
+3. Update `initialize_model` in `scarab/utils/__pipeline.py` to include the new architecture.
 
 ## Pull Request Process
 

@@ -32,7 +32,7 @@ from experiments.e1_attack_baselines import context, train_targets
 # The paper's full-level budget: 100 epochs, one seed, the whole training split.
 LEVEL = get_level("full").with_defaults(epochs=context.PAPER_EPOCHS)
 
-# CelebA as `amulet.utils.load_data` reports it: 64x64 images, binary target.
+# CelebA as `scarab.utils.load_data` reports it: 64x64 images, binary target.
 NUM_FEATURES = 64 * 64
 NUM_CLASSES = 2
 

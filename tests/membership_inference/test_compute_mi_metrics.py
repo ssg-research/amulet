@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from amulet.membership_inference.metrics.compute_mi_metrics import compute_mi_metrics
+from scarab.membership_inference.metrics.compute_mi_metrics import compute_mi_metrics
 
 
 def test_compute_mi_metrics_perfect_separation():

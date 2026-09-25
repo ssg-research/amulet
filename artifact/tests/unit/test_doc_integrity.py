@@ -39,7 +39,7 @@ KNOWN_FIRST_SEGMENTS: frozenset[str] = frozenset({
     "artifact",
     "examples",
     "tests",
-    "amulet",
+    "scarab",
     "docs",
     "pyproject.toml",
     "README.md",

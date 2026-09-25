@@ -5,7 +5,7 @@ import pytest
 import torch
 import torch.nn.functional as F
 
-from amulet.evasion.attacks.projected_gradient_descent import EvasionPGD
+from scarab.evasion.attacks.projected_gradient_descent import EvasionPGD
 
 
 @pytest.mark.integration

@@ -1,4 +1,4 @@
-"""Executable guard for Amulet's defense entry-point convention.
+"""Executable guard for Scarab's defense entry-point convention.
 
 The API contract (see ``AGENTS.md`` / ``docs/CONTRIBUTING.md``) is that every defense
 exposes a training-shaped entry-point method for its risk: poisoning/evasion defenses
@@ -39,7 +39,7 @@ def _concrete_defenses(risk: str) -> list[tuple[str, type]]:
     Base ABCs are abstract (they carry ``abstractmethod``s), so ``inspect.isabstract``
     filters them out, leaving only the instantiable defenses the contract governs.
     """
-    module = importlib.import_module(f"amulet.{risk}.defenses")
+    module = importlib.import_module(f"scarab.{risk}.defenses")
     exported = getattr(module, "__all__", [])
     defenses: list[tuple[str, type]] = []
     for name in exported:

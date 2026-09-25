@@ -102,10 +102,10 @@ def test_the_defended_metrics_are_measured_on_the_defended_model(
     clean target, this equality would read the wrong model whenever the two
     accuracies differ.
     """
-    from amulet.utils import get_accuracy
     from common import run_context, training
     from experiments.e2_advtr_modext import run as e2
     from experiments.e2_advtr_modext import train_targets
+    from scarab.utils import get_accuracy
 
     ctx = _context(tmp_path)
     bundle, data = train_targets.build_models(ctx, "census", 0.01)

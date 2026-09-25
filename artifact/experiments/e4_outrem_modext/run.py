@@ -66,8 +66,8 @@ def run_cell(
     Returns:
         The single row appended, or an empty list if the cell was already recorded.
     """
-    from amulet.unauth_model_ownership.metrics import evaluate_extraction
     from common.io import append_row, row_exists
+    from scarab.unauth_model_ownership.metrics import evaluate_extraction
 
     output = output_dir / f"{EXPERIMENT_ID}.csv"
     key = {

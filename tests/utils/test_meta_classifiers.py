@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from amulet.utils.__meta_classifiers import PermInvModel, meta_collate_fn
+from scarab.utils.__meta_classifiers import PermInvModel, meta_collate_fn
 
 
 def test_permutation_invariance():

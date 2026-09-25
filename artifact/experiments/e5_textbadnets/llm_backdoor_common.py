@@ -1,6 +1,6 @@
 """Shared plumbing for the LLM text-backdoor experiments (ONION + DP-SGD).
 
-Not part of the amulet package; imported by `onion.py` and `dp.py`, both driven by
+Not part of the scarab package; imported by `onion.py` and `dp.py`, both driven by
 `run.py`.
 
 Everything below the dataset loader is E5's own machinery and is deliberately *not*
@@ -26,12 +26,12 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
-from amulet.datasets import AmuletDataset, TextTensorDataset
-from amulet.datasets.__text_datasets import _load_tokenizer, _tokenize
-from amulet.models import HFCausalLM
-from amulet.poisoning.defenses import ONION
-from amulet.utils import get_accuracy, train_classifier
 from common.paths import repo_root
+from scarab.datasets import ScarabDataset, TextTensorDataset
+from scarab.datasets.__text_datasets import _load_tokenizer, _tokenize
+from scarab.models import HFCausalLM
+from scarab.poisoning.defenses import ONION
+from scarab.utils import get_accuracy, train_classifier
 
 TargetFactory = Callable[[], HFCausalLM]
 
@@ -94,7 +94,7 @@ def load_sst2_seeded(
     max_train: int | None,
     max_test: int | None,
     root: Path | None = None,
-) -> AmuletDataset:
+) -> ScarabDataset:
     """Load SST-2 with a per-seed random subsample of train and test.
 
     Each ``exp_id`` draws its own train/test subset (a proper repeat sees different data);
@@ -129,7 +129,7 @@ def load_sst2_seeded(
     # Offset the test stream so it is not a prefix-correlated draw of the train stream.
     train_set = build("train", max_train, exp_id)
     test_set = build("validation", max_test, exp_id + 100_000)
-    return AmuletDataset(
+    return ScarabDataset(
         train_set=train_set,
         test_set=test_set,
         num_features=max_length,
@@ -161,7 +161,7 @@ def make_target_factory(
     return factory
 
 
-def make_test_setup(max_len: int = 16) -> tuple[AmuletDataset, TargetFactory]:
+def make_test_setup(max_len: int = 16) -> tuple[ScarabDataset, TargetFactory]:
     """Build the `test`-level stand-in: a tiny random-init Llama and synthetic data.
 
     A two-layer randomly-initialised Llama target over eight hand-written SST-2
@@ -190,7 +190,7 @@ def make_test_setup(max_len: int = 16) -> tuple[AmuletDataset, TargetFactory]:
             _tokenize(texts, tokenizer, max_len), labels, texts, _TEST_TOKENIZER
         )
 
-    data = AmuletDataset(
+    data = ScarabDataset(
         train_set=to_set(train_texts, train_labels),
         test_set=to_set(train_texts[:4], train_labels[:4]),
         num_features=max_len,

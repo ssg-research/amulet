@@ -1,6 +1,6 @@
 """Progress output for the experiment sweeps, so slow is distinguishable from hung.
 
-The amulet library streams per-epoch training loss, but nothing says which
+The scarab library streams per-epoch training loss, but nothing says which
 experiment or cell those epochs belong to, so a long run looks the same as a
 stuck one. These helpers add that context: `cells` wraps a sweep in a tqdm bar
 (one per experiment), and `banner`/`log` print short status lines. Every message

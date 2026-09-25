@@ -1,13 +1,13 @@
-"""Shared base class for Amulet models."""
+"""Shared base class for Scarab models."""
 
 import torch
 import torch.nn as nn
 
 
-class AmuletModel(nn.Module):
-    """Base class for models in `amulet/models/`.
+class ScarabModel(nn.Module):
+    """Base class for models in `scarab/models/`.
 
-    Amulet pipelines (e.g. `get_intermediate_features`, `OutlierRemoval`) rely on
+    Scarab pipelines (e.g. `get_intermediate_features`, `OutlierRemoval`) rely on
     models exposing a `get_hidden` method that returns intermediate-layer activations.
     Subclasses must override both `forward` and `get_hidden`; the default
     `get_hidden` here mirrors `nn.Module.forward` and raises `NotImplementedError`

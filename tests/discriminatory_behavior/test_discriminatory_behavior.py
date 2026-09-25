@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
-from amulet.discriminatory_behavior.metrics.discriminatory_behavior import (
+from scarab.discriminatory_behavior.metrics.discriminatory_behavior import (
     DiscriminatoryBehavior,
 )
 

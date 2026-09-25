@@ -9,8 +9,8 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader
 
-from amulet.poisoning.defenses import OutlierRemoval
-from amulet.utils import (
+from scarab.poisoning.defenses import OutlierRemoval
+from scarab.utils import (
     create_dir,
     get_accuracy,
     initialize_model,

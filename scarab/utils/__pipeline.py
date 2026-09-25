@@ -11,7 +11,7 @@ from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset, Subset
 
 from ..datasets import (
-    AmuletDataset,
+    ScarabDataset,
     load_celeba,
     load_census,
     load_cifar10,
@@ -21,7 +21,7 @@ from ..datasets import (
     load_mnist,
     load_utkface,
 )
-from ..models import VGG, AmuletModel, LinearNet, ResNet, SimpleCNN
+from ..models import VGG, LinearNet, ResNet, ScarabModel, SimpleCNN
 
 
 def _subset_indices(count: int, fraction: float, seed: int, label: str) -> np.ndarray:
@@ -63,7 +63,7 @@ def load_data(
     exp_id: int = 0,
     celeba_target: str = "Smiling",
     test_size: float = 1.0,
-) -> AmuletDataset:
+) -> ScarabDataset:
     """
     Load data given the dataset name and training size.
 
@@ -82,7 +82,7 @@ def load_data(
         test_size: Proportion of test data to use.
 
     Returns:
-        Loaded dataset as an AmuletDataset.
+        Loaded dataset as a ScarabDataset.
 
     Raises:
         ValueError: If dataset is not a recognized dataset name, or if either
@@ -339,7 +339,7 @@ def initialize_model(
     batch_norm: bool = True,
     model_conf: CapacityMap = DEFAULT_CAPACITY_MAP,
     resnet_replace_first: bool = True,
-) -> AmuletModel:
+) -> ScarabModel:
     """Create a model using the provided configuration.
 
     Args:

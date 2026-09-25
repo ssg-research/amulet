@@ -1,14 +1,14 @@
 # Unauthorized Model Ownership
 
-Unauthorized Model Ownership risks are related to an adversary being able to "steal" a model, such that the stolen (surrogate) model has the same behavior and characteristics as the target model. Amulet provides tools for **Model Extraction** attacks and defenses based on **Watermarking** and **Fingerprinting**.
+Unauthorized Model Ownership risks are related to an adversary being able to "steal" a model, such that the stolen (surrogate) model has the same behavior and characteristics as the target model. Scarab provides tools for **Model Extraction** attacks and defenses based on **Watermarking** and **Fingerprinting**.
 
 ## Model Extraction Attack
 
-To run a model extraction attack, use `amulet.unauth_model_ownership.attacks.ModelExtraction`. This attack trains a surrogate (attack) model by querying the target model.
+To run a model extraction attack, use `scarab.unauth_model_ownership.attacks.ModelExtraction`. This attack trains a surrogate (attack) model by querying the target model.
 
 ```python
-from amulet.unauth_model_ownership.attacks import ModelExtraction
-from amulet.utils import initialize_model, load_data
+from scarab.unauth_model_ownership.attacks import ModelExtraction
+from scarab.utils import initialize_model, load_data
 
 # Load data and initialize target/attack models
 data = load_data("./data", "cifar10")
@@ -34,12 +34,12 @@ stolen_model = model_extraction.attack()
 
 ## Fingerprinting Defense
 
-Fingerprinting determines if a suspect model was stolen by measuring how its outputs diverge on sensitive data points. Amulet implements **Dataset Inference** as a fingerprinting mechanism.
+Fingerprinting determines if a suspect model was stolen by measuring how its outputs diverge on sensitive data points. Scarab implements **Dataset Inference** as a fingerprinting mechanism.
 
-To run fingerprinting, use `amulet.unauth_model_ownership.defenses.DatasetInference`.
+To run fingerprinting, use `scarab.unauth_model_ownership.defenses.DatasetInference`.
 
 ```python
-from amulet.unauth_model_ownership.defenses import DatasetInference
+from scarab.unauth_model_ownership.defenses import DatasetInference
 
 # Initialize Fingerprinting mechanism
 fingerprinting = DatasetInference(
@@ -62,12 +62,12 @@ if results['suspect']['p-value'] < 0.05:
 
 ## Watermarking Defense
 
-Watermarking involves embedding a "secret" behavior (backdoor) into the model during training. Amulet implements the **WatermarkNN** algorithm.
+Watermarking involves embedding a "secret" behavior (backdoor) into the model during training. Scarab implements the **WatermarkNN** algorithm.
 
-To watermark a model, use `amulet.unauth_model_ownership.defenses.WatermarkNN`.
+To watermark a model, use `scarab.unauth_model_ownership.defenses.WatermarkNN`.
 
 ```python
-from amulet.unauth_model_ownership.defenses import WatermarkNN
+from scarab.unauth_model_ownership.defenses import WatermarkNN
 
 # Configure and apply Watermarking
 wm_model_wrapper = WatermarkNN(
@@ -87,10 +87,10 @@ watermarked_model = wm_model_wrapper.watermark()
 
 ### Model Extraction Metrics
 
-Use `amulet.unauth_model_ownership.metrics.evaluate_extraction` to evaluate surrogate models:
+Use `scarab.unauth_model_ownership.metrics.evaluate_extraction` to evaluate surrogate models:
 
 ```python
-from amulet.unauth_model_ownership.metrics import evaluate_extraction
+from scarab.unauth_model_ownership.metrics import evaluate_extraction
 
 results = evaluate_extraction(target_model, stolen_model, test_loader, device)
 print(f"Fidelity (model agreement): {results['fidelity']}%")

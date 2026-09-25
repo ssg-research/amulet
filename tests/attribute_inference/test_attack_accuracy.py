@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from amulet.attribute_inference.metrics.attack_accuracy import (
+from scarab.attribute_inference.metrics.attack_accuracy import (
     evaluate_attribute_inference,
 )
 

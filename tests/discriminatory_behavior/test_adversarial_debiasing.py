@@ -2,7 +2,7 @@ import pytest
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
-from amulet.discriminatory_behavior.defenses.adversarial_debiasing import (
+from scarab.discriminatory_behavior.defenses.adversarial_debiasing import (
     AdversarialDebiasing,
 )
 

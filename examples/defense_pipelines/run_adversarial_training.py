@@ -9,9 +9,9 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader
 
-from amulet.evasion.attacks import EvasionPGD
-from amulet.evasion.defenses import AdversarialTrainingPGD
-from amulet.utils import (
+from scarab.evasion.attacks import EvasionPGD
+from scarab.evasion.defenses import AdversarialTrainingPGD
+from scarab.utils import (
     create_dir,
     get_accuracy,
     initialize_model,

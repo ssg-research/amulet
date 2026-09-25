@@ -1,5 +1,5 @@
 """
-The module amulet.utils contains utilities
+The module scarab.utils contains utilities
 for model training and evaluation.
 """
 

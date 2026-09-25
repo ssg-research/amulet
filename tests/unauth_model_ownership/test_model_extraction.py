@@ -6,7 +6,7 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, TensorDataset
 
-from amulet.unauth_model_ownership.attacks.model_extraction import ModelExtraction
+from scarab.unauth_model_ownership.attacks.model_extraction import ModelExtraction
 
 
 def _assert_state_dicts_equal(

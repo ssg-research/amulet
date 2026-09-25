@@ -9,8 +9,8 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader
 
-from amulet.unauth_model_ownership.defenses import DatasetInference
-from amulet.utils import (
+from scarab.unauth_model_ownership.defenses import DatasetInference
+from scarab.utils import (
     create_dir,
     get_accuracy,
     initialize_model,

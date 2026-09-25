@@ -10,7 +10,7 @@ import pytest
 import torch
 import torch.nn as nn
 
-from amulet.distribution_inference.attacks.white_box_pim import (
+from scarab.distribution_inference.attacks.white_box_pim import (
     WhiteBoxPIM,
     _get_layer_parameters,  # type: ignore[reportPrivateUsage]
 )

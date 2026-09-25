@@ -9,9 +9,9 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader, random_split
 
-from amulet.unauth_model_ownership.attacks import ModelExtraction
-from amulet.unauth_model_ownership.metrics import evaluate_extraction
-from amulet.utils import (
+from scarab.unauth_model_ownership.attacks import ModelExtraction
+from scarab.unauth_model_ownership.metrics import evaluate_extraction
+from scarab.utils import (
     create_dir,
     get_accuracy,
     initialize_model,

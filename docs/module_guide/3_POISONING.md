@@ -1,18 +1,18 @@
 # Data Poisoning
 
-Data poisoning attacks involve an adversary injecting malicious samples into a model's training set. Amulet implements the BadNets backdoor attack for image/tabular data and a textual variant (`TextBadNets`) for language models. It provides an outlier-removal defense based on KNN Shapley values, and (for the textual attack) the ONION perplexity-based defense.
+Data poisoning attacks involve an adversary injecting malicious samples into a model's training set. Scarab implements the BadNets backdoor attack for image/tabular data and a textual variant (`TextBadNets`) for language models. It provides an outlier-removal defense based on KNN Shapley values, and (for the textual attack) the ONION perplexity-based defense.
 
 Both poisoning defenses follow the same shape and share the `PoisoningDefense` base class. They expose `train_robust()`, which cleans the (poisoned) training set, then retrains the target on the cleaned data and returns it. `OutlierRemoval` drops low-Shapley outlier samples, and `ONION` removes perplexity-outlier trigger words. This mirrors the library-wide convention that every defense implements its risk's training entry point (`train_robust` / `train_private` / `train_fair`). `ONION` additionally exposes `purify(dataset)` to clean inputs at test time, alongside `train_robust()`.
 
 ## Attack
 
-To run a data poisoning attack, use `amulet.poisoning.attacks.BadNets`. This attack embeds a trigger into a portion of the training set and relabels those samples to a target class.
+To run a data poisoning attack, use `scarab.poisoning.attacks.BadNets`. This attack embeds a trigger into a portion of the training set and relabels those samples to a target class.
 
 ```python
 import torch
 from torch.utils.data import DataLoader
-from amulet.poisoning.attacks import BadNets
-from amulet.utils import load_data, initialize_model, train_classifier, get_accuracy
+from scarab.poisoning.attacks import BadNets
+from scarab.utils import load_data, initialize_model, train_classifier, get_accuracy
 
 root_dir = './'
 dataset_name = 'cifar10'
@@ -62,10 +62,10 @@ print(f"Attack Success Rate (ASR): {attack_success}%")
 
 ## Defense
 
-To defend against poisoning, use `amulet.poisoning.defenses.OutlierRemoval`. This module identifies and removes outliers from the training set using KNN Shapley values before retraining the model.
+To defend against poisoning, use `scarab.poisoning.defenses.OutlierRemoval`. This module identifies and removes outliers from the training set using KNN Shapley values before retraining the model.
 
 ```python
-from amulet.poisoning.defenses import OutlierRemoval
+from scarab.poisoning.defenses import OutlierRemoval
 
 # Initialize Outlier Removal Defense
 outlier_removal = OutlierRemoval(
@@ -88,17 +88,17 @@ print(f"ASR after defense: {defended_asr}%")
 
 ## Textual Backdoor (LLM)
 
-`amulet.poisoning.attacks.TextBadNets` is the NLP analog of `BadNets`: it inserts a rare-word or short-phrase trigger into a fraction of training examples (in string space) and relabels them to a target class. The target is `HFCausalLM`, a LoRA-adapted HuggingFace causal (decoder-only) LM that keeps its generative base: it classifies (trainable head over the frozen base), scores perplexity (its base LM), and generates. This path requires the optional `llm` extra (`uv sync --extra <cuxxx> --extra llm`).
+`scarab.poisoning.attacks.TextBadNets` is the NLP analog of `BadNets`: it inserts a rare-word or short-phrase trigger into a fraction of training examples (in string space) and relabels them to a target class. The target is `HFCausalLM`, a LoRA-adapted HuggingFace causal (decoder-only) LM that keeps its generative base: it classifies (trainable head over the frozen base), scores perplexity (its base LM), and generates. This path requires the optional `llm` extra (`uv sync --extra <cuxxx> --extra llm`).
 
 ```python
 import torch
 from torch.utils.data import DataLoader
 from transformers import AutoTokenizer
-from amulet.datasets import load_sst2
-from amulet.models import HFCausalLM
-from amulet.poisoning.attacks import TextBadNets
-from amulet.poisoning.defenses import ONION
-from amulet.utils import get_accuracy, train_classifier
+from scarab.datasets import load_sst2
+from scarab.models import HFCausalLM
+from scarab.poisoning.attacks import TextBadNets
+from scarab.poisoning.defenses import ONION
+from scarab.utils import get_accuracy, train_classifier
 
 device = "cuda:0"
 model_name = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"

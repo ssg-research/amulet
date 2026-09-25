@@ -13,9 +13,9 @@ from torchvision.io import ImageReadMode, read_image
 
 
 @dataclass
-class AmuletDataset:
+class ScarabDataset:
     """
-    Wrapper for datasets used throughout amulet pipelines.
+    Wrapper for datasets used throughout scarab pipelines.
 
     Attributes:
         train_set: Train data, usually a PyTorch TensorDataset or VisionDataset.

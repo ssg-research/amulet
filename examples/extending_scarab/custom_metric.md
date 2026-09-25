@@ -1,22 +1,22 @@
-# Extending Amulet with a Custom Metric
+# Extending Scarab with a Custom Metric
 
 This example shows how to define a **custom evaluation metric** for a new or existing risk.
 
-Metrics in Amulet are implemented as standalone functions and grouped by risk.
+Metrics in Scarab are implemented as standalone functions and grouped by risk.
 
 ## Step 1: Create a Metrics Directory
 
 Create a new metrics directory under the corresponding risk:
 
 ```text
-amulet/test_time_adaptation/metrics/
+scarab/test_time_adaptation/metrics/
 ```
 
 ## Step 2: Implement the Metric
 
 For test-time adaptation, a natural metric is attack accuracy.
 
-**File:** `amulet/test_time_adaptation/metrics/attack_accuracy.py`
+**File:** `scarab/test_time_adaptation/metrics/attack_accuracy.py`
 
 ```python
 import torch
@@ -37,7 +37,7 @@ def attack_accuracy(model, test_loader, device) -> float:
 
 Add an `__init__.py` file.
 
-**File:** `amulet/test_time_adaptation/metrics/__init__.py`
+**File:** `scarab/test_time_adaptation/metrics/__init__.py`
 
 ```python
 from .attack_accuracy import attack_accuracy
@@ -45,4 +45,4 @@ from .attack_accuracy import attack_accuracy
 __all__ = ["attack_accuracy"]
 ```
 
-The metric can now be used consistently with other Amulet evaluation utilities.
+The metric can now be used consistently with other Scarab evaluation utilities.

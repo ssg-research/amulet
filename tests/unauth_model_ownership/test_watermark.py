@@ -4,7 +4,7 @@ CPU reproducibility of the embedded watermark."""
 import pytest
 import torch
 
-from amulet.unauth_model_ownership.defenses.watermark import WatermarkNN
+from scarab.unauth_model_ownership.defenses.watermark import WatermarkNN
 
 
 def _assert_state_dicts_equal(

@@ -7,7 +7,7 @@ import pytest
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
-from amulet.unauth_model_ownership.defenses.fingerprint import DatasetInference
+from scarab.unauth_model_ownership.defenses.fingerprint import DatasetInference
 
 
 @pytest.fixture

@@ -46,9 +46,9 @@ from experiments.e3_advtr_attrinf.schemas import (
 if TYPE_CHECKING:
     import torch.nn as nn
 
-    from amulet.datasets import AmuletDataset
     from common.models import ModelSpec
     from common.training import AdversarySplit
+    from scarab.datasets import ScarabDataset
 
 EXPERIMENT_ID = "e3_advtr_attrinf"
 
@@ -72,7 +72,7 @@ class AttributeScores:
 def infer_attributes(
     model: nn.Module,
     split: AdversarySplit,
-    data: AmuletDataset,
+    data: ScarabDataset,
     batch_size: int,
     device: str,
 ) -> AttributeScores:
@@ -91,8 +91,8 @@ def infer_attributes(
     Raises:
         ValueError: If the dataset carries no test features or attributes.
     """
-    from amulet.attribute_inference.attacks import DudduCIKM2022
-    from amulet.attribute_inference.metrics import evaluate_attribute_inference
+    from scarab.attribute_inference.attacks import DudduCIKM2022
+    from scarab.attribute_inference.metrics import evaluate_attribute_inference
 
     if data.x_test is None or data.z_test is None:
         raise ValueError("Attribute inference needs the test features and attributes.")
@@ -115,7 +115,7 @@ def _leading(
     spec: ModelSpec,
     epsilon: float,
     applied_epsilon: float,
-    data: AmuletDataset,
+    data: ScarabDataset,
 ) -> dict[str, object]:
     """Fill the columns identifying which cell and model a row measured."""
     sensitive = data.sensitive_columns or ["", ""]
@@ -156,8 +156,8 @@ def run_dataset(
     Returns:
         Every row appended for this dataset.
     """
-    from amulet.utils import get_accuracy
     from common.io import append_row, row_exists
+    from scarab.utils import get_accuracy
 
     output = output_dir / f"{EXPERIMENT_ID}.csv"
     batch_size = run_context.batch_for(ctx.level, train_targets.BATCH_SIZE)

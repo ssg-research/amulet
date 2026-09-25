@@ -15,8 +15,8 @@ import pytest
 import torch
 from torch.utils.data import DataLoader
 
-from amulet.datasets import TextTensorDataset
-from amulet.poisoning.defenses import ONION, PoisoningDefense
+from scarab.datasets import TextTensorDataset
+from scarab.poisoning.defenses import ONION, PoisoningDefense
 
 
 @pytest.fixture

@@ -4,9 +4,9 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
-from amulet.models import AmuletModel
-from amulet.utils.__base import get_intermediate_features
-from amulet.utils.__metrics import get_accuracy, get_fidelity
+from scarab.models import ScarabModel
+from scarab.utils.__base import get_intermediate_features
+from scarab.utils.__metrics import get_accuracy, get_fidelity
 
 
 class OneHotModel(nn.Module):
@@ -45,7 +45,7 @@ class _PredFromColumn(nn.Module):
         return logits
 
 
-class _HiddenMLP(AmuletModel):
+class _HiddenMLP(ScarabModel):
     """2-layer MLP exposing get_hidden for intermediate-feature extraction."""
 
     def __init__(self, num_features: int = 4, hidden: int = 6, num_classes: int = 3):

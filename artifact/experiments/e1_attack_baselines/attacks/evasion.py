@@ -12,11 +12,11 @@ from typing import TYPE_CHECKING
 
 import torch.nn as nn
 
-from amulet.evasion.attacks import EvasionPGD
-from amulet.utils import get_accuracy
 from common import training
 from experiments.e1_attack_baselines import context, train_targets
 from experiments.e1_attack_baselines.schemas import EVASION_SCHEMA
+from scarab.evasion.attacks import EvasionPGD
+from scarab.utils import get_accuracy
 
 if TYPE_CHECKING:
     from pathlib import Path

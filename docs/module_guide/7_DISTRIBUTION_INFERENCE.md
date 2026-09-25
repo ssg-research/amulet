@@ -1,6 +1,6 @@
 # Distribution Inference
 
-Distribution inference attacks aim to determine which of two training distributions a model was trained on, for example whether a chosen sensitive attribute (like `sex` or `race`) appears in a given proportion of the training set. Amulet ships two attacks: `SuriEvans2022`, a black-box KL-divergence distinguishing test, and `WhiteBoxPIM`, a white-box attack that reads a model's raw parameters with a permutation-invariant meta-classifier.
+Distribution inference attacks aim to determine which of two training distributions a model was trained on, for example whether a chosen sensitive attribute (like `sex` or `race`) appears in a given proportion of the training set. Scarab ships two attacks: `SuriEvans2022`, a black-box KL-divergence distinguishing test, and `WhiteBoxPIM`, a white-box attack that reads a model's raw parameters with a permutation-invariant meta-classifier.
 
 Both attacks share the `DistributionInferenceAttack` lifecycle:
 
@@ -10,12 +10,12 @@ Both attacks share the `DistributionInferenceAttack` lifecycle:
 
 ## Black-Box Attack (KL divergence)
 
-To run the KL-divergence distinguishing test, use `amulet.distribution_inference.attacks.SuriEvans2022`. It measures how each target model's outputs diverge from the adversary baseline models trained on each distribution.
+To run the KL-divergence distinguishing test, use `scarab.distribution_inference.attacks.SuriEvans2022`. It measures how each target model's outputs diverge from the adversary baseline models trained on each distribution.
 
 ```python
-from amulet.distribution_inference.attacks import SuriEvans2022
-from amulet.distribution_inference.metrics import evaluate_distinguishing_accuracy
-from amulet.utils import load_data
+from scarab.distribution_inference.attacks import SuriEvans2022
+from scarab.distribution_inference.metrics import evaluate_distinguishing_accuracy
+from scarab.utils import load_data
 
 # 1. Load a dataset that exposes sensitive-attribute arrays (census or lfw)
 data = load_data("./data", "census")
@@ -64,13 +64,13 @@ The populations and test loaders built by `prepare_model_populations()` are the 
 
 ## White-Box Attack (Permutation Invariant Model)
 
-To run the white-box attack, use `amulet.distribution_inference.attacks.WhiteBoxPIM`. Rather than observing outputs, it reads each model's raw Linear and Conv2d weights and trains a Permutation Invariant Model (PIM) meta-classifier on the adversary populations to distinguish the two distributions, then evaluates that meta-classifier on the held-out target populations.
+To run the white-box attack, use `scarab.distribution_inference.attacks.WhiteBoxPIM`. Rather than observing outputs, it reads each model's raw Linear and Conv2d weights and trains a Permutation Invariant Model (PIM) meta-classifier on the adversary populations to distinguish the two distributions, then evaluates that meta-classifier on the held-out target populations.
 
 `WhiteBoxPIM` takes the same constructor arguments as `SuriEvans2022`, plus meta-classifier settings (`meta_epochs`, `lr`, `inside_dims`).
 
 ```python
-from amulet.distribution_inference.attacks import WhiteBoxPIM
-from amulet.distribution_inference.metrics import evaluate_distinguishing_accuracy
+from scarab.distribution_inference.attacks import WhiteBoxPIM
+from scarab.distribution_inference.metrics import evaluate_distinguishing_accuracy
 
 whitebox = WhiteBoxPIM(
     x_train=data.x_train,
@@ -107,4 +107,4 @@ print(f"Distinguishing Accuracy: {metrics['distinguishing_accuracy']}")
 
 ## Metrics
 
-Distribution inference is evaluated by the attack's **Distinguishing Accuracy**: how often the adversary correctly identifies which of the two distributions trained a target model. Use `amulet.distribution_inference.metrics.evaluate_distinguishing_accuracy`. It takes `results["predictions"]` and `results["ground_truth"]` and returns a dict with keys `distinguishing_accuracy` and `auc_score`.
+Distribution inference is evaluated by the attack's **Distinguishing Accuracy**: how often the adversary correctly identifies which of the two distributions trained a target model. Use `scarab.distribution_inference.metrics.evaluate_distinguishing_accuracy`. It takes `results["predictions"]` and `results["ground_truth"]` and returns a dict with keys `distinguishing_accuracy` and `auc_score`.

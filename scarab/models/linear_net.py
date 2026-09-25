@@ -3,10 +3,10 @@
 import torch
 import torch.nn as nn
 
-from .base import AmuletModel
+from .base import ScarabModel
 
 
-class LinearNet(AmuletModel):
+class LinearNet(ScarabModel):
     """Build a dense (fully connected) network for multiclass classification.
 
     Args:

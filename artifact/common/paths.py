@@ -34,8 +34,8 @@ def artifact_root() -> Path:
 def repo_root() -> Path:
     """Return the absolute path of the repository root.
 
-    This is the directory holding the `amulet/` library the artifact exercises,
-    and the `data/` cache that `amulet.utils.load_data` reads and writes.
+    This is the directory holding the `scarab/` library the artifact exercises,
+    and the `data/` cache that `scarab.utils.load_data` reads and writes.
 
     Returns:
         The repository root directory.

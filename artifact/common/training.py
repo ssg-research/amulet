@@ -23,14 +23,14 @@ import torch.nn as nn
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader, TensorDataset, random_split
 
-from amulet.evasion.attacks import EvasionPGD
-from amulet.evasion.defenses import AdversarialTrainingPGD
-from amulet.utils import get_accuracy, train_classifier
+from scarab.evasion.attacks import EvasionPGD
+from scarab.evasion.defenses import AdversarialTrainingPGD
+from scarab.utils import get_accuracy, train_classifier
 
 if TYPE_CHECKING:
     from torch.optim.lr_scheduler import _LRScheduler
 
-    from amulet.datasets import AmuletDataset
+    from scarab.datasets import ScarabDataset
 
 
 def seed_everything(seed: int) -> None:
@@ -171,7 +171,7 @@ class AdversarySplit:
 
 
 def adversary_split(
-    data: AmuletDataset, seed: int, adv_fraction: float = 0.5
+    data: ScarabDataset, seed: int, adv_fraction: float = 0.5
 ) -> AdversarySplit:
     """Split the training data by NumPy array index into target and adversary halves.
 

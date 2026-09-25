@@ -1,4 +1,4 @@
-"""Tests for the core training primitives in amulet/utils/__base.py:
+"""Tests for the core training primitives in scarab/utils/__base.py:
 
 - train_classifier: gradient flow works end-to-end — loss on a single learnable
   batch collapses (bucket 2: a property of the optimizer, not the data).
@@ -13,7 +13,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
-from amulet.utils import get_predictions_numpy, load_or_train, train_classifier
+from scarab.utils import get_predictions_numpy, load_or_train, train_classifier
 
 
 def test_train_classifier_overfits_single_batch(

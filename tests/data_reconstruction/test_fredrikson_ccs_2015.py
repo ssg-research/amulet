@@ -3,7 +3,7 @@
 import pytest
 import torch
 
-from amulet.data_reconstruction.attacks.fredrikson_ccs_2015 import FredriksonCCS2015
+from scarab.data_reconstruction.attacks.fredrikson_ccs_2015 import FredriksonCCS2015
 
 
 @pytest.mark.integration

@@ -29,12 +29,12 @@ import torch
 import torch.nn as nn
 from torch.utils.data import TensorDataset
 
-from amulet.datasets import AmuletDataset
 from common.models import ModelSpec
 from common.run_context import RunContext, architecture_for, batch_for, epochs_for
 from common.training import dataset_adversary_split, loader_for
 from common.training import train_with_adam as train_clean
 from experiments.e4_outrem_modext.schemas import CAPACITY
+from scarab.datasets import ScarabDataset
 
 # The paper trains the E4 targets for 100 epochs and retrains for 100 more after
 # removal; `full` defers to this.
@@ -77,7 +77,7 @@ def tiny_outrem_dataset(
     seed: int,
     num_features: int = TINY_NUM_FEATURES,
     num_classes: int = TINY_NUM_CLASSES,
-) -> AmuletDataset:
+) -> ScarabDataset:
     """Build E4's `test`-level stand-in: separable tabular data with outliers.
 
     Each record sits in its class's own intensity band so the label is learnable,
@@ -121,7 +121,7 @@ def tiny_outrem_dataset(
     x_train, y_train, z_train = split(TINY_TRAIN_SIZE, corrupt=True)
     x_test, y_test, z_test = split(TINY_TEST_SIZE, corrupt=False)
 
-    return AmuletDataset(
+    return ScarabDataset(
         train_set=TensorDataset(torch.from_numpy(x_train), torch.from_numpy(y_train)),
         test_set=TensorDataset(torch.from_numpy(x_test), torch.from_numpy(y_test)),
         num_features=num_features,
@@ -253,7 +253,7 @@ def retrain_after_outlier_removal(
     Returns:
         The retrained defended model.
     """
-    from amulet.poisoning.defenses import OutlierRemoval
+    from scarab.poisoning.defenses import OutlierRemoval
 
     starting = copy.deepcopy(clean)
     defense = OutlierRemoval(
@@ -272,7 +272,7 @@ def retrain_after_outlier_removal(
 
 def build_models(
     ctx: RunContext, dataset: str, percent: int, capacity: str = CAPACITY
-) -> tuple[ModelBundle, AmuletDataset]:
+) -> tuple[ModelBundle, ScarabDataset]:
     """Train (or load) the clean, defended and stolen models for one cell.
 
     Args:
@@ -284,7 +284,7 @@ def build_models(
     Returns:
         The models with their specs, and the loaded dataset.
     """
-    from amulet.unauth_model_ownership.attacks import ModelExtraction
+    from scarab.unauth_model_ownership.attacks import ModelExtraction
 
     data = ctx.data(dataset)
     num_features, num_classes = data.num_features, data.num_classes

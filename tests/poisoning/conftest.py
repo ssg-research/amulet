@@ -11,7 +11,7 @@ from __future__ import annotations
 import pytest
 import torch
 
-from amulet.datasets import TextTensorDataset
+from scarab.datasets import TextTensorDataset
 
 # TinyLlama's tokenizer (Llama architecture, license-free) is cached on the dev box.
 _TOKENIZER_NAME = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
@@ -22,7 +22,7 @@ _MAX_LEN = 16
 def text_tokenizer():
     """A real (cached) tokenizer; skips when the llm extra or cache is unavailable."""
     pytest.importorskip("transformers")
-    from amulet.datasets.__text_datasets import _load_tokenizer
+    from scarab.datasets.__text_datasets import _load_tokenizer
 
     try:
         return _load_tokenizer(_TOKENIZER_NAME)
@@ -37,7 +37,7 @@ def tiny_text_dataset(text_tokenizer) -> TextTensorDataset:
     Two positive (label 1) and two negative (label 0) rows, so a trigger_label=1 attack
     has exactly two non-target rows to poison.
     """
-    from amulet.datasets.__text_datasets import _tokenize
+    from scarab.datasets.__text_datasets import _tokenize
 
     texts = [
         "a genuinely wonderful and moving film",
@@ -63,7 +63,7 @@ def tiny_text_classifier_factory(text_tokenizer, cpu_device):
     pytest.importorskip("peft")
     from transformers import LlamaConfig
 
-    from amulet.models import HFCausalLM
+    from scarab.models import HFCausalLM
 
     def _make(seed: int = 0) -> HFCausalLM:
         config = LlamaConfig(

@@ -1,12 +1,12 @@
 # Getting Started
 
-Amulet (`amuletml` on PyPI) is a PyTorch-based research library for evaluating unintended interactions among machine learning (ML) defenses and risks across security, privacy, and fairness.
+Scarab (`scarabml` on PyPI) is a PyTorch-based research library for evaluating unintended interactions among machine learning (ML) defenses and risks across security, privacy, and fairness.
 
 ## Features
 
 ### Datasets
 
-Amulet provides built-in support for several common datasets, including automated downloading and pre-processing:
+Scarab provides built-in support for several common datasets, including automated downloading and pre-processing:
 
 - **Computer Vision**: [CIFAR-10](https://pytorch.org/vision/main/generated/torchvision.datasets.CIFAR10.html), [CIFAR-100](https://pytorch.org/vision/main/generated/torchvision.datasets.CIFAR100.html), [FashionMNIST](https://pytorch.org/vision/stable/generated/torchvision.datasets.FashionMNIST.html), [MNIST](https://pytorch.org/vision/stable/generated/torchvision.datasets.MNIST.html).
 - **Face Attributes**: [CelebA](https://mmlab.ie.cuhk.edu.hk/projects/CelebA.html), [Labeled Faces in the Wild (LFW)](https://scikit-learn.org/stable/modules/generated/sklearn.datasets.fetch_lfw_people.html), [UTKFace](https://susanqq.github.io/UTKFace/).
@@ -15,7 +15,7 @@ Amulet provides built-in support for several common datasets, including automate
 
 ### Models
 
-Amulet provides pre-configured architectures with scalable capacity:
+Scarab provides pre-configured architectures with scalable capacity:
 
 - **VGG**: Standard VGG architectures (VGG11 to VGG19).
 - **ResNet**: Standard ResNet architectures (ResNet34 to ResNet152).
@@ -25,7 +25,7 @@ Amulet provides pre-configured architectures with scalable capacity:
 
 ### Risks
 
-Amulet provides attacks, defenses, and evaluation metrics for the following risks:
+Scarab provides attacks, defenses, and evaluation metrics for the following risks:
 
 #### Security
 
@@ -48,11 +48,11 @@ Amulet provides attacks, defenses, and evaluation metrics for the following risk
 
 ### Data Class
 
-All Amulet datasets are returned as an `AmuletDataset` dataclass:
+All Scarab datasets are returned as a `ScarabDataset` dataclass:
 
 ```python
 @dataclass
-class AmuletDataset:
+class ScarabDataset:
     train_set: torch.utils.data.Dataset
     test_set: torch.utils.data.Dataset
     num_features: int
@@ -78,7 +78,7 @@ class AmuletDataset:
 The primary entry point for loading data is `load_data`:
 
 ```python
-from amulet.utils import load_data
+from scarab.utils import load_data
 
 data = load_data(
     root="./data",
@@ -89,10 +89,10 @@ data = load_data(
 )
 ```
 
-Text datasets are loaded directly (not through `load_data`), and return an `AmuletDataset` with `modality="text"` whose `train_set`/`test_set` are `TextTensorDataset` instances (padded `input_ids` plus the raw strings). They require the optional `llm` extra:
+Text datasets are loaded directly (not through `load_data`), and return a `ScarabDataset` with `modality="text"` whose `train_set`/`test_set` are `TextTensorDataset` instances (padded `input_ids` plus the raw strings). They require the optional `llm` extra:
 
 ```python
-from amulet.datasets import load_sst2
+from scarab.datasets import load_sst2
 
 data = load_sst2(
     path="./data/sst2",                              # project-local HF cache
@@ -103,12 +103,12 @@ data = load_sst2(
 
 ## Creating Models
 
-Amulet models subclass `AmuletModel` (itself an `nn.Module`) and implement both `forward(x)` and a `get_hidden(x)` method for accessing intermediate features.
+Scarab models subclass `ScarabModel` (itself an `nn.Module`) and implement both `forward(x)` and a `get_hidden(x)` method for accessing intermediate features.
 
 ### Initializing Architectures
 
 ```python
-from amulet.utils import initialize_model
+from scarab.utils import initialize_model
 
 model = initialize_model(
     model_arch="vgg",       # Options: vgg, resnet, linearnet, cnn
@@ -122,4 +122,4 @@ model = initialize_model(
 ## Module Guide
 
 For detailed instructions on each risk, please see the [Module Guide](./module_guide/1_INTRO.md).
-Check the [examples/](https://github.com/ssg-research/amulet/tree/main/examples) directory for end-to-end scripts.
+Check the [examples/](https://github.com/ssg-research/scarab/tree/main/examples) directory for end-to-end scripts.

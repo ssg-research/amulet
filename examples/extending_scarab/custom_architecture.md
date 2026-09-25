@@ -1,24 +1,24 @@
-# Extending Amulet with a Custom Model Architecture
+# Extending Scarab with a Custom Model Architecture
 
-This example demonstrates how to add a new **model architecture** to Amulet.
+This example demonstrates how to add a new **model architecture** to Scarab.
 All models follow a simple, standardized interface: every model subclasses
-`AmuletModel` (`amulet/models/base.py`) and implements both `forward` and
+`ScarabModel` (`scarab/models/base.py`) and implements both `forward` and
 `get_hidden`. Several modules (e.g. `get_intermediate_features`, `OutlierRemoval`)
-rely on `get_hidden` returning intermediate activations; subclassing `AmuletModel`
+rely on `get_hidden` returning intermediate activations; subclassing `ScarabModel`
 enforces that contract at runtime instead of failing silently.
 
 ## Step 1: Implement the Model
 
-Create a new model file. Subclass `AmuletModel`, not `nn.Module` directly.
+Create a new model file. Subclass `ScarabModel`, not `nn.Module` directly.
 
-**File:** `amulet/models/vit.py`
+**File:** `scarab/models/vit.py`
 
 ```python
 import torch
 
-from amulet.models.base import AmuletModel
+from scarab.models.base import ScarabModel
 
-class VisionTransformer(AmuletModel):
+class VisionTransformer(ScarabModel):
     def __init__(self, **hyperparameters):
         super().__init__()
         # Initialize Vision Transformer layers
@@ -33,8 +33,8 @@ class VisionTransformer(AmuletModel):
         ...
 ```
 
-For a full worked example that subclasses `AmuletModel` around a real pretrained
-backbone, see `amulet/models/hf_causal_lm.py` (`HFCausalLM`), which wraps a Hugging Face
+For a full worked example that subclasses `ScarabModel` around a real pretrained
+backbone, see `scarab/models/hf_causal_lm.py` (`HFCausalLM`), which wraps a Hugging Face
 causal (decoder-only) LM with LoRA and exposes classification, perplexity scoring, and
 generation over one shared adapted decoder.
 
@@ -42,10 +42,10 @@ generation over one shared adapted decoder.
 
 Update the models namespace.
 
-**File:** `amulet/models/__init__.py`
+**File:** `scarab/models/__init__.py`
 
 ```python
-from .base import AmuletModel
+from .base import ScarabModel
 from .cnn import SimpleCNN
 from .hf_causal_lm import HFCausalLM
 from .linear_net import LinearNet
@@ -55,7 +55,7 @@ from .vit import VisionTransformer
 
 __all__ = [
     "VGG",
-    "AmuletModel",
+    "ScarabModel",
     "HFCausalLM",
     "LinearNet",
     "ResNet",
@@ -66,7 +66,7 @@ __all__ = [
 
 ## Step 3: Register the Model in the Pipeline
 
-Add a new case in the model initialization pipeline (`initialize_model` in `amulet/utils/__pipeline.py`).
+Add a new case in the model initialization pipeline (`initialize_model` in `scarab/utils/__pipeline.py`).
 
 ```python
 elif model_arch == "vit":

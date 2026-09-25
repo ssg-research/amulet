@@ -2,7 +2,7 @@ import pytest
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
-from amulet.data_reconstruction.metrics.similarity_evaluation import (
+from scarab.data_reconstruction.metrics.similarity_evaluation import (
     evaluate_similarity,
 )
 

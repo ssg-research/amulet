@@ -17,7 +17,7 @@ from sklearn.model_selection import train_test_split
 from torch.utils.data import TensorDataset
 from torchvision import datasets
 
-from .__data import AmuletDataset
+from .__data import ScarabDataset
 
 _CELEBA_IMAGES_GDRIVE_ID = "1aiLLTGVnOnq0Ln9uf3nSuj8JmhrX5rMx"
 _CELEBA_ATTRS_GDRIVE_ID = "15HHhEpb0ylQliq8vbdrN6kBlxpc33OA5"
@@ -29,7 +29,7 @@ def load_cifar10(
     path: str | Path = Path("./data/cifar10"),
     transform_train: transforms.Compose | None = None,
     transform_test: transforms.Compose | None = None,
-) -> AmuletDataset:
+) -> ScarabDataset:
     """
     Load the CIFAR10 dataset with standard transformations.
 
@@ -39,7 +39,7 @@ def load_cifar10(
         transform_test: Transforms applied to test images. Defaults to ToTensor.
 
     Returns:
-        AmuletDataset with train_set and test_set populated.
+        ScarabDataset with train_set and test_set populated.
     """
 
     # Note: We do not normalize the inputs by default to preserve [0,1] range.
@@ -61,7 +61,7 @@ def load_cifar10(
         root=path, train=False, transform=transform_test, download=True
     )
 
-    return AmuletDataset(
+    return ScarabDataset(
         train_set=train_set,
         test_set=test_set,
         num_features=32 * 32,
@@ -74,7 +74,7 @@ def load_cifar100(
     path: str | Path = Path("./data/cifar100"),
     transform_train: transforms.Compose | None = None,
     transform_test: transforms.Compose | None = None,
-) -> AmuletDataset:
+) -> ScarabDataset:
     """
     Load the CIFAR100 dataset with standard transformations.
 
@@ -84,7 +84,7 @@ def load_cifar100(
         transform_test: Transforms applied to test images. Defaults to ToTensor.
 
     Returns:
-        AmuletDataset with train_set and test_set populated.
+        ScarabDataset with train_set and test_set populated.
     """
 
     # Note: We do not normalize the inputs by default to preserve [0,1] range.
@@ -111,7 +111,7 @@ def load_cifar100(
         root=path, train=False, transform=transform_test, download=True
     )
 
-    return AmuletDataset(
+    return ScarabDataset(
         train_set=train_set,
         test_set=test_set,
         num_features=32 * 32,
@@ -124,7 +124,7 @@ def load_fmnist(
     path: str | Path = Path("./data/fmnist"),
     transform_train: transforms.Compose | None = None,
     transform_test: transforms.Compose | None = None,
-) -> AmuletDataset:
+) -> ScarabDataset:
     """
     Load the FashionMNIST dataset with standard transformations.
 
@@ -134,7 +134,7 @@ def load_fmnist(
         transform_test: Transforms applied to test images. Defaults to flip + rotation + crop + ToTensor.
 
     Returns:
-        AmuletDataset with train_set and test_set populated.
+        ScarabDataset with train_set and test_set populated.
     """
     if transform_train is None:
         transform_train = transforms.Compose([
@@ -161,7 +161,7 @@ def load_fmnist(
         root=path, train=False, transform=transform_test, download=True
     )
 
-    return AmuletDataset(
+    return ScarabDataset(
         train_set=train_set,
         test_set=test_set,
         num_features=28 * 28,
@@ -174,7 +174,7 @@ def load_mnist(
     path: str | Path = Path("./data/mnist"),
     transform_train: transforms.Compose | None = None,
     transform_test: transforms.Compose | None = None,
-) -> AmuletDataset:
+) -> ScarabDataset:
     """
     Load the MNIST dataset with standard transformations.
 
@@ -184,7 +184,7 @@ def load_mnist(
         transform_test: Transforms applied to test images. Defaults to flip + rotation + crop + ToTensor.
 
     Returns:
-        AmuletDataset with train_set and test_set populated.
+        ScarabDataset with train_set and test_set populated.
     """
     if transform_train is None:
         transform_train = transforms.Compose([
@@ -211,7 +211,7 @@ def load_mnist(
         root=path, train=False, transform=transform_test, download=True
     )
 
-    return AmuletDataset(
+    return ScarabDataset(
         train_set=train_set,
         test_set=test_set,
         num_features=28 * 28,
@@ -285,7 +285,7 @@ def load_celeba(
     random_seed: int = 0,
     test_size: float = 0.5,
     target_attribute: str = "Smiling",
-) -> AmuletDataset:
+) -> ScarabDataset:
     """
     Load the CelebA dataset, separating sensitive attributes from features and labels.
 
@@ -302,7 +302,7 @@ def load_celeba(
             Options include: "Smiling", "Wavy_Hair", "Attractive", "Young".
 
     Returns:
-        AmuletDataset with train_set, test_set, x_*, y_*, and z_* arrays populated.
+        ScarabDataset with train_set, test_set, x_*, y_*, and z_* arrays populated.
         Images are float32 in [0, 1] with shape (N, 3, 64, 64). Sensitive attribute
         is always "Male" with shape (N, 1).
     """
@@ -349,7 +349,7 @@ def load_celeba(
         torch.from_numpy(y_test),
     )
 
-    return AmuletDataset(
+    return ScarabDataset(
         train_set=train_set,
         test_set=test_set,
         num_features=_CELEBA_IMG_SIZE * _CELEBA_IMG_SIZE,
@@ -465,7 +465,7 @@ def load_utkface(
     age_bins: list[int] | None = None,
     test_size: float = 0.3,
     random_seed: int = 7,
-) -> AmuletDataset:
+) -> ScarabDataset:
     """
     Load the UTKFace dataset with age, gender, and race labels parsed from filenames.
 
@@ -490,7 +490,7 @@ def load_utkface(
         random_seed: Random seed for reproducible train/test splitting.
 
     Returns:
-        AmuletDataset with train_set, test_set, x_*, y_*, and z_* arrays populated.
+        ScarabDataset with train_set, test_set, x_*, y_*, and z_* arrays populated.
         Images are float32 in [0, 1] with shape (N, 3, 64, 64).
         z_train/z_test have shape (N, 2) for the two sensitive attributes.
     """
@@ -556,7 +556,7 @@ def load_utkface(
         torch.from_numpy(y_test),
     )
 
-    return AmuletDataset(
+    return ScarabDataset(
         train_set=train_set,
         test_set=test_set,
         num_features=_UTKFACE_IMG_SIZE * _UTKFACE_IMG_SIZE,

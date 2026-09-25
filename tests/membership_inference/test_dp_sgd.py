@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 import torch
 
-from amulet.membership_inference.defenses.dp_sgd import DPSGD
+from scarab.membership_inference.defenses.dp_sgd import DPSGD
 
 
 def _assert_state_dicts_equal(

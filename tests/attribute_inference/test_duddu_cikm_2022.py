@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from amulet.attribute_inference.attacks.duddu_cikm_2022 import DudduCIKM2022
+from scarab.attribute_inference.attacks.duddu_cikm_2022 import DudduCIKM2022
 
 
 @pytest.mark.integration

@@ -14,12 +14,12 @@ from typing import TYPE_CHECKING
 
 import torch.nn as nn
 
-from amulet.data_reconstruction.attacks import FredriksonCCS2015
-from amulet.data_reconstruction.metrics import evaluate_similarity
-from amulet.utils import get_accuracy
 from common import training
 from experiments.e1_attack_baselines import context, train_targets
 from experiments.e1_attack_baselines.schemas import DATA_RECONSTRUCTION_SCHEMA
+from scarab.data_reconstruction.attacks import FredriksonCCS2015
+from scarab.data_reconstruction.metrics import evaluate_similarity
+from scarab.utils import get_accuracy
 
 if TYPE_CHECKING:
     from pathlib import Path

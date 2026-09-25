@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
-from amulet.unauth_model_ownership.metrics.extraction_accuracy import (
+from scarab.unauth_model_ownership.metrics.extraction_accuracy import (
     evaluate_extraction,
 )
 

@@ -23,7 +23,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
-from amulet.distribution_inference.attacks.suri_evans_2022 import SuriEvans2022
+from scarab.distribution_inference.attacks.suri_evans_2022 import SuriEvans2022
 
 _NUM_FEATURES = 4
 _NUM_CLASSES = 2
@@ -222,7 +222,7 @@ class TestTrainModelPopulationCacheReuse:
 
         # second call should load from disk; patch train_classifier to detect calls
         mock_train = mocker.patch(
-            "amulet.distribution_inference.attacks.distribution_inference_attack.train_classifier"
+            "scarab.distribution_inference.attacks.distribution_inference_attack.train_classifier"
         )
         attack.train_model_population(loader, checkpoint_tag="reuse_tag", num_models=1)
 
@@ -300,7 +300,7 @@ class TestTrainModelPopulationOverrides:
         recorded_epochs: list[int] = []
 
         original_train = __import__(
-            "amulet.utils", fromlist=["train_classifier"]
+            "scarab.utils", fromlist=["train_classifier"]
         ).train_classifier
 
         def capturing_train(
@@ -318,7 +318,7 @@ class TestTrainModelPopulationOverrides:
             )
 
         mocker.patch(
-            "amulet.distribution_inference.attacks.distribution_inference_attack.train_classifier",
+            "scarab.distribution_inference.attacks.distribution_inference_attack.train_classifier",
             side_effect=capturing_train,
         )
         attack.train_model_population(
@@ -339,7 +339,7 @@ class TestTrainModelPopulationOverrides:
         recorded_epochs: list[int] = []
 
         original_train = __import__(
-            "amulet.utils", fromlist=["train_classifier"]
+            "scarab.utils", fromlist=["train_classifier"]
         ).train_classifier
 
         def capturing_train(
@@ -357,7 +357,7 @@ class TestTrainModelPopulationOverrides:
             )
 
         mocker.patch(
-            "amulet.distribution_inference.attacks.distribution_inference_attack.train_classifier",
+            "scarab.distribution_inference.attacks.distribution_inference_attack.train_classifier",
             side_effect=capturing_train,
         )
         attack.train_model_population(
@@ -383,7 +383,7 @@ class TestPrepareModelPopulationsState:
         assert attack.splits is None
 
     def test_splits_set_after_call(self, attack_factory) -> None:
-        from amulet.distribution_inference.dataset_utils import DistributionSplits
+        from scarab.distribution_inference.dataset_utils import DistributionSplits
 
         attack = attack_factory(num_models=1)
 
@@ -544,7 +544,7 @@ class TestPrepareModelPopulationsReuse:
         # second instance, same dir; patch train_classifier to detect calls
         attack2 = attack_factory(num_models=1, exp_id=5)
         mock_train = mocker.patch(
-            "amulet.distribution_inference.attacks.distribution_inference_attack.train_classifier"
+            "scarab.distribution_inference.attacks.distribution_inference_attack.train_classifier"
         )
         attack2.prepare_model_populations()
 

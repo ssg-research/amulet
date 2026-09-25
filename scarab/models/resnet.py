@@ -14,7 +14,7 @@ from torchvision.models import (
 )
 from torchvision.models._api import WeightsEnum
 
-from .base import AmuletModel
+from .base import ScarabModel
 
 
 class Identity(nn.Module):
@@ -27,7 +27,7 @@ class Identity(nn.Module):
         return x
 
 
-class ResNet(AmuletModel):
+class ResNet(ScarabModel):
     """Build a torchvision ResNet backbone with a fresh classification head.
 
     The backbone's final fully connected layer is replaced with an identity, so

@@ -1,7 +1,7 @@
 [project]
-name = "amuletml"
+name = "scarabml"
 version = "0.6.0"
-description = "Amulet is a Python machine learning (ML) package to evaluate the susceptibility of different risks to security, privacy, and fairness."
+description = "Scarab is a Python machine learning (ML) package to evaluate the susceptibility of different risks to security, privacy, and fairness."
 authors = [
     {name = "Asim Waheed", email = "asim.waheed29@gmail.com"},
     {name = "Sebastian Szyller", email = "contact@sebszyller.com"},
@@ -27,7 +27,7 @@ dependencies = [
     "scikit-learn==1.8.0",
     "scikit-image==0.25.1",
     "scipy==1.12.0",
-    # torch/torchvision keep a loose floor here so `pip install amuletml` still works
+    # torch/torchvision keep a loose floor here so `pip install scarabml` still works
     # off PyPI. For a reproducible, driver-correct GPU build, sync with one of the
     # cpu/cu128/cu130 extras below, which pin the version and route it to the matching
     # PyTorch index (see the comment on those extras).
@@ -54,7 +54,7 @@ cu130 = ["torch==2.11.0", "torchvision==0.26.0"]
 # target, ONION defense). Kept optional so the base install stays lean and the
 # macOS dev machine / fast CI tier never pull the heavy Hugging Face stack. Every
 # module that imports these guards the import and raises a clear
-# "install amuletml[llm]" message when an LLM component is actually constructed.
+# "install scarabml[llm]" message when an LLM component is actually constructed.
 # Versions are the set the Phase-1 spike resolved and validated (2026-07-10).
 # bitsandbytes (4-bit load path) is GPU/Linux-only; it is deliberately left out of
 # this extra and its import is guarded, so it is never touched under DP or on macOS.
@@ -74,15 +74,15 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/ssg-research/amulet"
-Issues = "https://github.com/ssg-research/amulet/issues"
+Homepage = "https://github.com/ssg-research/scarab"
+Issues = "https://github.com/ssg-research/scarab/issues"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["amulet"]
+packages = ["scarab"]
 
 [tool.uv]
 # Make the CUDA-build extras mutually exclusive so a lock can carry all three.
@@ -136,7 +136,7 @@ ignore = ["E501", "B903"]
 # instead of being an installed package (the artifact must run from a checkout
 # with no packaging step). Declare them so their imports are grouped as
 # first-party, not third-party.
-known-first-party = ["amulet", "common", "experiments"]
+known-first-party = ["scarab", "common", "experiments"]
 
 [tool.ruff.format]
 quote-style = "double"

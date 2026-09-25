@@ -9,8 +9,8 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader
 
-from amulet.membership_inference.defenses import DPSGD
-from amulet.utils import (
+from scarab.membership_inference.defenses import DPSGD
+from scarab.utils import (
     create_dir,
     get_accuracy,
     initialize_model,

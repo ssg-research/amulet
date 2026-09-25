@@ -9,9 +9,9 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader
 
-from amulet.data_reconstruction.attacks import FredriksonCCS2015
-from amulet.data_reconstruction.metrics import evaluate_similarity
-from amulet.utils import (
+from scarab.data_reconstruction.attacks import FredriksonCCS2015
+from scarab.data_reconstruction.metrics import evaluate_similarity
+from scarab.utils import (
     create_dir,
     get_accuracy,
     initialize_model,

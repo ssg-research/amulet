@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from amulet.distribution_inference.metrics.distinguishing_accuracy import (
+from scarab.distribution_inference.metrics.distinguishing_accuracy import (
     evaluate_distinguishing_accuracy,
 )
 

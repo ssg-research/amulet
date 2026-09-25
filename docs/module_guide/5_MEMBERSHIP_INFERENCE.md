@@ -1,17 +1,17 @@
 # Membership Inference
 
-Membership inference attacks aim to determine if a specific data point was used to train a model. Amulet implements the **Likelihood Ratio Attack (LiRA)** and provides **DP-SGD** as a robust defense against such privacy risks.
+Membership inference attacks aim to determine if a specific data point was used to train a model. Scarab implements the **Likelihood Ratio Attack (LiRA)** and provides **DP-SGD** as a robust defense against such privacy risks.
 
 ## Membership Inference Attack
 
-To run a membership inference attack, use `amulet.membership_inference.attacks.LiRA`. This attack uses shadow models trained on subsets of the original dataset to estimate the likelihood that a point was in the target model's training set.
+To run a membership inference attack, use `scarab.membership_inference.attacks.LiRA`. This attack uses shadow models trained on subsets of the original dataset to estimate the likelihood that a point was in the target model's training set.
 
 ```python
 import numpy as np
 from torch.utils.data import DataLoader, Subset
-from amulet.membership_inference.attacks import LiRA
-from amulet.membership_inference.metrics import compute_mi_metrics
-from amulet.utils import load_data, initialize_model, train_classifier
+from scarab.membership_inference.attacks import LiRA
+from scarab.membership_inference.metrics import compute_mi_metrics
+from scarab.utils import load_data, initialize_model, train_classifier
 
 # 1. Load data and identify training members
 data = load_data("./data", "cifar10")
@@ -54,10 +54,10 @@ print(f"Attack AUC: {metrics['auc']}")
 
 ## DP-SGD Defense
 
-To train a model with differential privacy, use `amulet.membership_inference.defenses.DPSGD`. Note that the current implementation of DP-SGD is incompatible with standard batch normalization.
+To train a model with differential privacy, use `scarab.membership_inference.defenses.DPSGD`. Note that the current implementation of DP-SGD is incompatible with standard batch normalization.
 
 ```python
-from amulet.membership_inference.defenses import DPSGD
+from scarab.membership_inference.defenses import DPSGD
 
 # Initialize model without batch normalization
 defended_model = initialize_model("vgg", "m1", data.num_features, data.num_classes, batch_norm=False).to(device)
@@ -84,4 +84,4 @@ The optional `max_physical_batch_size` argument opts into Opacus' `BatchMemoryMa
 
 ## Metrics
 
-Membership inference effectiveness is evaluated using the **AUC score** and the **True Positive Rate at a low target False Positive Rate (FPR)**, which are standard for measuring how well an adversary can distinguish members from non-members. Use `amulet.membership_inference.metrics.compute_mi_metrics` to compute these values from attack results. It returns the keys `auc`, `balanced_acc`, `tpr_at_fpr`, and `threshold_score`.
+Membership inference effectiveness is evaluated using the **AUC score** and the **True Positive Rate at a low target False Positive Rate (FPR)**, which are standard for measuring how well an adversary can distinguish members from non-members. Use `scarab.membership_inference.metrics.compute_mi_metrics` to compute these values from attack results. It returns the keys `auc`, `balanced_acc`, `tpr_at_fpr`, and `threshold_score`.

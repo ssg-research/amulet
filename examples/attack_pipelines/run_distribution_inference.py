@@ -17,9 +17,9 @@ from pathlib import Path
 
 import torch
 
-from amulet.distribution_inference.attacks import SuriEvans2022
-from amulet.distribution_inference.metrics import evaluate_distinguishing_accuracy
-from amulet.utils import create_dir, load_data
+from scarab.distribution_inference.attacks import SuriEvans2022
+from scarab.distribution_inference.metrics import evaluate_distinguishing_accuracy
+from scarab.utils import create_dir, load_data
 
 
 def parse_args() -> argparse.Namespace:

@@ -1,24 +1,24 @@
-# Extending Amulet with a Custom Risk
+# Extending Scarab with a Custom Risk
 
-This example demonstrates how to add a new **risk** to Amulet.
+This example demonstrates how to add a new **risk** to Scarab.
 A risk encapsulates one or more attacks and defines how a model can be evaluated under a new threat model.
 
 ## Step 1: Create a New Risk Directory
 
-Create a new directory under `amulet/` for the risk:
+Create a new directory under `scarab/` for the risk:
 
 ```text
-amulet/test_time_adaptation/
-amulet/test_time_adaptation/attacks/
+scarab/test_time_adaptation/
+scarab/test_time_adaptation/attacks/
 ```
 
 ## Step 2: Implement the Attack
 
 Add a new attack file under the `attacks` subdirectory.
-Amulet has no single shared attack base class. Each risk defines its own attack ABC (for example `EvasionAttack` in `amulet/evasion/attacks/` and `PoisoningAttack` in `amulet/poisoning/attacks/`).
+Scarab has no single shared attack base class. Each risk defines its own attack ABC (for example `EvasionAttack` in `scarab/evasion/attacks/` and `PoisoningAttack` in `scarab/poisoning/attacks/`).
 A new risk should define its own risk-specific base and have its attacks inherit from it. This example defines `TestTimeAdaptationAttack` for the test-time adaptation risk.
 
-**File:** `amulet/test_time_adaptation/attacks/test_time_data_poisoning.py`
+**File:** `scarab/test_time_adaptation/attacks/test_time_data_poisoning.py`
 
 ```python
 import torch
@@ -39,7 +39,7 @@ class TestTimeDataPoisoning(TestTimeAdaptationAttack):
 
 Add an `__init__.py` file to expose the attack class.
 
-**File:** `amulet/test_time_adaptation/attacks/__init__.py`
+**File:** `scarab/test_time_adaptation/attacks/__init__.py`
 
 ```python
 from .test_time_data_poisoning import TestTimeDataPoisoning

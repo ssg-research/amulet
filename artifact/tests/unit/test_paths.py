@@ -23,7 +23,7 @@ def test_repo_root_is_the_parent_of_artifact_root() -> None:
 
 
 def test_repo_root_contains_the_library_and_pyproject() -> None:
-    assert (repo_root() / "amulet" / "__init__.py").is_file()
+    assert (repo_root() / "scarab" / "__init__.py").is_file()
     assert (repo_root() / "pyproject.toml").is_file()
 
 

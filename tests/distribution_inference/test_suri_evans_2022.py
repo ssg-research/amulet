@@ -8,7 +8,7 @@ _kl_predictions subsamples adversary-model pairs via the *global* numpy RNG
 import numpy as np
 import pytest
 
-from amulet.distribution_inference.attacks.suri_evans_2022 import SuriEvans2022
+from scarab.distribution_inference.attacks.suri_evans_2022 import SuriEvans2022
 
 N_ADV_MODELS = 4
 N_TARGET_MODELS = 3

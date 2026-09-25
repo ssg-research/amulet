@@ -57,9 +57,9 @@ class ModelSpec:
     produces a different key and a separate checkpoint.
 
     Attributes:
-        dataset: Dataset name as passed to `amulet.utils.load_data`.
+        dataset: Dataset name as passed to `scarab.utils.load_data`.
         arch: Architecture family, e.g. `"vgg"` or `"resnet"`.
-        capacity: Capacity tier in `amulet.utils.DEFAULT_CAPACITY_MAP`, e.g. `"m1"`.
+        capacity: Capacity tier in `scarab.utils.DEFAULT_CAPACITY_MAP`, e.g. `"m1"`.
         num_features: Input feature count for tabular architectures.
         num_classes: Number of output classes.
         seed: Experiment seed, passed as `exp_id` to the data loader.

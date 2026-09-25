@@ -9,7 +9,7 @@ import pytest
 import torch
 from torch.utils.data import TensorDataset
 
-from amulet.poisoning.attacks.badnets import BadNets
+from scarab.poisoning.attacks.badnets import BadNets
 
 
 def _tabular_dataset() -> TensorDataset:

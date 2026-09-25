@@ -1,4 +1,4 @@
-"""Fast tests for load_utkface and its helpers in amulet/datasets/__image_datasets.py.
+"""Fast tests for load_utkface and its helpers in scarab/datasets/__image_datasets.py.
 
 The network boundary (gdown) is mocked: "downloading" plants a synthetic
 UTKFace tarball, so cold-start orchestration, cache-hit, changed-target, and
@@ -14,7 +14,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from amulet.datasets.__image_datasets import (  # type: ignore[reportPrivateImportUsage]
+from scarab.datasets.__image_datasets import (  # type: ignore[reportPrivateImportUsage]
     _utkface_build_processed_cache,
     _utkface_parse_labels,
     load_utkface,

@@ -4,14 +4,14 @@ Attribute inference attacks predict sensitive features of a data point (like gen
 
 ## Attack
 
-To run an attribute inference attack, use `amulet.attribute_inference.attacks.DudduCIKM2022`. This attack trains an MLP on target model predictions and corresponding sensitive attributes to learn how to infer those attributes for new samples.
+To run an attribute inference attack, use `scarab.attribute_inference.attacks.DudduCIKM2022`. This attack trains an MLP on target model predictions and corresponding sensitive attributes to learn how to infer those attributes for new samples.
 
 ```python
 import numpy as np
 from sklearn.model_selection import train_test_split
-from amulet.attribute_inference.attacks import DudduCIKM2022
-from amulet.attribute_inference.metrics import evaluate_attribute_inference
-from amulet.utils import load_data, initialize_model, train_classifier
+from scarab.attribute_inference.attacks import DudduCIKM2022
+from scarab.attribute_inference.metrics import evaluate_attribute_inference
+from scarab.utils import load_data, initialize_model, train_classifier
 
 # 1. Load data with sensitive attributes
 data = load_data("./data", "celeba")
@@ -46,4 +46,4 @@ print(f"Attribute Inference Attack Accuracy: {metrics[0]['attack_accuracy']}")
 
 ## Metrics
 
-Attribute inference is evaluated using **Balanced Accuracy** and **AUC Score** for each inferred attribute. Use `amulet.attribute_inference.metrics.evaluate_attribute_inference` to calculate these metrics from attack results.
+Attribute inference is evaluated using **Balanced Accuracy** and **AUC Score** for each inferred attribute. Use `scarab.attribute_inference.metrics.evaluate_attribute_inference` to calculate these metrics from attack results.

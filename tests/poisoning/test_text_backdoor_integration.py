@@ -12,8 +12,8 @@ import pytest
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
-from amulet.poisoning.attacks import TextBadNets
-from amulet.utils import get_accuracy, train_classifier
+from scarab.poisoning.attacks import TextBadNets
+from scarab.utils import get_accuracy, train_classifier
 
 
 def _state_dicts_equal(a: dict, b: dict) -> bool:
@@ -86,7 +86,7 @@ def test_dpsgd_runs_one_epoch_on_lora_target(
     tiny_text_classifier, tiny_text_dataset, cpu_device
 ):
     """The reused DPSGD defense drives the single-tensor LoRA target end-to-end."""
-    from amulet.membership_inference.defenses import DPSGD
+    from scarab.membership_inference.defenses import DPSGD
 
     attack = TextBadNets(trigger="cf", trigger_label=1, portion=0.5, random_seed=0)
     poisoned_train = attack.poison_train(tiny_text_dataset)

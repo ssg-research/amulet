@@ -33,13 +33,13 @@ import torch
 import torch.nn as nn
 from torch.utils.data import TensorDataset
 
-from amulet.datasets import AmuletDataset
-from amulet.models import VGG
-from amulet.utils import initialize_model, load_data
 from common.config import LevelConfig
 from common.io import run_output_dir
 from common.models import ModelSpec, get_or_train, model_cache_root
 from common.paths import repo_root
+from scarab.datasets import ScarabDataset
+from scarab.models import VGG
+from scarab.utils import initialize_model, load_data
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -104,7 +104,7 @@ MEMBERSHIP_BATCH_SIZE = 128
 # The architecture recorded for a `test`-level stand-in. It is a real VGG, deep
 # enough to pool the spatial map away cheaply, so the pipeline exercises the same
 # code as VGG11 does. The last convolution must emit 512 channels because
-# `amulet.models.VGG` hard-wires a `Linear(512, num_classes)` classifier.
+# `scarab.models.VGG` hard-wires a `Linear(512, num_classes)` classifier.
 TINY_ARCH = "tiny_vgg"
 TINY_VGG_LAYERS: list[int | str] = [4, "M", 8, "M", 16, "M", 32, "M", 512, "M"]
 
@@ -252,7 +252,7 @@ def shadow_architecture(level: LevelConfig) -> str:
         level: The level preset.
 
     Returns:
-        An architecture name `amulet.utils.initialize_model` accepts.
+        An architecture name `scarab.utils.initialize_model` accepts.
     """
     return "vgg" if level.tiny_model else "resnet"
 
@@ -285,7 +285,7 @@ def build_model(
     )
 
 
-def tiny_dataset(seed: int, num_classes: int = 2) -> AmuletDataset:
+def tiny_dataset(seed: int, num_classes: int = 2) -> ScarabDataset:
     """Build the synthetic stand-in for CelebA used at `test` level.
 
     Real CelebA is a multi-gigabyte Google Drive download, so requiring it would
@@ -326,7 +326,7 @@ def tiny_dataset(seed: int, num_classes: int = 2) -> AmuletDataset:
     x_train, y_train, z_train = split(TINY_TRAIN_SIZE)
     x_test, y_test, z_test = split(TINY_TEST_SIZE)
 
-    return AmuletDataset(
+    return ScarabDataset(
         train_set=TensorDataset(torch.from_numpy(x_train), torch.from_numpy(y_train)),
         test_set=TensorDataset(torch.from_numpy(x_test), torch.from_numpy(y_test)),
         num_features=TINY_IMAGE_SHAPE[1] * TINY_IMAGE_SHAPE[2],
@@ -360,11 +360,11 @@ class RunContext:
     seed: int
     device: str
     cache_dir: Path
-    _datasets: dict[tuple[str, float, float], AmuletDataset] = field(
+    _datasets: dict[tuple[str, float, float], ScarabDataset] = field(
         default_factory=dict
     )
 
-    def data(self, celeba_target: str, training_size: float) -> AmuletDataset:
+    def data(self, celeba_target: str, training_size: float) -> ScarabDataset:
         """Load the dataset a sub-attack needs, once per distinct request.
 
         CelebA takes tens of seconds to read even from its processed cache, and

@@ -1,4 +1,4 @@
-"""Fast tests for load_lfw and its helpers in amulet/datasets/__tabular_datasets.py.
+"""Fast tests for load_lfw and its helpers in scarab/datasets/__tabular_datasets.py.
 
 Both network boundaries are mocked: gdown plants a synthetic attributes file
 and the sklearn fetch plants a tiny funneled image tree, so cold-start
@@ -7,7 +7,7 @@ against the real image-cropping and cache-building code. The real download is
 exercised by the slow-tier smoke in test_downloads.py.
 
 fetch_lfw_people is imported by name inside the loader module, so the patch
-targets amulet's module namespace, not sklearn's.
+targets scarab's module namespace, not sklearn's.
 """
 
 from pathlib import Path
@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from amulet.datasets.__tabular_datasets import (  # type: ignore[reportPrivateImportUsage]
+from scarab.datasets.__tabular_datasets import (  # type: ignore[reportPrivateImportUsage]
     _lfw_attr_labels,
     _lfw_read_attributes,
     load_lfw,
@@ -77,7 +77,7 @@ def mock_lfw_downloads(mocker, make_jpeg_bytes):
 
     gdown_mock = mocker.patch("gdown.download", side_effect=_download)
     fetch_mock = mocker.patch(
-        "amulet.datasets.__tabular_datasets.fetch_lfw_people", side_effect=_fetch
+        "scarab.datasets.__tabular_datasets.fetch_lfw_people", side_effect=_fetch
     )
     return gdown_mock, fetch_mock
 
@@ -117,7 +117,7 @@ def test_cold_start_returns_well_formed_bundle(
     assert data.z_train.shape[1] == 2
     assert data.num_classes == 2
     # _EXPECTED_FEATURES = 62*47*3 is commutative, so a row/col crop-slice
-    # swap would pass it undetected. AmuletDataset only exposes the
+    # swap would pass it undetected. ScarabDataset only exposes the
     # flattened array, but the intermediate lfw_images.npz cache built by
     # _lfw_build_images_npz retains the unflattened (h, w) and is left on
     # disk after load_lfw returns, so pin the non-commutative shape there.

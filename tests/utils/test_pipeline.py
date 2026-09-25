@@ -1,4 +1,4 @@
-"""Tests for the pipeline helpers in amulet/utils/__pipeline.py:
+"""Tests for the pipeline helpers in scarab/utils/__pipeline.py:
 create_dir, initialize_model, load_data, and stratified_split."""
 
 from collections.abc import Sized
@@ -10,9 +10,9 @@ import pytest
 import torch
 from torch.utils.data import Dataset, TensorDataset
 
-from amulet.datasets import AmuletDataset
-from amulet.models import VGG, AmuletModel, LinearNet, ResNet, SimpleCNN
-from amulet.utils.__pipeline import (
+from scarab.datasets import ScarabDataset
+from scarab.models import VGG, LinearNet, ResNet, ScarabModel, SimpleCNN
+from scarab.utils.__pipeline import (
     create_dir,
     initialize_model,
     load_data,
@@ -89,7 +89,7 @@ def test_initialize_model_variants(arch, expected_class, capacity):
     model = initialize_model(arch, capacity, num_features, num_classes)
 
     assert isinstance(model, expected_class)
-    assert isinstance(model, AmuletModel)
+    assert isinstance(model, ScarabModel)
 
     # eval() bypasses batch-norm's "batch size > 1" training-mode check
     # so the forward pass works with a single-sample probe input.
@@ -140,12 +140,12 @@ def _tensor_set(x: np.ndarray, y: np.ndarray) -> TensorDataset:
     )
 
 
-def _tabular_dataset(n_train: int = 100, n_test: int = 60) -> AmuletDataset:
+def _tabular_dataset(n_train: int = 100, n_test: int = 60) -> ScarabDataset:
     """A census-shaped dataset: both a Dataset and the NumPy views, aligned."""
     x_train, y_train, z_train = _indexed_split(n_train, 0)
     # Offset the test split so a train row can never be mistaken for a test row.
     x_test, y_test, z_test = _indexed_split(n_test, 1000)
-    return AmuletDataset(
+    return ScarabDataset(
         train_set=_tensor_set(x_train, y_train),
         test_set=_tensor_set(x_test, y_test),
         num_features=_FEATURES,
@@ -161,11 +161,11 @@ def _tabular_dataset(n_train: int = 100, n_test: int = 60) -> AmuletDataset:
     )
 
 
-def _vision_dataset(n_train: int = 100, n_test: int = 60) -> AmuletDataset:
+def _vision_dataset(n_train: int = 100, n_test: int = 60) -> ScarabDataset:
     """A CIFAR-shaped dataset: Datasets only, no NumPy views (x_train is None)."""
     x_train, y_train, _ = _indexed_split(n_train, 0)
     x_test, y_test, _ = _indexed_split(n_test, 1000)
-    return AmuletDataset(
+    return ScarabDataset(
         train_set=_tensor_set(x_train, y_train),
         test_set=_tensor_set(x_test, y_test),
         num_features=_FEATURES,
@@ -178,9 +178,9 @@ def _vision_dataset(n_train: int = 100, n_test: int = 60) -> AmuletDataset:
 def stub_census(monkeypatch):
     """Serve a synthetic census in place of the real download."""
 
-    def factory(n_train: int = 100, n_test: int = 60) -> AmuletDataset:
+    def factory(n_train: int = 100, n_test: int = 60) -> ScarabDataset:
         data = _tabular_dataset(n_train, n_test)
-        monkeypatch.setattr("amulet.utils.__pipeline.load_census", lambda *a, **k: data)
+        monkeypatch.setattr("scarab.utils.__pipeline.load_census", lambda *a, **k: data)
         return data
 
     return factory
@@ -190,10 +190,10 @@ def stub_census(monkeypatch):
 def stub_cifar(monkeypatch):
     """Serve a synthetic CIFAR-shaped dataset carrying no NumPy views."""
 
-    def factory(n_train: int = 100, n_test: int = 60) -> AmuletDataset:
+    def factory(n_train: int = 100, n_test: int = 60) -> ScarabDataset:
         data = _vision_dataset(n_train, n_test)
         monkeypatch.setattr(
-            "amulet.utils.__pipeline.load_cifar10", lambda *a, **k: data
+            "scarab.utils.__pipeline.load_cifar10", lambda *a, **k: data
         )
         return data
 

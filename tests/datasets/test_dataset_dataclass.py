@@ -3,7 +3,7 @@ import pytest
 import torch
 from torch.utils.data import TensorDataset
 
-from amulet.datasets.__data import AmuletDataset
+from scarab.datasets.__data import ScarabDataset
 
 
 @pytest.fixture
@@ -15,10 +15,10 @@ def datasets() -> tuple[TensorDataset, TensorDataset]:
     )
 
 
-def test_amulet_dataset_init(datasets):
+def test_scarab_dataset_init(datasets):
     train, test = datasets
 
-    data = AmuletDataset(
+    data = ScarabDataset(
         train_set=train,
         test_set=test,
         num_features=1,
@@ -36,12 +36,12 @@ def test_amulet_dataset_init(datasets):
     assert data.z_test is None
 
 
-def test_amulet_dataset_with_optionals(datasets):
+def test_scarab_dataset_with_optionals(datasets):
     train, test = datasets
     x_train = np.array([[1], [2]])
     z_train = np.array([0, 1])
 
-    data = AmuletDataset(
+    data = ScarabDataset(
         train_set=train,
         test_set=test,
         num_features=1,

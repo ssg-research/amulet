@@ -33,9 +33,9 @@ from common.training import train_with_adam as train_clean
 from experiments.e3_advtr_attrinf.schemas import CAPACITY
 
 if TYPE_CHECKING:
-    from amulet.datasets import AmuletDataset
     from common.config import LevelConfig
     from common.training import AdversarySplit
+    from scarab.datasets import ScarabDataset
 
 # Target training budget for the E3 datasets; `full` defers to this. The paper
 # states 100 for its main runs (not the 200 a CelebA ResNet would use).
@@ -142,7 +142,7 @@ def defended_target_spec(
 
 def clean_target(
     ctx: RunContext, dataset: str, capacity: str = CAPACITY
-) -> tuple[nn.Module, AdversarySplit, AmuletDataset, ModelSpec]:
+) -> tuple[nn.Module, AdversarySplit, ScarabDataset, ModelSpec]:
     """Train (or load) the clean baseline and the adversary split.
 
     Args:
@@ -181,7 +181,7 @@ def defended_target(
     dataset: str,
     epsilon: float,
     split: AdversarySplit,
-    data: AmuletDataset,
+    data: ScarabDataset,
     capacity: str = CAPACITY,
 ) -> tuple[nn.Module, ModelSpec]:
     """Train (or load) the defended model at one budget."""

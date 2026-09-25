@@ -8,7 +8,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
-from amulet.poisoning.defenses.outlier_removal import OutlierRemoval
+from scarab.poisoning.defenses.outlier_removal import OutlierRemoval
 
 N_TRAIN = 8
 N_TEST = 5

@@ -38,9 +38,6 @@ import torch
 from opacus.accountants.utils import get_noise_multiplier
 from torch.utils.data import DataLoader
 
-from amulet.datasets import AmuletDataset, TextTensorDataset
-from amulet.membership_inference.defenses import DPSGD
-from amulet.poisoning.attacks import TextBadNets
 from common.config import LEVEL_NAMES, get_level
 from common.io import append_row, row_exists, run_output_dir
 from experiments.e5_textbadnets.llm_backdoor_common import (
@@ -59,6 +56,9 @@ from experiments.e5_textbadnets.llm_backdoor_common import (
     train_target,
 )
 from experiments.e5_textbadnets.schemas import DP_SCHEMA
+from scarab.datasets import ScarabDataset, TextTensorDataset
+from scarab.membership_inference.defenses import DPSGD
+from scarab.poisoning.attacks import TextBadNets
 
 if TYPE_CHECKING:
     from common.config import LevelConfig
@@ -66,7 +66,7 @@ if TYPE_CHECKING:
 EXPERIMENT_ID = "e5_textbadnets"
 CSV_STEM = "dp"
 
-# Match the accountant amulet's DPSGD PrivacyEngine uses, so the sigma we calibrate to a
+# Match the accountant scarab's DPSGD PrivacyEngine uses, so the sigma we calibrate to a
 # target epsilon and the epsilon the engine later reports agree.
 _ACCOUNTANT = "prv"
 
@@ -221,7 +221,7 @@ def train_dp(
 
 def run_experiment(
     args: argparse.Namespace,
-    data: AmuletDataset,
+    data: ScarabDataset,
     factory: TargetFactory,
     cache_dir: Path,
     output: Path,
@@ -508,7 +508,7 @@ def apply_level(args: argparse.Namespace, config: LevelConfig, seed: int) -> Non
 
 def build_inputs(
     args: argparse.Namespace, config: LevelConfig
-) -> tuple[AmuletDataset, TargetFactory]:
+) -> tuple[ScarabDataset, TargetFactory]:
     """Build the dataset and the target factory this level calls for.
 
     Args:

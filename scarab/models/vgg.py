@@ -3,10 +3,10 @@
 import torch
 import torch.nn as nn
 
-from .base import AmuletModel
+from .base import ScarabModel
 
 
-class VGG(AmuletModel):
+class VGG(ScarabModel):
     """Build a VGG-style convolutional network.
 
     Code adapted from

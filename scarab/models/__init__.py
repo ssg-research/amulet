@@ -1,8 +1,8 @@
 """
-The module amulet.models includes utilities to build sample models.
+The module scarab.models includes utilities to build sample models.
 """
 
-from .base import AmuletModel
+from .base import ScarabModel
 from .cnn import SimpleCNN
 from .hf_causal_lm import HFCausalLM
 from .linear_net import LinearNet
@@ -11,9 +11,9 @@ from .vgg import VGG
 
 __all__ = [
     "VGG",
-    "AmuletModel",
     "HFCausalLM",
     "LinearNet",
     "ResNet",
+    "ScarabModel",
     "SimpleCNN",
 ]

@@ -69,10 +69,10 @@ class Asset:
 
 
 def _fetch_dataset(name: str) -> Callable[[], str]:
-    """Return a fetcher loading one `amulet.utils.load_data` dataset."""
+    """Return a fetcher loading one `scarab.utils.load_data` dataset."""
 
     def fetch() -> str:
-        from amulet.utils import load_data
+        from scarab.utils import load_data
 
         data = load_data(repo_root(), name)
         train = cast("Subset[object]", data.train_set)

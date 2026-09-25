@@ -34,9 +34,6 @@ from typing import TYPE_CHECKING, cast
 
 import torch
 
-from amulet.datasets import AmuletDataset, TextTensorDataset
-from amulet.poisoning.attacks import TextBadNets
-from amulet.poisoning.defenses import ONION
 from common.config import LEVEL_NAMES, get_level
 from common.io import append_row, row_exists, run_output_dir
 from experiments.e5_textbadnets.llm_backdoor_common import (
@@ -53,6 +50,9 @@ from experiments.e5_textbadnets.llm_backdoor_common import (
     train_target,
 )
 from experiments.e5_textbadnets.schemas import ONION_SCHEMA
+from scarab.datasets import ScarabDataset, TextTensorDataset
+from scarab.poisoning.attacks import TextBadNets
+from scarab.poisoning.defenses import ONION
 
 if TYPE_CHECKING:
     from common.config import LevelConfig
@@ -146,7 +146,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def run_experiment(
     args: argparse.Namespace,
-    data: AmuletDataset,
+    data: ScarabDataset,
     factory: TargetFactory,
     cache_dir: Path,
     output: Path,
@@ -179,7 +179,7 @@ def run_experiment(
     # ONION scores perplexity with the target's own clean base LM (adapters off), so its
     # reference is a fresh unpoisoned target rather than an external GPT-2. Loaded once;
     # threshold applied to both train and test purification.
-    from amulet.datasets.__text_datasets import _load_tokenizer
+    from scarab.datasets.__text_datasets import _load_tokenizer
 
     onion = ONION(
         model=factory(),
@@ -372,7 +372,7 @@ def apply_level(args: argparse.Namespace, config: LevelConfig, seed: int) -> Non
 
 def build_inputs(
     args: argparse.Namespace, config: LevelConfig
-) -> tuple[AmuletDataset, TargetFactory]:
+) -> tuple[ScarabDataset, TargetFactory]:
     """Build the dataset and the target factory this level calls for.
 
     Args:

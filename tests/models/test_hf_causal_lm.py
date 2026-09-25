@@ -31,7 +31,7 @@ def tiny_causal_lm_factory():
     pytest.importorskip("peft")
     from transformers import LlamaConfig
 
-    from amulet.models import HFCausalLM
+    from scarab.models import HFCausalLM
 
     def _make(seed: int = 0, num_labels: int = 2):
         config = LlamaConfig(

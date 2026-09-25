@@ -10,9 +10,9 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader, Subset
 
-from amulet.membership_inference.attacks import LiRA
-from amulet.membership_inference.metrics import compute_mi_metrics
-from amulet.utils import (
+from scarab.membership_inference.attacks import LiRA
+from scarab.membership_inference.metrics import compute_mi_metrics
+from scarab.utils import (
     create_dir,
     get_accuracy,
     initialize_model,

@@ -9,9 +9,9 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
-from amulet.discriminatory_behavior.defenses import AdversarialDebiasing
-from amulet.discriminatory_behavior.metrics import DiscriminatoryBehavior
-from amulet.utils import (
+from scarab.discriminatory_behavior.defenses import AdversarialDebiasing
+from scarab.discriminatory_behavior.metrics import DiscriminatoryBehavior
+from scarab.utils import (
     create_dir,
     get_accuracy,
     initialize_model,

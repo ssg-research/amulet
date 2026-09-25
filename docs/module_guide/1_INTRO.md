@@ -1,6 +1,6 @@
 # Introduction
 
-Amulet organizes machine learning risks into three primary components: **Attacks**, **Defenses**, and **Metrics**.
+Scarab organizes machine learning risks into three primary components: **Attacks**, **Defenses**, and **Metrics**.
 The core design philosophy is to allow these components to be easily composed into a unified training and evaluation pipeline.
 
 ## Component Categories
@@ -11,7 +11,7 @@ The core design philosophy is to allow these components to be easily composed in
 
 ## Design Overview
 
-Most Amulet components follow a consistent API:
+Most Scarab components follow a consistent API:
 
 - **Attacks** generally take a `target_model` and a `DataLoader` as input and provide an `attack()` method.
 - **Defenses** provide methods like `train_robust()`, `train_private()`, or `train_fair()` depending on the risk they address; inference-time defenses (e.g. ONION) also expose `purify(dataset)` alongside `train_robust()`.
@@ -19,12 +19,12 @@ Most Amulet components follow a consistent API:
 
 ### Example Pipeline
 
-A typical Amulet pipeline involves loading data, initializing a model, applying a defense, and then running an attack to evaluate the defense's effectiveness:
+A typical Scarab pipeline involves loading data, initializing a model, applying a defense, and then running an attack to evaluate the defense's effectiveness:
 
 ```python
-from amulet.utils import load_data, initialize_model, train_classifier, get_accuracy
-from amulet.evasion.attacks import EvasionPGD
-from amulet.evasion.defenses import AdversarialTrainingPGD
+from scarab.utils import load_data, initialize_model, train_classifier, get_accuracy
+from scarab.evasion.attacks import EvasionPGD
+from scarab.evasion.defenses import AdversarialTrainingPGD
 
 # 1. Load Data
 data = load_data("./data", "cifar10")
@@ -47,4 +47,4 @@ adv_accuracy = get_accuracy(defended_model, adv_loader, device)
 print(f"Adversarial Accuracy: {adv_accuracy}%")
 ```
 
-For more details, check the specific guide for each risk and the provided [example scripts](https://github.com/ssg-research/amulet/tree/main/examples).
+For more details, check the specific guide for each risk and the provided [example scripts](https://github.com/ssg-research/scarab/tree/main/examples).

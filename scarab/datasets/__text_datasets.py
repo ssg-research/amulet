@@ -1,13 +1,13 @@
 """Text-modality dataset loaders (SST-2, AG News, IMDB).
 
-These are the first text datasets in Amulet. They diverge from the GDrive 3-step
+These are the first text datasets in Scarab. They diverge from the GDrive 3-step
 fallback used by the image loaders in `__image_datasets.py`: text corpora and their
 canonical splits are managed by Hugging Face `datasets`, so these load from the HF
 hub (with a local cache). That divergence is intentional.
 
-The Hugging Face stack ships in the optional `amuletml[llm]` extra, so its imports
-are guarded: `import amulet` still works without the extra, and calling a loader
-without it raises a clear "install amuletml[llm]" error.
+The Hugging Face stack ships in the optional `scarabml[llm]` extra, so its imports
+are guarded: `import scarab` still works without the extra, and calling a loader
+without it raises a clear "install scarabml[llm]" error.
 
 Each loader tokenizes the raw strings with the target tokenizer, pads `input_ids` to
 a fixed per-dataset max sequence length, and retains the raw strings on the returned
@@ -23,17 +23,17 @@ from typing import TYPE_CHECKING
 
 import torch
 
-from .__data import AmuletDataset, TextTensorDataset
+from .__data import ScarabDataset, TextTensorDataset
 
 if TYPE_CHECKING:
     from transformers import PreTrainedTokenizerBase
 
 # The Hugging Face stack is the optional `llm` extra. Imports are lazy (inside the
-# functions that use them) so `import amulet` works without the extra; this shared
+# functions that use them) so `import scarab` works without the extra; this shared
 # message is raised when a loader is actually called without the extra installed.
 _LLM_INSTALL_HINT = (
     "Text datasets require the optional LLM stack. Install it with "
-    "`pip install amuletml[llm]` (or `uv sync --extra llm`)."
+    "`pip install scarabml[llm]` (or `uv sync --extra llm`)."
 )
 
 # The plan's license-free fallback target; its tokenizer produces the input_ids.
@@ -98,8 +98,8 @@ def _load_hf_classification(
     max_length: int,
     max_train_samples: int | None,
     max_test_samples: int | None,
-) -> AmuletDataset:
-    """Load a Hugging Face text-classification corpus as a text `AmuletDataset`.
+) -> ScarabDataset:
+    """Load a Hugging Face text-classification corpus as a text `ScarabDataset`.
 
     Args:
         hub_id: Namespaced Hugging Face hub repo id (e.g. "stanfordnlp/sst2").
@@ -114,7 +114,7 @@ def _load_hf_classification(
         max_test_samples: Optional cap on test rows.
 
     Returns:
-        An `AmuletDataset` with `modality="text"` whose `train_set`/`test_set`
+        A `ScarabDataset` with `modality="text"` whose `train_set`/`test_set`
         are `TextTensorDataset` instances.
 
     Raises:
@@ -140,7 +140,7 @@ def _load_hf_classification(
     train_set = _build(train_split, max_train_samples)
     test_set = _build(test_split, max_test_samples)
 
-    return AmuletDataset(
+    return ScarabDataset(
         train_set=train_set,
         test_set=test_set,
         num_features=max_length,
@@ -155,8 +155,8 @@ def load_sst2(
     max_length: int = 128,
     max_train_samples: int | None = None,
     max_test_samples: int | None = None,
-) -> AmuletDataset:
-    """Load SST-2 (binary sentiment) as a text `AmuletDataset`.
+) -> ScarabDataset:
+    """Load SST-2 (binary sentiment) as a text `ScarabDataset`.
 
     Uses the namespaced `stanfordnlp/sst2` repo (`datasets>=4` dropped the legacy
     `glue` script loader). The `sentence` field holds the text and `label` is
@@ -171,7 +171,7 @@ def load_sst2(
         max_test_samples: Optional cap on test rows.
 
     Returns:
-        An `AmuletDataset` with `modality="text"`.
+        A `ScarabDataset` with `modality="text"`.
     """
     return _load_hf_classification(
         hub_id="stanfordnlp/sst2",
@@ -193,8 +193,8 @@ def load_agnews(
     max_length: int = 256,
     max_train_samples: int | None = None,
     max_test_samples: int | None = None,
-) -> AmuletDataset:
-    """Load AG News (4-class topic classification) as a text `AmuletDataset`.
+) -> ScarabDataset:
+    """Load AG News (4-class topic classification) as a text `ScarabDataset`.
 
     Uses the namespaced `fancyzhx/ag_news` repo. The `text` field holds the text
     and `label` is 0-3, over the standard `train`/`test` splits.
@@ -207,7 +207,7 @@ def load_agnews(
         max_test_samples: Optional cap on test rows.
 
     Returns:
-        An `AmuletDataset` with `modality="text"`.
+        A `ScarabDataset` with `modality="text"`.
     """
     return _load_hf_classification(
         hub_id="fancyzhx/ag_news",
@@ -229,8 +229,8 @@ def load_imdb(
     max_length: int = 512,
     max_train_samples: int | None = None,
     max_test_samples: int | None = None,
-) -> AmuletDataset:
-    """Load IMDB (binary sentiment, long reviews) as a text `AmuletDataset`.
+) -> ScarabDataset:
+    """Load IMDB (binary sentiment, long reviews) as a text `ScarabDataset`.
 
     Uses the namespaced `stanfordnlp/imdb` repo. The `text` field holds the review
     and `label` is 0/1, over the standard `train`/`test` splits. Its longer
@@ -245,7 +245,7 @@ def load_imdb(
         max_test_samples: Optional cap on test rows.
 
     Returns:
-        An `AmuletDataset` with `modality="text"`.
+        A `ScarabDataset` with `modality="text"`.
     """
     return _load_hf_classification(
         hub_id="stanfordnlp/imdb",

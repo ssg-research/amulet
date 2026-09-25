@@ -9,8 +9,8 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader
 
-from amulet.poisoning.attacks import BadNets
-from amulet.utils import (
+from scarab.poisoning.attacks import BadNets
+from scarab.utils import (
     create_dir,
     get_accuracy,
     initialize_model,

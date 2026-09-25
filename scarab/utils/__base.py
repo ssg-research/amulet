@@ -11,7 +11,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
-from ..models import AmuletModel
+from ..models import ScarabModel
 
 
 def train_classifier(
@@ -172,13 +172,13 @@ def get_predictions_numpy(
 
 
 def get_intermediate_features(
-    model: AmuletModel, data_loader: DataLoader, device: str
+    model: ScarabModel, data_loader: DataLoader, device: str
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Get intermediate layer outputs, labels, and inputs from a model.
 
     Args:
-        model: Amulet model to get intermediate outputs from.
+        model: Scarab model to get intermediate outputs from.
         data_loader: Input data to the model.
         device: Device used for inference. Example: "cuda:0".
 

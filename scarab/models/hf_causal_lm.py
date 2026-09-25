@@ -10,7 +10,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .base import AmuletModel
+from .base import ScarabModel
 
 if TYPE_CHECKING:
     from transformers import PretrainedConfig, PreTrainedModel
@@ -22,11 +22,11 @@ _DEFAULT_TARGET_MODULES = ["q_proj", "v_proj"]
 
 _LLM_INSTALL_HINT = (
     "HFCausalLM requires the optional LLM stack. Install it with "
-    "`pip install amuletml[llm]` (or `uv sync --extra llm`)."
+    "`pip install scarabml[llm]` (or `uv sync --extra llm`)."
 )
 
 
-class HFCausalLM(AmuletModel):
+class HFCausalLM(ScarabModel):
     """A HuggingFace causal (decoder-only) LM adapted with LoRA for three roles.
 
     One shared, LoRA-adapted decoder backs all three capabilities, so the same object is
@@ -184,7 +184,7 @@ class HFCausalLM(AmuletModel):
         except ImportError as exc:
             raise ImportError(
                 "4-bit loading requires bitsandbytes (GPU/Linux only), which is not part "
-                "of the amuletml[llm] extra. Install it separately, and never use the "
+                "of the scarabml[llm] extra. Install it separately, and never use the "
                 "4-bit path under differential privacy."
             ) from exc
         return BitsAndBytesConfig(
@@ -202,7 +202,7 @@ class HFCausalLM(AmuletModel):
 
         Args:
             x: A `(batch, seq)` LongTensor of padded `input_ids`. Named `x` to match
-                the `AmuletModel` single-tensor contract; callers pass it positionally.
+                the `ScarabModel` single-tensor contract; callers pass it positionally.
 
         Returns:
             A `(batch, num_labels)` logits tensor (not a `SequenceClassifierOutput`).

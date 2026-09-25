@@ -1,7 +1,7 @@
-# Amulet Benchmark Artifact
+# Scarab Benchmark Artifact
 
-This directory reproduces the tables and figures in the Amulet paper.
-Amulet (`amuletml` on PyPI, imported as `amulet`) is a PyTorch library for
+This directory reproduces the tables and figures in the Scarab paper.
+Scarab (`scarabml` on PyPI, imported as `scarab`) is a PyTorch library for
 evaluating unintended interactions among machine-learning defenses and risks
 across security, privacy, and fairness.
 
@@ -243,7 +243,7 @@ Each paper desideratum maps to a concrete command, test, or file here.
 
 | Desideratum          | Claim                                                                                    | Evidence                                                                                                                          |
 | -------------------- | ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| **D1 Comprehensive** | Eight risks, each with attacks, defenses, and metrics.                                   | The `amulet/` tree, one package per risk; module table in [`AGENTS.md`](../AGENTS.md).                                            |
+| **D1 Comprehensive** | Eight risks, each with attacks, defenses, and metrics.                                   | The `scarab/` tree, one package per risk; module table in [`AGENTS.md`](../AGENTS.md).                                            |
 | **D2 Consistent**    | One uniform interface, so a defense for one risk composes with an attack for another.    | [`CLAIMS.md`](CLAIMS.md), grounded in `examples/`. `uv run pytest tests/test_api_conformance.py` enforces the shared entry point. |
-| **D3 Extensible**    | A new modality (text) cost four modules and one widened type, reusing DP-SGD unmodified. | [`CLAIMS.md`](CLAIMS.md), grounded in `examples/extending_amulet/` and `examples/attack_pipelines/run_text_backdoor.py`.          |
+| **D3 Extensible**    | A new modality (text) cost four modules and one widened type, reusing DP-SGD unmodified. | [`CLAIMS.md`](CLAIMS.md), grounded in `examples/extending_scarab/` and `examples/attack_pipelines/run_text_backdoor.py`.          |
 | **D4 Applicable**    | Five experiments reproduce baseline attacks and three unintended interactions.           | The Quickstart: run each experiment at `--level full`, render, and compare against the paper.                                     |

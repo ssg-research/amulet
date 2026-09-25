@@ -29,7 +29,7 @@ class OutlierRemoval(PoisoningDefense):
         optimizer: Optimizer for training model.
         train_loader: Training data loader to train model.
         test_loader: Test data loader to calculate Shapley values.
-        train_function: Function used to train the model. Defaults to train_classifier from amulet.utils.
+        train_function: Function used to train the model. Defaults to train_classifier from scarab.utils.
         percent: Percentage of data to remove as outliers.
         device: Device used to train model. Example: "cuda:0".
         epochs: Number of iterations over the training data.
@@ -104,7 +104,7 @@ class OutlierRemoval(PoisoningDefense):
 
         Args:
             get_hidden: Function returning the model's intermediate-layer outputs along
-                with the labels and input data. See get_intermediate_features in amulet.utils.
+                with the labels and input data. See get_intermediate_features in scarab.utils.
 
         Returns:
             The model retrained after outlier removal.

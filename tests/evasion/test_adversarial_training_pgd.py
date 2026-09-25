@@ -4,7 +4,7 @@ CPU reproducibility."""
 import pytest
 import torch
 
-from amulet.evasion.defenses.projected_gradient_descent import AdversarialTrainingPGD
+from scarab.evasion.defenses.projected_gradient_descent import AdversarialTrainingPGD
 
 
 def _assert_state_dicts_equal(

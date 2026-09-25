@@ -1,4 +1,4 @@
-"""Fast tests for load_celeba and its helpers in amulet/datasets/__image_datasets.py.
+"""Fast tests for load_celeba and its helpers in scarab/datasets/__image_datasets.py.
 
 The network boundary (gdown) is mocked: "downloading" plants tiny synthetic raw
 files, so cold-start orchestration, cache-hit, and changed-target control flow
@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from amulet.datasets.__image_datasets import (  # type: ignore[reportPrivateImportUsage]
+from scarab.datasets.__image_datasets import (  # type: ignore[reportPrivateImportUsage]
     _celeba_build_processed_cache,
     load_celeba,
 )

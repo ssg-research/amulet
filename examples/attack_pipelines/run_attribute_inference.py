@@ -11,9 +11,9 @@ import torch
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader, TensorDataset
 
-from amulet.attribute_inference.attacks import DudduCIKM2022
-from amulet.attribute_inference.metrics import evaluate_attribute_inference
-from amulet.utils import (
+from scarab.attribute_inference.attacks import DudduCIKM2022
+from scarab.attribute_inference.metrics import evaluate_attribute_inference
+from scarab.utils import (
     create_dir,
     get_accuracy,
     initialize_model,
