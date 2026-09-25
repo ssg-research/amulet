@@ -9,8 +9,7 @@ from .base import ScarabModel
 class VGG(ScarabModel):
     """Build a VGG-style convolutional network.
 
-    Code adapted from
-    https://github.com/kuangliu/pytorch-cifar/blob/master/models/vgg.py.
+    Code adapted from kuangliu/pytorch-cifar (models/vgg.py).
 
     Args:
         num_classes: Number of output classes in the data.

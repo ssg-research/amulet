@@ -29,7 +29,6 @@ class TextBadNets(PoisoningAttack):
     Reference:
         A Unified Evaluation of Textual Backdoor Learning: Frameworks and Benchmarks
         (OpenBackdoor), Cui et al., NeurIPS 2022 Datasets & Benchmarks.
-        https://arxiv.org/abs/2206.08514
 
     Attributes:
         trigger: Rare token or short phrase inserted into poisoned inputs (e.g. "cf"

@@ -21,8 +21,7 @@ _DEFAULT_MODEL = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
 _DEFAULT_TARGET_MODULES = ["q_proj", "v_proj"]
 
 _LLM_INSTALL_HINT = (
-    "HFCausalLM requires the optional LLM stack. Install it with "
-    "`pip install scarabml[llm]` (or `uv sync --extra llm`)."
+    "HFCausalLM requires the optional LLM stack. Install it with `uv sync --extra llm`."
 )
 
 
@@ -184,7 +183,7 @@ class HFCausalLM(ScarabModel):
         except ImportError as exc:
             raise ImportError(
                 "4-bit loading requires bitsandbytes (GPU/Linux only), which is not part "
-                "of the scarabml[llm] extra. Install it separately, and never use the "
+                "of the llm extra. Install it separately, and never use the "
                 "4-bit path under differential privacy."
             ) from exc
         return BitsAndBytesConfig(

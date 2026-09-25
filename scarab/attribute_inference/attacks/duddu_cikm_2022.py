@@ -13,7 +13,9 @@ class DudduCIKM2022(AttributeInferenceAttack):
     """
     Attribute inference attack using an MLP trained on target model outputs.
 
-    Reference: https://github.com/vasishtduddu/AttInfExplanations
+    Reference:
+        Inferring Sensitive Attributes from Model Explanations, CIKM 2022.
+        DOI 10.1145/3511808.3557362
 
     Attributes:
         target_model: Target model whose sensitive attributes are inferred.

@@ -19,7 +19,6 @@ class LiRA(MembershipInferenceAttack):
     Reference:
         Membership Inference Attacks From First Principles
         Nicholas Carlini, Steve Chien, Milad Nasr, Shuang Song, Andreas Terzis, Florian Tramer
-        https://openreview.net/pdf?id=inPTplK-O6V
 
     Attributes:
         target_model: The target model to attack.

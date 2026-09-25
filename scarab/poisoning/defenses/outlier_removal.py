@@ -15,13 +15,12 @@ class OutlierRemoval(PoisoningDefense):
     """Remove dataset outliers via KNN Shapley values, then retrain the model.
 
     Outliers are the lowest-scoring samples under KNN Shapley values, computed
-    following the algorithm at https://github.com/AI-secure/KNN-shapley.
+    following the algorithm in AI-secure/KNN-shapley.
 
     Reference:
         A Privacy-Friendly Approach to Data Valuation,
         Jiachen T. Wang, Yuqing Zhu, Yu-Xiang Wang, Ruoxi Jia, Prateek Mittal
         Thirty-seventh Conference on Neural Information Processing Systems, 2023
-        https://openreview.net/forum?id=FAZ3i0hvm0
 
     Attributes:
         model: The model to retrain after removing outliers.

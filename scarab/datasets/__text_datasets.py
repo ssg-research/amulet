@@ -5,9 +5,9 @@ fallback used by the image loaders in `__image_datasets.py`: text corpora and th
 canonical splits are managed by Hugging Face `datasets`, so these load from the HF
 hub (with a local cache). That divergence is intentional.
 
-The Hugging Face stack ships in the optional `scarabml[llm]` extra, so its imports
+The Hugging Face stack ships in the optional `llm` extra, so its imports
 are guarded: `import scarab` still works without the extra, and calling a loader
-without it raises a clear "install scarabml[llm]" error.
+without it raises a clear "sync with the llm extra" error.
 
 Each loader tokenizes the raw strings with the target tokenizer, pads `input_ids` to
 a fixed per-dataset max sequence length, and retains the raw strings on the returned
@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 # message is raised when a loader is actually called without the extra installed.
 _LLM_INSTALL_HINT = (
     "Text datasets require the optional LLM stack. Install it with "
-    "`pip install scarabml[llm]` (or `uv sync --extra llm`)."
+    "`uv sync --extra llm`."
 )
 
 # The plan's license-free fallback target; its tokenizer produces the input_ids.

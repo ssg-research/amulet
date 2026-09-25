@@ -18,7 +18,6 @@ class WatermarkNN(WatermarkDefense):
     Reference:
         Turning Your Weakness Into a Strength: Watermarking Deep Neural Networks by Backdooring
         Yossi Adi, Carsten Baum, Moustapha Cisse, Benny Pinkas, Joseph Keshet
-        https://arxiv.org/abs/1802.04633
 
     Attributes:
         target_model: The model to watermark.

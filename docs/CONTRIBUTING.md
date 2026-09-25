@@ -13,21 +13,15 @@ We use GitHub Issues to track bugs and feature requests.
 
 ### Environment Setup
 
-Scarab uses [uv](https://docs.astral.sh/uv/) for dependency management.
+Scarab uses `uv` for dependency management.
 
-1. **Install uv**:
+1. **Install uv** by following the installation guide in the uv documentation.
 
-   ```bash
-   curl -LsSf https://astral.sh/uv/install.sh | sh
-   ```
-
-2. **Clone and Sync**:
+2. **Sync** from the repository root:
 
    Pick one torch build extra matching your hardware (`cpu`, `cu128`, or `cu130`; check with `nvidia-smi`). They are mutually exclusive, so `uv sync --all-extras` is not valid.
 
    ```bash
-   git clone https://github.com/ssg-research/scarab.git
-   cd scarab
    uv sync --extra cu128 --extra dev   # or --extra cpu / --extra cu130
    # add --extra llm for the text/LLM stack (transformers, peft, datasets)
    ```

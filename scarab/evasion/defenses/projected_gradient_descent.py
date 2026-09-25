@@ -15,12 +15,11 @@ from .evasion_defense import EvasionDefense
 class AdversarialTrainingPGD(EvasionDefense):
     """Adversarial training following the cleverhans CIFAR-10 tutorial.
 
-    https://github.com/cleverhans-lab/cleverhans/blob/master/tutorials/torch/cifar10_tutorial.py
+    Code adapted from cleverhans (tutorials/torch/cifar10_tutorial.py).
 
     Reference:
         Towards Deep Learning Models Resistant to Adversarial Attacks
         Aleksander Madry, Aleksandar Makelov, Ludwig Schmidt, Dimitris Tsipras, Adrian Vladu
-        https://arxiv.org/abs/1706.06083
 
     Attributes:
         model: The model on which to apply adversarial training.

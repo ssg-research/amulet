@@ -11,7 +11,6 @@ class BadNets(PoisoningAttack):
     Reference:
         BadNets: Identifying Vulnerabilities in the Machine Learning Model Supply Chain
         Tianyu Gu, Brendan Dolan-Gavitt, Siddharth Garg
-        https://arxiv.org/abs/1708.06733
 
     Attributes:
         trigger_label: Target label assigned to poisoned samples.

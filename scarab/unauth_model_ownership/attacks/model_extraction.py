@@ -12,15 +12,13 @@ from .unauth_model_ownership_attack import UnauthModelOwnershipAttack
 class ModelExtraction(UnauthModelOwnershipAttack):
     """Extract a target model into a "stolen" surrogate by distillation.
 
-    Code adapted from
-    https://github.com/liuyugeng/ML-Doctor/blob/main/doctor/modsteal.py.
+    Code adapted from liuyugeng/ML-Doctor (doctor/modsteal.py).
 
     Reference:
         ML-Doctor: Holistic Risk Assessment of Inference Attacks Against Machine Learning Models,
         Yugeng Liu, Rui Wen, Xinlei He, Ahmed Salem, Zhikun Zhang, Michael Backes,
         Emiliano De Cristofaro, Mario Fritz, Yang Zhang,
         31st USENIX Security Symposium (USENIX Security 22)
-        https://www.usenix.org/conference/usenixsecurity22/presentation/liu-yugeng
 
     Attributes:
         target_model: The model to extract (steal from).

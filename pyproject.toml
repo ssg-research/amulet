@@ -2,11 +2,6 @@
 name = "scarabml"
 version = "0.6.0"
 description = "Scarab is a Python machine learning (ML) package to evaluate the susceptibility of different risks to security, privacy, and fairness."
-authors = [
-    {name = "Asim Waheed", email = "asim.waheed29@gmail.com"},
-    {name = "Sebastian Szyller", email = "contact@sebszyller.com"},
-    {name = "Vasisht Duddu", email = "nvduddu@uwaterloo.ca"}
-]
 readme = "README.md"
 license = {text = "Apache-2.0"}
 requires-python = "~=3.11.0"
@@ -27,10 +22,10 @@ dependencies = [
     "scikit-learn==1.8.0",
     "scikit-image==0.25.1",
     "scipy==1.12.0",
-    # torch/torchvision keep a loose floor here so `pip install scarabml` still works
-    # off PyPI. For a reproducible, driver-correct GPU build, sync with one of the
-    # cpu/cu128/cu130 extras below, which pin the version and route it to the matching
-    # PyTorch index (see the comment on those extras).
+    # torch/torchvision keep a loose floor here. For a reproducible, driver-correct
+    # GPU build, sync with one of the cpu/cu128/cu130 extras below, which pin the
+    # version and route it to the matching PyTorch index (see the comment on those
+    # extras).
     "torch>=2.3.0",
     "torchvision>=0.18.0",
     "tqdm==4.67.3",
@@ -54,7 +49,7 @@ cu130 = ["torch==2.11.0", "torchvision==0.26.0"]
 # target, ONION defense). Kept optional so the base install stays lean and the
 # macOS dev machine / fast CI tier never pull the heavy Hugging Face stack. Every
 # module that imports these guards the import and raises a clear
-# "install scarabml[llm]" message when an LLM component is actually constructed.
+# "sync with the llm extra" message when an LLM component is actually constructed.
 # Versions are the set the Phase-1 spike resolved and validated (2026-07-10).
 # bitsandbytes (4-bit load path) is GPU/Linux-only; it is deliberately left out of
 # this extra and its import is guarded, so it is never touched under DP or on macOS.
@@ -72,10 +67,6 @@ dev = [
     "pytest-timeout==2.3.1",
     "ruff==0.11.0",
 ]
-
-[project.urls]
-Homepage = "https://github.com/ssg-research/scarab"
-Issues = "https://github.com/ssg-research/scarab/issues"
 
 [build-system]
 requires = ["hatchling"]

@@ -1,7 +1,7 @@
 # Scarab Benchmark Artifact
 
 This directory reproduces the tables and figures in the Scarab paper.
-Scarab (`scarabml` on PyPI, imported as `scarab`) is a PyTorch library for
+Scarab (imported as `scarab`) is a PyTorch library for
 evaluating unintended interactions among machine-learning defenses and risks
 across security, privacy, and fairness.
 

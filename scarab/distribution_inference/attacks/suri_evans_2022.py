@@ -4,7 +4,7 @@ KL-divergence-based distribution inference attack.
 Reference:
     Anshuman Suri and David Evans.
     "Formalizing and Estimating Distribution Inference Risks."
-    NeurIPS 2022. https://arxiv.org/abs/2109.06024
+    NeurIPS 2022.
 """
 
 import numpy as np

@@ -1,6 +1,6 @@
 # Getting Started
 
-Scarab (`scarabml` on PyPI) is a PyTorch-based research library for evaluating unintended interactions among machine learning (ML) defenses and risks across security, privacy, and fairness.
+Scarab is a PyTorch-based research library for evaluating unintended interactions among machine learning (ML) defenses and risks across security, privacy, and fairness.
 
 ## Features
 
@@ -8,10 +8,10 @@ Scarab (`scarabml` on PyPI) is a PyTorch-based research library for evaluating u
 
 Scarab provides built-in support for several common datasets, including automated downloading and pre-processing:
 
-- **Computer Vision**: [CIFAR-10](https://pytorch.org/vision/main/generated/torchvision.datasets.CIFAR10.html), [CIFAR-100](https://pytorch.org/vision/main/generated/torchvision.datasets.CIFAR100.html), [FashionMNIST](https://pytorch.org/vision/stable/generated/torchvision.datasets.FashionMNIST.html), [MNIST](https://pytorch.org/vision/stable/generated/torchvision.datasets.MNIST.html).
-- **Face Attributes**: [CelebA](https://mmlab.ie.cuhk.edu.hk/projects/CelebA.html), [Labeled Faces in the Wild (LFW)](https://scikit-learn.org/stable/modules/generated/sklearn.datasets.fetch_lfw_people.html), [UTKFace](https://susanqq.github.io/UTKFace/).
-- **Tabular Data**: [Census Income Dataset](https://archive.ics.uci.edu/dataset/20/census+income).
-- **Text**: [SST-2](https://huggingface.co/datasets/stanfordnlp/sst2), [AG News](https://huggingface.co/datasets/fancyzhx/ag_news), [IMDB](https://huggingface.co/datasets/stanfordnlp/imdb) (loaded via Hugging Face `datasets`; requires the optional `llm` extra).
+- **Computer Vision**: CIFAR-10, CIFAR-100, FashionMNIST, MNIST.
+- **Face Attributes**: CelebA, Labeled Faces in the Wild (LFW), UTKFace.
+- **Tabular Data**: Census Income Dataset.
+- **Text**: SST-2, AG News, IMDB (loaded via Hugging Face `datasets`; requires the optional `llm` extra).
 
 ### Models
 
@@ -122,4 +122,4 @@ model = initialize_model(
 ## Module Guide
 
 For detailed instructions on each risk, please see the [Module Guide](./module_guide/1_INTRO.md).
-Check the [examples/](https://github.com/ssg-research/scarab/tree/main/examples) directory for end-to-end scripts.
+Check the [examples/](../examples/) directory for end-to-end scripts.

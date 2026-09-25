@@ -4,8 +4,7 @@ This file provides guidance to AI agents when working with code in this reposito
 
 ## Project Overview
 
-Scarab (`scarabml` on PyPI) is a PyTorch-based research library for evaluating **unintended interactions** among ML defenses and risks across security, privacy, and fairness.
-It builds on "SoK: Unintended Interactions among Machine Learning Defenses and Risks" (IEEE S&P 2024).
+Scarab is a PyTorch-based research library for evaluating **unintended interactions** among ML defenses and risks across security, privacy, and fairness.
 The central use case is composing an attack from one risk with a defense designed for another risk and measuring how they interfere.
 
 Requires Python ~=3.11.0. Torch is selected via a hardware-specific extra (`cpu`, `cu128`, or `cu130`); see [Optional extras](#optional-extras).
@@ -119,8 +118,8 @@ Text loaders ([`scarab/datasets/__text_datasets.py`](scarab/datasets/__text_data
 
 ### Optional extras
 
-- **Torch build (`cpu` / `cu128` / `cu130`):** mutually exclusive (declared in `[tool.uv] conflicts`), each pinning the same `torch`/`torchvision` but routed to the matching PyTorch index via `[tool.uv.sources]`. Always sync with exactly one. The base `torch`/`torchvision` floor stays loose so `pip install scarabml` works off PyPI; the extras exist so a `uv sync` produces a driver-correct GPU build instead of a cu13 wheel that silently runs on CPU.
-- **`llm`:** the Hugging Face stack (`transformers`, `peft`, `accelerate`, `datasets`) for the textual backdoor pipeline (`TextBadNets`, `HFCausalLM`, `ONION`, the text loaders). Kept optional so the base install stays lean and the macOS dev machine / fast CI tier never pull it. Every HF import is lazy and guarded, so `import scarab` works without the extra and constructing an LLM component without it raises a clear "install scarabml[llm]" error.
+- **Torch build (`cpu` / `cu128` / `cu130`):** mutually exclusive (declared in `[tool.uv] conflicts`), each pinning the same `torch`/`torchvision` but routed to the matching PyTorch index via `[tool.uv.sources]`. Always sync with exactly one. The base `torch`/`torchvision` floor stays loose; the extras exist so a `uv sync` produces a driver-correct GPU build instead of a cu13 wheel that silently runs on CPU.
+- **`llm`:** the Hugging Face stack (`transformers`, `peft`, `accelerate`, `datasets`) for the textual backdoor pipeline (`TextBadNets`, `HFCausalLM`, `ONION`, the text loaders). Kept optional so the base install stays lean and the macOS dev machine / fast CI tier never pull it. Every HF import is lazy and guarded, so `import scarab` works without the extra and constructing an LLM component without it raises a clear "sync with the llm extra" error.
 - **`bitsandbytes`** (4-bit load path in `HFCausalLM`) is GPU/Linux-only and deliberately **not** in the `llm` extra. Its import is guarded, off by default, and never used under DP (Opacus per-sample hooks do not compose with 4-bit layers).
 
 ### Tooling
@@ -129,5 +128,5 @@ Text loaders ([`scarab/datasets/__text_datasets.py`](scarab/datasets/__text_data
 - `B903` (class-could-be-dataclass) is globally ignored. Base classes that provide shared state for subclasses are a valid pattern here.
 - Pandas stubs: use `# type: ignore[reportArgumentType]` for `columns=list[str]` and `# type: ignore[reportAttributeAccessIssue]` for `.isin()`. Do not use `cast()`, an established repo convention.
 - Dependency versions are pinned exactly. `cleverhans`, `opacus`, and `captum` are sensitive to version drift. Do not loosen pins without a reason.
-- The package is published to PyPI as `scarabml`; the import name is `scarab`.
+- The distribution name is `scarabml`; the import name is `scarab`.
 - Docstrings use Google style: imperative summary line, `Args:` / `Returns:` / `Raises:` sections, no type repetition from the signature, no RST markup.

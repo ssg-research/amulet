@@ -82,7 +82,7 @@ class WhiteBoxPIM(DistributionInferenceAttack):
     Reference:
         Anshuman Suri and David Evans.
         "Formalizing and Estimating Distribution Inference Risks."
-        NeurIPS 2022. https://arxiv.org/abs/2109.06024
+        NeurIPS 2022.
 
     Attributes:
         meta_epochs: Number of training epochs for the PIM meta-classifier.

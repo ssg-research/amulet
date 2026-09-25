@@ -47,4 +47,4 @@ adv_accuracy = get_accuracy(defended_model, adv_loader, device)
 print(f"Adversarial Accuracy: {adv_accuracy}%")
 ```
 
-For more details, check the specific guide for each risk and the provided [example scripts](https://github.com/ssg-research/scarab/tree/main/examples).
+For more details, check the specific guide for each risk and the provided [example scripts](../../examples/).

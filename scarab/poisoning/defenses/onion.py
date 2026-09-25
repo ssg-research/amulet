@@ -39,7 +39,7 @@ class ONION(PoisoningDefense):
 
     Reference:
         ONION: A Simple and Effective Defense Against Textual Backdoor Attacks,
-        Qi et al., EMNLP 2021. https://arxiv.org/abs/2011.10369
+        Qi et al., EMNLP 2021.
 
     Attributes:
         threshold: Suspicion cutoff; words scoring above it are removed. Higher keeps more

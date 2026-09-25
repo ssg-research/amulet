@@ -19,7 +19,7 @@ class DatasetInference(FingerprintDefense):
     Reference:
         Dataset Inference: Ownership Resolution in Machine Learning,
         Pratyush Maini, Mohammad Yaghini, Nicolas Papernot
-        ICLR 2021 — https://openreview.net/forum?id=hvdKKV2yt7T
+        ICLR 2021
 
     Attributes:
         target_model: The model to fingerprint.
@@ -165,7 +165,7 @@ class DatasetInference(FingerprintDefense):
             pred_train = outputs_train[:, 0].detach().cpu().numpy()
             pval = ttest_ind(
                 pred_test, pred_train, alternative="greater", equal_var=False
-            ).pvalue  # type: ignore[reportAttributeAccessIssue] https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.ttest_ind.html
+            ).pvalue  # type: ignore[reportAttributeAccessIssue]
             if pval < 0:
                 raise ValueError(f"p-value={pval}")
 

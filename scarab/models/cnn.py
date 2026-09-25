@@ -11,7 +11,6 @@ class SimpleCNN(ScarabModel):
     Reference:
         BadNets: Identifying Vulnerabilities in the Machine Learning Model Supply Chain
         Tianyu Gu, Brendan Dolan-Gavitt, Siddharth Garg
-        https://arxiv.org/abs/1708.06733.
 
     Architecture:
     - Multiple Conv2d layers (with ReLU + MaxPool)

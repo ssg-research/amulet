@@ -14,7 +14,6 @@ class FredriksonCCS2015(DataReconstructionAttack):
     Reference:
         Model Inversion Attacks that Exploit Confidence Information and Basic Countermeasures (CCS 2015)
         Matt Fredrikson, Somesh Jha, Thomas Ristenpart
-        https://rist.tech.cornell.edu/papers/mi-ccs.pdf
 
     Note: The model's output layer must include a Softmax. Add it manually if absent.
 
