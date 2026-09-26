@@ -26,12 +26,6 @@ Scarab uses `uv` for dependency management.
    # add --extra llm for the text/LLM stack (transformers, peft, datasets)
    ```
 
-3. **Install Pre-commit**:
-
-   ```bash
-   uv run pre-commit install
-   ```
-
 ### Coding Standards
 
 - **Formatting**: We use `ruff` for formatting and linting. Run `uv run ruff format .` and `uv run ruff check --fix .`.

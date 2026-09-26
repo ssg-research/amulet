@@ -11,7 +11,7 @@ Requires Python ~=3.11.0. Torch is selected via a hardware-specific extra (`cpu`
 
 ## Where to find things
 
-- **Dev setup, deps, lint/typecheck config:** [`pyproject.toml`](pyproject.toml) and [`.pre-commit-config.yaml`](.pre-commit-config.yaml)
+- **Dev setup, deps, lint/typecheck config:** [`pyproject.toml`](pyproject.toml)
 - **Risk modules:** `scarab/<risk>/`, each with `attacks/`, `defenses/`, and optionally `metrics/` subpackages
   - Security: [`evasion/`](scarab/evasion/), [`poisoning/`](scarab/poisoning/), [`unauth_model_ownership/`](scarab/unauth_model_ownership/)
   - Privacy: [`membership_inference/`](scarab/membership_inference/), [`attribute_inference/`](scarab/attribute_inference/), [`distribution_inference/`](scarab/distribution_inference/), [`data_reconstruction/`](scarab/data_reconstruction/)
@@ -39,11 +39,9 @@ uv add --dev <pkg>                  # add dev dep
 uv lock                             # regenerate uv.lock after editing pyproject.toml
 ```
 
-Lint / typecheck / format (run via pre-commit so configuration stays in sync with CI):
+Lint / typecheck / format:
 
 ```bash
-uv run pre-commit install          # one-time
-uv run pre-commit run --all-files  # ALWAYS use --all-files; omitting it only checks staged files
 uv run ruff check --fix .
 uv run ruff format .
 uv run basedpyright                # standard mode; venv is .venv (configured in pyproject.toml)
@@ -69,7 +67,7 @@ They return outputs (e.g. adversarial `DataLoader`, defended `nn.Module`) consum
 Each risk has an ABC base class in `scarab/<risk>/attacks/` and `scarab/<risk>/defenses/`.
 **Every defense must implement its risk's training-shaped entry-point method.** This is a
 hard convention, not a suggestion, and it is enforced by `tests/test_api_conformance.py`
-(a defense exposing only a bespoke method fails CI). The standard entry-point methods are:
+(a defense exposing only a bespoke method fails the test suite). The standard entry-point methods are:
 
 | Role                           | Method                                             |
 | ------------------------------ | -------------------------------------------------- |
@@ -124,7 +122,6 @@ Text loaders ([`scarab/datasets/__text_datasets.py`](scarab/datasets/__text_data
 
 ### Tooling
 
-- Keep the `ruff-pre-commit` hook rev in sync with `ruff==` in `pyproject.toml`. A mismatch silently skips rules.
 - `B903` (class-could-be-dataclass) is globally ignored. Base classes that provide shared state for subclasses are a valid pattern here.
 - Pandas stubs: use `# type: ignore[reportArgumentType]` for `columns=list[str]` and `# type: ignore[reportAttributeAccessIssue]` for `.isin()`. Do not use `cast()`, an established repo convention.
 - Dependency versions are pinned exactly. `cleverhans`, `opacus`, and `captum` are sensitive to version drift. Do not loosen pins without a reason.
