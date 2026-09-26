@@ -21,10 +21,10 @@ uv sync --extra cu130 --extra llm --extra dev
 uv run python artifact/setup_assets.py
 
 # 3. Check the whole pipeline works, cheaply, on one GPU (minutes).
-artifact/run_smoke.sh
+bash artifact/run_smoke.sh
 
 # 4. Reproduce the paper (paper-scale training; see Expected runtime).
-artifact/run_full.sh
+bash artifact/run_full.sh
 ```
 
 Steps 3 and 4 each run all five experiments and then render every table and
@@ -83,11 +83,11 @@ Every experiment runs at one of three levels, set with `--level`.
 Each trades fidelity for time, so you can check the pipeline before committing to
 a full run.
 
-| Level     | Question                   | Command                 | Cost                    |
-| --------- | -------------------------- | ----------------------- | ----------------------- |
-| **test**  | Does the code run?         | the Quickstart tests    | seconds to minutes, CPU |
-| **smoke** | Is the pipeline sound?     | `artifact/run_smoke.sh` | minutes, one GPU        |
-| **full**  | Do we reproduce the paper? | `artifact/run_full.sh`  | GPU-hours to GPU-days   |
+| Level     | Question                   | Command                      | Cost                    |
+| --------- | -------------------------- | ---------------------------- | ----------------------- |
+| **test**  | Does the code run?         | the Quickstart tests         | seconds to minutes, CPU |
+| **smoke** | Is the pipeline sound?     | `bash artifact/run_smoke.sh` | minutes, one GPU        |
+| **full**  | Do we reproduce the paper? | `bash artifact/run_full.sh`  | GPU-hours to GPU-days   |
 
 - **test** substitutes tiny synthetic data and micro-architectures, so it runs
   anywhere with no download. It confirms the code runs; the numbers come from
