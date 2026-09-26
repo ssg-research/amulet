@@ -190,23 +190,24 @@ table is the tabular form, the figures plot it.
 ## Expected runtime
 
 Full is Level 3: it trains real models at paper scale.
-Costs are for one seed on a single NVIDIA A100, the reference host throughout.
+Costs are for one full run on a single NVIDIA A100, the reference host throughout.
 [`RUNTIME.md`](RUNTIME.md) holds the per-phase breakdown and the method for
 regenerating it from a run's own `runtime_sec` columns.
 
-E5's full cost is known, measured from the paper's own result CSVs.
-The other four have no measured full breakdown yet: their `runtime_sec` column
-was added after the paper run, so the first full run is what will populate
-[`RUNTIME.md`](RUNTIME.md). Until then, the table below gives only what dominates
-each one's cost.
+All five full costs are measured: E5's from the paper's own result CSVs, E1
+through E4 from a `--level full` run with one experiment per GPU.
 
-| Experiment | Full (one seed)           | What dominates                                                                                                       |
-| ---------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| E1         | not yet measured          | membership inference's shadow-model bank on CelebA; the other five share one target                                  |
-| E2         | not yet measured          | PGD adversarial training across 4 datasets x 4 budgets, plus a distillation per cell                                 |
-| E3         | not yet measured          | the same adversarial training, over 2 datasets and no surrogate                                                      |
-| E4         | not yet measured          | kNN-Shapley over the whole training set per cell, then a retrain and a distillation                                  |
-| E5         | ~68 h ONION, ~40 h DP-SGD | every cell fine-tunes LoRA adapters on a 3B Llama at a flat ~5 h; ONION adds ~2 h scoring perplexity over the corpus |
+| Experiment | Full (one run)                      | What dominates                                                                                                       |
+| ---------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| E1         | ~21.7 h                             | training one target per capacity; membership inference's shadow-model bank is the largest single cost (~3.8 h)       |
+| E2         | ~11.8 h                             | PGD adversarial training plus a distillation per cell; the cifar column alone is ~8.2 h                              |
+| E3         | ~1.4 h                              | the same adversarial training, over 2 datasets and no surrogate                                                      |
+| E4         | ~4.8 h                              | the retrain and distillation on the image datasets; kNN-Shapley's `train x test` loop on census                      |
+| E5         | ~108 h (~68 h ONION + ~40 h DP-SGD) | every cell fine-tunes LoRA adapters on a 3B Llama at a flat ~5 h; ONION adds ~2 h scoring perplexity over the corpus |
+
+E1 through E4 total about 40 h (~1.7 GPU-days); with E5, all five come to about
+148 h (~6.2 GPU-days) on one A100. The experiments are independent, so running
+each on its own GPU cuts the wall clock to the longest one, E5.
 
 The smoke sweep is about 11 minutes for all five on one GPU;
 [`RUNTIME.md`](RUNTIME.md) carries the measured per-experiment breakdown.

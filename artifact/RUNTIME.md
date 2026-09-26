@@ -17,8 +17,8 @@ One experiment runs per GPU.
 All numbers are wall clock, so they include data loading and evaluation, not just
 training. A different GPU scales roughly with its fp32 throughput.
 
-"Full" here means `--level full` for a single seed (seed 0), which is what a
-reviewer runs. The paper's five-seed sweep is a separate, larger cost, labelled
+"Full" here means `--level full`: the paper's settings, run once, which is what a
+reviewer runs. The paper's own repeated sweep is a separate, larger cost, labelled
 as such wherever it appears.
 
 ## How runtime is measured
@@ -53,17 +53,17 @@ corrupted by a previous `full` run.
 ## `--level smoke`
 
 This is what `run_smoke.sh` costs once the assets are downloaded: all five
-experiments at a reduced budget, one seed. Measured on the reference host from a
-cold `.model_cache/smoke/`.
+experiments at a reduced budget. Measured on the reference host from a cold
+`.model_cache/smoke/`.
 
-| Experiment |  Wall clock | What dominates                                                   |
-| ---------- | ----------: | ---------------------------------------------------------------- |
-| E1         |      5m 26s | membership inference's shadow bank; evasion over four capacities |
-| E2         |         39s | PGD adversarial training over 4 datasets x 4 budgets             |
-| E3         |         48s | PGD adversarial training over 2 datasets x budgets               |
-| E4         |      1m 46s | kNN-Shapley over 4 datasets x 5 removal levels                   |
-| E5         |      2m 23s | two 1.1B-Llama fine-tunes per study over a small fixed slice     |
-| **Total**  | **11m 02s** |                                                                  |
+| Experiment |  Wall clock |
+| ---------- | ----------: |
+| E1         |      5m 26s |
+| E2         |         39s |
+| E3         |         48s |
+| E4         |      1m 46s |
+| E5         |      2m 23s |
+| **Total**  | **11m 02s** |
 
 Rendering the tables and figures adds about 15 seconds, so `run_smoke.sh` end to
 end is about 11.5 minutes.
@@ -114,21 +114,82 @@ schedule runs fewer epochs than the fine-tune it is compared against.
 | `onion_purify` (ONION) | perplexity-score and purify the corpus and triggered test | ~2.1 h |
 | `dp_train` (DP-SGD)    | train under Opacus per-sample clipping and noise          | ~1.8 h |
 
-One full seed of ONION is ~68 h (1 clean + 5 undefended + 5 defended + 5
-purify); one full seed of DP-SGD is ~40 h (1 clean + 4 undefended + 8 DP). E5's
-full cost for one seed is therefore **~108 h (~4.5 GPU-days)**.
-The paper's five-seed sweep is ~540 h (~22 GPU-days); seeds are independent and
-share no cache, so N nodes give close to an N-fold speedup.
+One full ONION run is ~68 h (1 clean + 5 undefended + 5 defended + 5 purify); one
+full DP-SGD run is ~40 h (1 clean + 4 undefended + 8 DP). E5's full cost is
+therefore **~108 h (~4.5 GPU-days)**.
+The paper repeats this run and reports the mean; that full sweep is ~540 h (~22
+GPU-days), and since the runs are independent and share no cache, N nodes give
+close to an N-fold speedup.
 E5's full sweep does not need re-running: the paper's CSVs are what this section
 is measured from.
 
-### E1 through E4 (not yet measured)
+### E1 through E4 (measured)
 
-These four have no measured full breakdown yet.
-Their `runtime_sec` column was added after the paper run, so the first
-`--level full` sweep is what will populate this section.
+Measured from a `--level full` run across A100 (40 GB) nodes, one
+experiment per GPU, from cold `.model_cache/full/` caches. Each experiment ran on
+a single A100 end to end, so every figure is a single-A100 number in the same
+sense as the rest of this file. The run decomposed each experiment into
+independent units (E1 by capacity plus a membership-inference unit, E2/E3/E4 by
+dataset) that share no work across units, so these totals equal what one serial
+run records.
 
-Once a full run exists, regenerate this from its CSVs:
+| Experiment | Full        |
+| ---------- | ----------: |
+| E1         |     ~21.7 h |
+| E2         |     ~11.8 h |
+| E3         |      ~1.4 h |
+| E4         |      ~4.8 h |
+| **Total**  | **~39.8 h** |
+
+E1-E4 total about 1.7 GPU-days. The single costliest cell is E2's cifar column:
+PGD-40 adversarial training of a VGG, plus a distillation and two PGD-40
+robust-accuracy evaluations per budget, at about 2 h a cell.
+
+Group before averaging, because a mean over unlike cells describes none of them.
+E1 goes by `capacity` (the six attacks share one target per capacity, so the
+attack that trains it absorbs the cost), E2 and E4 by `dataset`. E3's
+baseline row carries the shared clean-target training and each budget row only its
+own work, so E3's rows are disjoint and sum directly.
+
+**E1, by capacity** (the paper's VGG11/13/16/19 columns). Membership inference is
+reported at `m1` only and its shadow bank is `m1`'s largest single cost:
+
+| Capacity | Total   | Of which membership inference |
+| -------- | ------: | ----------------------------: |
+| m1       | ~6.6 h  | ~3.8 h                        |
+| m2       | ~4.3 h  | n/a                           |
+| m3       | ~5.1 h  | n/a                           |
+| m4       | ~5.8 h  | n/a                           |
+
+Within a capacity the five shared-target attacks are cheap once the target is
+trained: evasion is the largest of them (PGD-40 over the test split, ~0.9 h at m1
+rising to ~1.8 h at m4), attribute inference the smallest (~0.01 h).
+
+**E2 and E4, by dataset.**
+
+| Dataset | E2 (advtr x modext) | E4 (outrem x modext) |
+| ------- | ------------------: | -------------------: |
+| cifar   | ~8.2 h              | ~2.0 h               |
+| fmnist  | ~2.8 h              | ~1.9 h               |
+| census  | ~0.6 h              | ~0.8 h               |
+| lfw     | ~0.1 h              | ~0.02 h              |
+
+E4's per-cell cost splits by modality. On the image datasets (cifar, fmnist) the
+retrain and distillation dominate, so a cell runs about 24 min whatever the removal
+percentage. On tabular census the retrain is trivial, so the cell cost is
+essentially `OutlierRemoval._knn_shapley` alone: about 12 min per removal cell
+against a 0.7 min baseline, the `O(train x test)` double loop over census's large
+test split. That loop is real work, yet it stays cheaper in absolute terms than the
+image datasets' training.
+
+| Dataset | train x test (full) |
+| ------- | ------------------- |
+| fmnist  | 30,000 x 10,000     |
+| cifar   | 25,000 x 10,000     |
+| census  | 11,611 x 23,224     |
+| lfw     | 2,395 x 2,053       |
+
+To regenerate these numbers from a run's CSVs:
 
 ```bash
 uv run python - <<'PY'
@@ -142,24 +203,3 @@ for path in sorted(glob.glob("artifact/runs/full/**/*.csv", recursive=True)):
               f"total {sum(times) / 3600:6.1f} h")
 PY
 ```
-
-Group before averaging, because a mean over unlike cells describes none of them:
-E1 by `capacity` (the six attacks share one target per seed and capacity, so the
-attack that trains it absorbs the cost), E2 and E4 by `dataset`. E3's baseline
-row carries the shared clean-target training and each budget row only its own
-work, so E3's rows are disjoint and sum directly.
-
-E4 is expected to dominate, for a reason the smoke numbers hide. Its per-cell
-cost is not training but `OutlierRemoval._knn_shapley`, a double loop over
-`train x test`. Both factors matter: a small training set does not imply a cheap
-cell, because the outer loop walks the **test** split, and census has the largest
-test split of the four despite being tabular. And the gap from smoke to full is
-quadratic, not linear: smoke cuts both factors to a tenth, so a full cell is
-roughly 100x its smoke cell.
-
-| Dataset | train x test (full) |
-| ------- | ------------------- |
-| fmnist  | 30,000 x 10,000     |
-| cifar   | 25,000 x 10,000     |
-| census  | 11,611 x 23,224     |
-| lfw     | 2,395 x 2,053       |
