@@ -68,6 +68,14 @@ uv run python artifact/setup_assets.py           # fetch everything this install
 uv run python artifact/setup_assets.py --list    # show the assets and their sizes
 ```
 
+It downloads about 17 GB in total: about 1.9 GB of datasets (1.5 GB of it
+CelebA), 2.2 GB for TinyLlama-1.1B, and 12.9 GB for Llama-3.2-3B. Without the
+`llm` extra it downloads only the 1.9 GB of datasets.
+On a 100 Mbit/s connection the transfers take about 25 minutes, and preprocessing
+CelebA and LFW adds about 12 minutes on the CPU. CIFAR-10 comes from its original
+host, which has served it at 70-150 kB/s in our runs, so that one 170 MB file
+can add 20-40 minutes whatever the connection. Allow about an hour in all.
+
 The runtimes quoted here and in [`RUNTIME.md`](RUNTIME.md) are compute time and
 assume this download is already complete.
 Downloading up front also keeps parallel runs from racing into the same `data/`

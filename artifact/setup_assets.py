@@ -151,14 +151,14 @@ def _fetch_hf_repo(repo_id: str, *, tokenizer_only: bool = False) -> Callable[[]
 ASSETS: tuple[Asset, ...] = (
     Asset("celeba", "E1", "~1.4 GB", _fetch_celeba),
     Asset("census", "E2, E3, E4", "~5 MB", _fetch_dataset("census")),
-    Asset("lfw", "E2, E3, E4", "~200 MB", _fetch_dataset("lfw")),
+    Asset("lfw", "E2, E3, E4", "~250 MB", _fetch_dataset("lfw")),
     Asset("fmnist", "E2, E4", "~30 MB", _fetch_dataset("fmnist")),
     Asset("cifar10", "E2, E4", "~170 MB", _fetch_dataset("cifar10")),
     Asset("sst2", "E5", "~7 MB", _fetch_sst2, needs_llm=True),
     Asset(
         "llama-3.2-3b",
         "E5",
-        "~6.5 GB",
+        "~12.9 GB",
         _fetch_hf_repo("meta-llama/Llama-3.2-3B"),
         needs_llm=True,
     ),
