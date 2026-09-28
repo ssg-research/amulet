@@ -6,7 +6,6 @@ used in applications with sensitive data attributes.
 import io
 from pathlib import Path
 
-import gdown
 import numpy as np
 import pandas as pd
 import torch
@@ -17,6 +16,7 @@ from sklearn.preprocessing import MinMaxScaler
 from torch.utils.data import TensorDataset
 
 from .__data import ScarabDataset
+from .__gdrive import gdrive_download
 
 _CENSUS_GDRIVE_ID = "1sk8q1DElWbeNfVq1Gi0mdqTyUf-I2vIS"
 
@@ -74,8 +74,7 @@ def load_census(
     filename = path / "adult.csv"
     if not filename.exists():
         path.mkdir(parents=True, exist_ok=True)
-        print("Downloading Census data from Google Drive...")
-        gdown.download(id=_CENSUS_GDRIVE_ID, output=str(filename), quiet=False)
+        gdrive_download(_CENSUS_GDRIVE_ID, filename, "Census data")
 
     adult_data = pd.read_csv(filename, dtype=dtypes)  # type: ignore[reportCallIssue, reportArgumentType]
 
@@ -281,11 +280,8 @@ def load_lfw(
     if not cache_path.exists():
         # Ensure raw attributes file
         if not attributes_path.exists():
-            print("Downloading LFW attributes from Google Drive...")
-            gdown.download(
-                id=_LFW_ATTRIBUTES_GDRIVE_ID,
-                output=str(attributes_path),
-                quiet=False,
+            gdrive_download(
+                _LFW_ATTRIBUTES_GDRIVE_ID, attributes_path, "LFW attributes"
             )
 
         # Ensure intermediate image cache

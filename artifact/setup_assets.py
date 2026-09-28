@@ -82,6 +82,27 @@ def _fetch_dataset(name: str) -> Callable[[], str]:
     return fetch
 
 
+def _fetch_celeba() -> str:
+    """Load CelebA once per label E1 trains on, leaving each preprocessed cache warm.
+
+    The loader caches one preprocessed copy per target attribute, and building one
+    takes minutes over 202,599 images. Doing both here keeps that out of E1's runtime.
+    """
+    from experiments.e1_attack_baselines.context import (
+        DEFAULT_TARGET_ATTRIBUTE,
+        PRIVACY_TARGET_ATTRIBUTE,
+    )
+    from scarab.utils import load_data
+
+    sizes: list[str] = []
+    for target in (DEFAULT_TARGET_ATTRIBUTE, PRIVACY_TARGET_ATTRIBUTE):
+        data = load_data(repo_root(), "celeba", celeba_target=target)
+        train = cast("Subset[object]", data.train_set)
+        test = cast("Subset[object]", data.test_set)
+        sizes.append(f"{target}: {len(train)} train / {len(test)} test")
+    return "; ".join(sizes)
+
+
 def _fetch_sst2() -> str:
     """Pull SST-2 into the same `data/sst2` cache E5 reads."""
     from datasets import load_dataset
@@ -125,9 +146,10 @@ def _fetch_hf_repo(repo_id: str, *, tokenizer_only: bool = False) -> Callable[[]
 
 # Every asset the five experiments read at `smoke` or `full`, and which needs it.
 # `test` substitutes synthetic tabular data for E1-E4 and downloads nothing for
-# them; it does need the TinyLlama tokenizer, which is why that is listed.
+# them. TinyLlama is listed whole: `test` builds from its tokenizer and `smoke`
+# fine-tunes the model itself.
 ASSETS: tuple[Asset, ...] = (
-    Asset("celeba", "E1", "~1.4 GB", _fetch_dataset("celeba")),
+    Asset("celeba", "E1", "~1.4 GB", _fetch_celeba),
     Asset("census", "E2, E3, E4", "~5 MB", _fetch_dataset("census")),
     Asset("lfw", "E2, E3, E4", "~200 MB", _fetch_dataset("lfw")),
     Asset("fmnist", "E2, E4", "~30 MB", _fetch_dataset("fmnist")),
@@ -141,10 +163,10 @@ ASSETS: tuple[Asset, ...] = (
         needs_llm=True,
     ),
     Asset(
-        "tinyllama-tokenizer",
-        "E5 (test level)",
-        "~5 MB",
-        _fetch_hf_repo("TinyLlama/TinyLlama-1.1B-Chat-v1.0", tokenizer_only=True),
+        "tinyllama-1.1b",
+        "E5 (test, smoke)",
+        "~2.2 GB",
+        _fetch_hf_repo("TinyLlama/TinyLlama-1.1B-Chat-v1.0"),
         needs_llm=True,
     ),
 )
@@ -254,7 +276,7 @@ def main(argv: list[str] | None = None) -> int:
         if any(ASSETS_BY_NAME[name].needs_llm for name in failed):
             print(
                 "Hugging Face repositories can be gated: accept the model licence on "
-                "the hub and authenticate with `hf auth login` before retrying."
+                "the hub and authenticate with `uv run hf auth login` before retrying."
             )
         return 1
     if skipped:

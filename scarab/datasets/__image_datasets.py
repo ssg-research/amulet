@@ -7,7 +7,6 @@ import tarfile
 import zipfile
 from pathlib import Path
 
-import gdown
 import numpy as np
 import pandas as pd
 import torch
@@ -18,6 +17,7 @@ from torch.utils.data import TensorDataset
 from torchvision import datasets
 
 from .__data import ScarabDataset
+from .__gdrive import gdrive_download
 
 _CELEBA_IMAGES_GDRIVE_ID = "1aiLLTGVnOnq0Ln9uf3nSuj8JmhrX5rMx"
 _CELEBA_ATTRS_GDRIVE_ID = "15HHhEpb0ylQliq8vbdrN6kBlxpc33OA5"
@@ -227,15 +227,11 @@ def _celeba_ensure_raw(path: Path) -> tuple[Path, Path]:
     zip_path = path / "img_align_celeba.zip"
 
     if not attrs_path.exists():
-        print("Downloading CelebA attributes from Google Drive...")
-        gdown.download(id=_CELEBA_ATTRS_GDRIVE_ID, output=str(attrs_path), quiet=False)
+        gdrive_download(_CELEBA_ATTRS_GDRIVE_ID, attrs_path, "CelebA attributes")
 
     if not imgs_dir.exists():
         if not zip_path.exists():
-            print("Downloading CelebA images from Google Drive...")
-            gdown.download(
-                id=_CELEBA_IMAGES_GDRIVE_ID, output=str(zip_path), quiet=False
-            )
+            gdrive_download(_CELEBA_IMAGES_GDRIVE_ID, zip_path, "CelebA images")
         print("Extracting CelebA images...")
         with zipfile.ZipFile(zip_path, "r") as zf:
             zf.extractall(path)
@@ -376,8 +372,7 @@ def _utkface_ensure_raw(path: Path) -> Path:
 
     if not imgs_dir.exists():
         if not tar_path.exists():
-            print("Downloading UTKFace from Google Drive...")
-            gdown.download(id=_UTKFACE_GDRIVE_ID, output=str(tar_path), quiet=False)
+            gdrive_download(_UTKFACE_GDRIVE_ID, tar_path, "UTKFace")
         print("Extracting UTKFace...")
         with tarfile.open(tar_path, "r:gz") as tf:
             tf.extractall(path)

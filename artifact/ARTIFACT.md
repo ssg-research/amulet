@@ -58,9 +58,10 @@ Check the maximum CUDA your driver supports with `nvidia-smi`.
 Training at smoke or full scale needs a GPU; the `cpu` extra is enough for the
 Quickstart tests only.
 
-`setup_assets.py` fetches every dataset and the one set of pretrained weights the
-experiments use (Meta's Llama-3.2-3B, for E5); every other model is trained from
-scratch. Run it once before any experiment:
+`setup_assets.py` fetches every dataset, preprocesses each one the experiments
+read, and downloads the two pretrained models E5 fine-tunes (TinyLlama-1.1B for
+smoke, Meta's Llama-3.2-3B for full); every other model is trained from scratch.
+Run it once before any experiment:
 
 ```bash
 uv run python artifact/setup_assets.py           # fetch everything this install can
@@ -73,7 +74,7 @@ Downloading up front also keeps parallel runs from racing into the same `data/`
 cache, and surfaces a gated repository or an expired token in minutes rather than
 hours into a run.
 E5's Llama weights are gated on the Hugging Face hub: accept the licence and run
-`hf auth login` before fetching them.
+`uv run hf auth login` before fetching them.
 When the `llm` extra is absent the script skips E5's assets, so an E1-E4 reviewer
 needs nothing more.
 
