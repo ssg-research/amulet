@@ -34,7 +34,7 @@ def failing_drive(request: pytest.FixtureRequest, mocker):
     make_error: Callable[[str], Exception] = request.param
 
     def _download(id: str, output: str, quiet: bool = False) -> None:
-        url = f"https://drive.google.com/uc?id={id}"
+        url = f"drive.google.com/uc?id={id}"
         if not quiet:
             print(f"From: {url}", file=sys.stderr)
         raise make_error(url)
